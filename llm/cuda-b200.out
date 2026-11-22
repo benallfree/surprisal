@@ -1,0 +1,39 @@
+✓ Initialized. View run at 
+https://modal.com/apps/benallfree/main/ap-VxmUJ1wHs74a10WWSliGLo
+✓ Created objects.
+├── ✓ Uploaded 
+│   /Volumes/Code/repos/spikes/model-assisted-compression/llm/cudacodec.py
+├── ✓ Created Function run_l4.
+├── ✓ Created Function run_h100.
+├── ✓ Created Function run_h200.
+└── ✓ Created Function run_b200.
+20:15:51 GPU: NVIDIA B200, CUDA_LAUNCH_BLOCKING=None
+`torch_dtype` is deprecated! Use `dtype` instead!
+20:15:55 Qwen/Qwen2.5-Coder-0.5B: loaded in 1.7s, 55854 bytes, 24126 tokens
+/usr/local/lib/python3.12/site-packages/torch/_inductor/lowering.py:7095: UserWarning: 
+Online softmax is disabled on the fly since Inductor decides to
+split the reduction. Cut an issue to PyTorch if this is an
+important use case and you want to speed it up with online
+softmax.
+
+  warnings.warn(
+20:16:29 captured 49 graphs in 28.7s
+20:16:57 encode: 24126 tokens -> 7184 bytes, 28.51s (846 tok/s; GPU part 28.49s, 847 tok/s)
+20:17:27 decode: 29.61s (815 tok/s), round trip OK
+20:17:29 Qwen/Qwen2.5-Coder-1.5B: loaded in 2.5s, 55854 bytes, 24126 tokens
+/usr/local/lib/python3.12/site-packages/torch/_inductor/lowering.py:7095: UserWarning: 
+Online softmax is disabled on the fly since Inductor decides to
+split the reduction. Cut an issue to PyTorch if this is an
+important use case and you want to speed it up with online
+softmax.
+
+  warnings.warn(
+20:17:45 captured 49 graphs in 15.5s
+20:18:30 encode: 24126 tokens -> 5853 bytes, 45.14s (535 tok/s; GPU part 45.12s, 535 tok/s)
+B200, 2026-11-22 12:19, wall 209s including container start
+Qwen/Qwen2.5-Coder-0.5B: 55854 -> 7184 bytes, 24126 tokens | load 1.7s, capture 28.7s | encode 28.51s (846 tok/s) | decode 29.61s (815 tok/s) | round trip OK
+Qwen/Qwen2.5-Coder-1.5B: 55854 -> 5853 bytes, 24126 tokens | load 2.5s, capture 15.5s | encode 45.14s (535 tok/s) | decode 46.10s (523 tok/s) | round trip OK
+20:19:16 decode: 46.10s (523 tok/s), round trip OK
+Stopping app - local entrypoint completed.
+✓ App completed. View run at 
+https://modal.com/apps/benallfree/main/ap-VxmUJ1wHs74a10WWSliGLo

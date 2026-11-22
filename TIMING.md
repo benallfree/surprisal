@@ -200,3 +200,15 @@ full BJJ game (55,854 bytes, 24,126 tokens). Every row decoded back to the input
   B200 (8 TB/s) or from 8-bit weights. The 7B needs 3.8×, which would take both a B200 and FP8 weights.
 - Cost: Modal bills the H200 at $4.54/h and the H100 at $3.95/h, by the second. The final four-model H200 run took
   10 min (about $0.76). A 0.5B decompress on an H100 is about 3¢ of GPU time plus the cold start.
+
+### B200 (2026-11-22, 12:15)
+
+Same script, no B200-specific tuning (`llm/cuda-B200.log`):
+
+| Model | GPU | Archive | Compress | Decompress | tok/s |
+|---|---|---:|---:|---:|---:|
+| 0.5B | B200 | 7,184 | 28.5 s | 29.6 s | 815 |
+| 1.5B | B200 | 5,853 | 45.1 s | 46.1 s | 523 |
+
+- The B200 buys nothing at this batch size of one: the 0.5B is slower than on the H200 (893 tok/s), and the 1.5B is level (516). Its extra bandwidth doesn't help kernels that are bound by launch latency and small reductions, so the 1.5B is still 1.5× short of 30 s.
+- The archives differ from the H200's by a byte or two (7,184 vs 7,183; 5,853 vs 5,855). The same model on another GPU gives different floats, so these archives are tied to the GPU type as well as the model. A codec that depends only on the model needs integer (fixed-point) inference; see the README's fine print.

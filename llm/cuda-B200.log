@@ -1,0 +1,4 @@
+B200, 2026-11-22 12:19, wall 209s including container start
+Qwen/Qwen2.5-Coder-0.5B: 55854 -> 7184 bytes, 24126 tokens | load 1.7s, capture 28.7s | encode 28.51s (846 tok/s) | decode 29.61s (815 tok/s) | round trip OK
+Qwen/Qwen2.5-Coder-1.5B: 55854 -> 5853 bytes, 24126 tokens | load 2.5s, capture 15.5s | encode 45.14s (535 tok/s) | decode 46.10s (523 tok/s) | round trip OK
+

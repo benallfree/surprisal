@@ -1,0 +1,15 @@
+  12:37:17 float 500/2341 139 bytes so far
+  12:38:25 float 1000/2341 254 bytes so far
+  12:39:34 float 1500/2341 368 bytes so far
+  12:40:46 float 2000/2341 577 bytes so far
+12:41:34 float: 6000 bytes, 2341 tokens -> 652.1 bytes ideal (+4 header), 325s (7.2 tok/s), load 1s stats {"q": 81.5, "k": 225.1, "v": 23.2, "gu": 104.2, "h": 1463.1}
+  12:42:43 f8 500/2341 139 bytes so far
+  12:43:52 f8 1000/2341 253 bytes so far
+  12:45:01 f8 1500/2341 368 bytes so far
+  12:46:10 f8 2000/2341 576 bytes so far
+12:46:58 f8: 6000 bytes, 2341 tokens -> 651.8 bytes ideal (+4 header), 322s (7.3 tok/s), load 2s stats {"q": 81.5, "k": 225.1, "v": 23.2, "gu": 104.3, "h": 1461.7}
+  12:48:09 int 500/2341 139 bytes so far
+  12:49:23 int 1000/2341 253 bytes so far
+  12:50:46 int 1500/2341 368 bytes so far
+  12:52:14 int 2000/2341 576 bytes so far
+12:53:10 int: 6000 bytes, 2341 tokens -> 651.8 bytes ideal (+4 header), 371s (6.3 tok/s), load 1s

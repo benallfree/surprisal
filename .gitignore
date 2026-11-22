@@ -27,3 +27,4 @@ llm/real3/
 llm/ab/
 __pycache__/
 .DS_Store
+llm/intmodel/

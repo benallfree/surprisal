@@ -212,3 +212,49 @@ Same script, no B200-specific tuning (`llm/cuda-B200.log`):
 
 - The B200 buys nothing at this batch size of one: the 0.5B is slower than on the H200 (893 tok/s), and the 1.5B is level (516). Its extra bandwidth doesn't help kernels that are bound by launch latency and small reductions, so the 1.5B is still 1.5× short of 30 s.
 - The archives differ from the H200's by a byte or two (7,184 vs 7,183; 5,853 vs 5,855). The same model on another GPU gives different floats, so these archives are tied to the GPU type as well as the model. A codec that depends only on the model needs integer (fixed-point) inference; see the README's fine print.
+
+## Archives that depend on the model only: integer inference (2026-11-22, afternoon)
+
+Float inference gives different last bits on every GPU and library (the B200 archives above differ from the H200's), so
+an arithmetic-coded archive only decodes on the hardware that made it. `llm/intref.py` defines a Qwen2.5 forward pass in
+integer arithmetic only, so any implementation on any hardware computes the same frequency table, bit for bit:
+
+- A fixed bundle built once from the bf16 weights (`intref.py build`, 491 MB for the 0.5B): int8 weights with an integer
+  scale per 64 inputs, integer biases and norm weights, and stored tables (rope cos/sin, exp, sigmoid). The bundle is the model.
+- Every step is integer and independent of order: integer sums, max, shifts, truncating division, `isqrt`, table lookups.
+  Activations enter matmuls as 16-bit mantissas with one shared exponent; the residual stream is int64 at 2^-24;
+  the KV cache is clipped to 2^23 so every sum stays below 2^53. Start token: the config's `bos_token_id`.
+- `intref.py` (numpy) is the spec. `llm/intgpu.py` is the same thing in PyTorch (any device) and, with `--fast`,
+  in Triton kernels replayed as CUDA graphs (10 launches per layer).
+
+**Size costs nothing.** On the 6 KB slice (ideal sizes, before the 4-byte header): float64 652.1 bytes, float64
+with the bundle's int8 weights 651.8, full integer 651.8. On the full BJJ file (55,854 bytes, 24,126 tokens): **7,185
+bytes**, against 7,183 for the bf16 float codec on an H100/H200 and 7,184 on a B200.
+
+**Cross-machine checks, all exact:**
+- Frequency-table hashes for the first 30 tokens match across numpy on the Mac, PyTorch on the Mac CPU, PyTorch on an
+  H100, and the Triton path on an H100.
+- The slice encoded on an H100 decodes on the Mac (numpy) back to the same 6,000 bytes; the slice encoded on the Mac
+  is byte-identical to the H100's archive (655 bytes).
+- The full file round-trips on an H100, and the archive is identical across three kernel versions.
+
+**Speed (0.5B, H100, `llm/int-H100.log`):**
+
+| Path | Compress | Decompress | tok/s |
+|---|---:|---:|---:|
+| bf16 float codec (`cudacodec.py`, for reference) | 28.2 s | 29.0 s | 832 |
+| integer, Triton + CUDA graphs | 44.7 s | 45.6 s | 529 |
+| integer, plain PyTorch (float64 matmuls) | — | — | 7 |
+| integer, numpy spec on the M1 Max CPU | — | — | 6 |
+
+- Cold start: 24 s to load the bundle and capture 49 graphs.
+- A forward step takes 1.10 ms at 1K context and 2.57 ms at 24K. To decode the full file in 30 s it needs to
+  average 1.24 ms.
+- Where the time goes: the residual + RMSNorm kernel runs as one program (about 6 µs, 49 per step). The matvecs take
+  about 4 µs each (97 per step). Attention grows with context: scores, weights and sums in int64/exact float64, with
+  integer atomics across chunks.
+- Next: fold the norm into the neighbouring matvecs, and make attention cheaper at long context. Also write a Metal
+  version for the Mac: the numpy spec decodes at 6 tok/s there, so a Mac decode of the full file would take over an
+  hour today.
+- Ladder on the H100, slice, decode tok/s: plain PyTorch 7 → Triton matvec + compile pieces 364 → split-K, float64-exact
+  attention 505 → fused integer kernels with integer atomics 657 → no stray fills, chunked attention 819.

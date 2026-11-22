@@ -124,13 +124,40 @@ Back-to-back A/B on a 6 KB slice (2,341 tokens), same archive, alternating old a
 
 - The 0.5B now runs at mlx_lm's own generate speed (256 tok/s for this model) less about 10%. The bigger models
   were already GPU-bound, so they gain only 5–7%.
-- The full-file re-run (`llm/fast2.log`) was distorted by other GPU work on the Mac (several rows came out slower
-  than the old codec while the A/B shows the new one is never slower); its byte-identity checks stand, its timings don't.
-  Clean full-file decodes: 0.5B bf16 155 tok/s (was 129), 0.5B 8-bit 127 (was 116); speed falls with context
-  depth (about 230 tok/s at the start of the file, about 120 by 22K tokens: attention over the growing KV cache).
+- The first full-file re-run (`llm/fast2-shared-gpu.log`) was distorted by another session's GPU work. Its
+  byte-identity checks stand; its timings don't. The clean re-run is below.
 - Tried and dropped: compiling the whole step (`llm/fastcodec3.py`, padded KV buckets make attention slower),
   fused q/k/v and gate/up matmuls plus compiled blocks (`llm/fastmodel.py`, no gain), vocabulary pruning to the
   corpus's 42,458 tokens (+11–18% speed but +1.1% size, `llm/prune_cost.py`: BJJ's escapes are English words).
 - **Diminishing returns reached in Python/MLX.** What's left is inside MLX's GPU kernels: about 4 ms per token for
   the 0.5B at short context where reading its weights takes about 1.5 ms. Closing that needs fused custom kernels
   (one kernel per layer), which is engine work (nollama's Metal path), not codec work.
+
+### Clean full-file timings, `fastcodec2.py` (2026-11-22, 01:57–03:57)
+
+Full BJJ game (55,854 bytes, 24,126 tokens). The Mac had the GPU to itself (`llm/fast2.log`). Every row decoded
+the existing archive byte for byte, and re-encoding gave a byte-identical archive. 30 s needs **804 tok/s**.
+
+| model | archive bytes | compress | decompress | compress tok/s | decompress tok/s (old) | still needed for 30 s |
+|---|---:|---:|---:|---:|---:|---:|
+| 0.5B bf16 | 7,186 | 2.4 min | 2.7 min | 165.7 | 147.0 (128.9) | 5.5× |
+| 0.5B 8-bit | 7,194 | 2.1 min | 2.6 min | 192.2 | 155.5 (115.7) | 5.2× |
+| 0.5B 4-bit | 8,284 | 1.8 min | 2.4 min | 218.9 | 169.1 (118.3) | 4.8× |
+| 1.5B 4-bit | 6,374 | 2.9 min | 3.6 min | 140.9 | 110.7 (94.3) | 7.3× |
+| 1.5B 8-bit | 5,858 | 3.4 min | 4.6 min | 118.6 | 88.3 (78.0) | 9.1× |
+| 1.5B bf16 | 5,856 | 5.2 min | 5.7 min | 76.8 | 70.1 (61.0) | 11.5× |
+| 3B 4-bit | 6,833 | 4.3 min | 5.3 min | 92.8 | 75.2 (65.8) | 10.7× |
+| 3B 8-bit | 5,262 | 6.6 min | 8.5 min | 60.7 | 47.6 (52.8) | 16.9× |
+| 7B 4-bit | 5,127 | 10.5 min | 12.8 min | 38.2 | 31.4 (37.7) | 25.6× |
+| 7B 8-bit | 4,929 | 13.7 min | 17.3 min | 29.3 | 23.2 (27.1) | 34.7× |
+
+- Up to 1.5B and 3B 4-bit, decompression is 13–43% faster than the old codec, and compression is faster still.
+  The best size-keeping row on this Mac is now the 1.5B 8-bit: 5,858 bytes in 4.6 min.
+- The 3B 8-bit and both 7B decodes came out 10–17% *slower* than the old codec's earlier timings. Their encodes
+  weren't slower, and the slice A/B above shows the new loop is +5–7% faster on these models. A full-file 7B 4-bit
+  decode of old against new (`llm/ab7b.log`) was meant to settle it, but Spotlight indexing loaded the Mac during
+  that run, and both came out about 5× slower. Under the same load the new codec was still faster: 7.1 against
+  5.5 tok/s, +29%. Best reading: sustained load (heat, or other processes) on the long big-model runs, not a
+  regression. Archives are identical either way, so the size column is unaffected.
+- The tok/s needed doesn't change: **804 tok/s** to decompress this file in 30 s, at any model size.
+

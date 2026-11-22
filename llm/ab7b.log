@@ -1,0 +1,7 @@
+05:33:54 fastcodec2
+decode llm/models/coder7b-4bit: 5127 -> 55854 bytes, 24126 tokens, 3386.3s (7.1 tok/s), load 1.2s
+round trip OK
+06:30:24 fastcodec
+decode llm/models/coder7b-4bit: 5127 -> 55854 bytes, 24126 tokens, 4401.3s (5.5 tok/s), load 2.0s
+round trip OK
+07:43:52 all done

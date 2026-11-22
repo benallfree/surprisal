@@ -1,0 +1,98 @@
+15:43:06 bjj window 1024
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]Fetching 9 files: 100%|██████████| 9/9 [00:00<00:00, 4100.45it/s]
+15:43:27 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 1024, "segments": 1, "file": "bjj-case/3-fully-minified.html", "bytes": 8194, "tokens": 24126, "raw": 55854, "s": 18.6}
+15:43:52 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 1024, "segments": 1, "file": "bjj-case/1-readable.html", "bytes": 8455, "tokens": 26528, "raw": 67056, "s": 24.8}
+15:43:52 bjj window 4096
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]Fetching 9 files: 100%|██████████| 9/9 [00:00<00:00, 4559.58it/s]
+15:44:21 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 4096, "segments": 1, "file": "bjj-case/3-fully-minified.html", "bytes": 7506, "tokens": 24126, "raw": 55854, "s": 25.9}
+15:44:44 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 4096, "segments": 1, "file": "bjj-case/1-readable.html", "bytes": 7623, "tokens": 26528, "raw": 67056, "s": 23.5}
+15:44:44 bjj window 8192
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]Fetching 9 files: 100%|██████████| 9/9 [00:00<00:00, 2822.97it/s]
+15:45:10 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 8192, "segments": 1, "file": "bjj-case/3-fully-minified.html", "bytes": 7317, "tokens": 24126, "raw": 55854, "s": 23.2}
+15:45:41 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 8192, "segments": 1, "file": "bjj-case/1-readable.html", "bytes": 7367, "tokens": 26528, "raw": 67056, "s": 31.0}
+15:45:41 bjj window 16384
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]Fetching 9 files: 100%|██████████| 9/9 [00:00<00:00, 3035.44it/s]
+15:46:06 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 16384, "segments": 1, "file": "bjj-case/3-fully-minified.html", "bytes": 7199, "tokens": 24126, "raw": 55854, "s": 22.6}
+15:46:48 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 16384, "segments": 1, "file": "bjj-case/1-readable.html", "bytes": 7227, "tokens": 26528, "raw": 67056, "s": 41.6}
+15:46:48 bjj readable full
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]Fetching 9 files: 100%|██████████| 9/9 [00:00<00:00, 3887.61it/s]
+15:47:03 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "bjj-case/1-readable.html", "bytes": 7201, "tokens": 26528, "raw": 67056, "s": 13.3}
+15:47:04 bjj readable 2048
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]Fetching 9 files: 100%|██████████| 9/9 [00:00<00:00, 3182.32it/s]
+15:47:33 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 2048, "segments": 1, "file": "bjj-case/1-readable.html", "bytes": 7984, "tokens": 26528, "raw": 67056, "s": 27.7}
+15:47:33 bjj segments 2 window 4096
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]Fetching 9 files: 100%|██████████| 9/9 [00:00<00:00, 4293.53it/s]
+15:48:00 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 4096, "segments": 2, "file": "bjj-case/3-fully-minified.html", "bytes": 7635, "tokens": 24126, "raw": 55854, "s": 24.9}
+15:48:31 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 4096, "segments": 2, "file": "bjj-case/1-readable.html", "bytes": 7813, "tokens": 26528, "raw": 67056, "s": 30.7}
+15:48:31 bjj segments 2 window 8192
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]Fetching 9 files: 100%|██████████| 9/9 [00:00<00:00, 3674.92it/s]
+15:48:57 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 8192, "segments": 2, "file": "bjj-case/3-fully-minified.html", "bytes": 7531, "tokens": 24126, "raw": 55854, "s": 24.0}
+15:49:28 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 8192, "segments": 2, "file": "bjj-case/1-readable.html", "bytes": 7658, "tokens": 26528, "raw": 67056, "s": 31.0}
+15:49:28 bjj segments 4 window 4096
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]Fetching 9 files: 100%|██████████| 9/9 [00:00<00:00, 2871.94it/s]
+15:49:55 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 4096, "segments": 4, "file": "bjj-case/3-fully-minified.html", "bytes": 7856, "tokens": 24126, "raw": 55854, "s": 24.3}
+15:50:31 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 4096, "segments": 4, "file": "bjj-case/1-readable.html", "bytes": 8078, "tokens": 26528, "raw": 67056, "s": 35.3}
+15:50:31 bjj segments 4 window 8192
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]Fetching 9 files: 100%|██████████| 9/9 [00:00<00:00, 2349.17it/s]
+15:50:58 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 8192, "segments": 4, "file": "bjj-case/3-fully-minified.html", "bytes": 7848, "tokens": 24126, "raw": 55854, "s": 23.2}
+15:51:25 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 8192, "segments": 4, "file": "bjj-case/1-readable.html", "bytes": 8048, "tokens": 26528, "raw": 67056, "s": 27.2}
+15:51:25 bjj segments 8 window 4096
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]Fetching 9 files: 100%|██████████| 9/9 [00:00<00:00, 5889.96it/s]
+15:51:40 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 4096, "segments": 8, "file": "bjj-case/3-fully-minified.html", "bytes": 8328, "tokens": 24126, "raw": 55854, "s": 12.6}
+15:52:00 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 4096, "segments": 8, "file": "bjj-case/1-readable.html", "bytes": 8556, "tokens": 26528, "raw": 67056, "s": 19.4}
+15:52:00 bjj segments 8 window 8192
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]Fetching 9 files: 100%|██████████| 9/9 [00:00<00:00, 5281.76it/s]
+15:52:14 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 8192, "segments": 8, "file": "bjj-case/3-fully-minified.html", "bytes": 8328, "tokens": 24126, "raw": 55854, "s": 12.0}
+15:52:27 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 8192, "segments": 8, "file": "bjj-case/1-readable.html", "bytes": 8556, "tokens": 26528, "raw": 67056, "s": 13.5}
+15:52:27 corpus window 0
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]Fetching 9 files: 100%|██████████| 9/9 [00:00<00:00, 4150.95it/s]
+15:52:31 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/snowball.txt", "bytes": 840, "tokens": 4201, "raw": 12188, "s": 0.8}
+15:52:32 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/run-from-the-black-cat.txt", "bytes": 5242, "tokens": 5084, "raw": 7365, "s": 1.1}
+15:52:35 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/tom-black-cat.txt", "bytes": 1803, "tokens": 5662, "raw": 13040, "s": 3.4}
+15:52:38 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/cat-and-spikes.txt", "bytes": 725, "tokens": 6763, "raw": 15413, "s": 2.4}
+15:52:41 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/cat-mouse-hunt.txt", "bytes": 1825, "tokens": 7467, "raw": 12777, "s": 3.3}
+15:52:44 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/order-of-the-crimson-dot.txt", "bytes": 8367, "tokens": 8250, "raw": 12430, "s": 3.5}
+15:52:48 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/alley-cat-noir.txt", "bytes": 9414, "tokens": 8885, "raw": 12567, "s": 3.9}
+15:52:52 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/memorygame.txt", "bytes": 1426, "tokens": 9608, "raw": 41696, "s": 3.9}
+15:52:56 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/cash-cats-13.txt", "bytes": 1060, "tokens": 9993, "raw": 45948, "s": 4.2}
+15:53:03 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/project-panther.txt", "bytes": 10995, "tokens": 10155, "raw": 14307, "s": 6.7}
+15:53:08 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/rin-the-cat-sorceresses.txt", "bytes": 2312, "tokens": 10620, "raw": 27327, "s": 4.7}
+15:53:13 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/lazy-claws.txt", "bytes": 2755, "tokens": 11214, "raw": 27739, "s": 5.1}
+15:53:19 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/all-you-have-to-do-is-dream.txt", "bytes": 11087, "tokens": 11510, "raw": 17973, "s": 5.8}
+15:53:24 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/superstition-the-black-cat-game.txt", "bytes": 2680, "tokens": 11622, "raw": 28776, "s": 5.3}
+15:53:29 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/roni-and-kira.txt", "bytes": 3024, "tokens": 11889, "raw": 27976, "s": 4.8}
+15:53:35 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/cancel-elon.txt", "bytes": 12865, "tokens": 12181, "raw": 17178, "s": 6.1}
+15:53:41 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/inside-cat.txt", "bytes": 12780, "tokens": 12352, "raw": 18157, "s": 5.8}
+15:53:45 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/blacky-returns-home.txt", "bytes": 3567, "tokens": 12409, "raw": 32032, "s": 4.6}
+15:53:50 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/meow-mountain.txt", "bytes": 12769, "tokens": 12517, "raw": 18093, "s": 4.7}
+15:53:55 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/clawstrike.txt", "bytes": 13358, "tokens": 12551, "raw": 17692, "s": 4.6}
+15:54:00 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/they-took-my-cat.txt", "bytes": 13510, "tokens": 12596, "raw": 17586, "s": 4.7}
+15:54:04 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/typing-test.txt", "bytes": 3237, "tokens": 12687, "raw": 29005, "s": 4.9}
+15:54:10 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/fishing.txt", "bytes": 2961, "tokens": 13215, "raw": 27954, "s": 5.9}
+15:54:16 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/kittens-united.txt", "bytes": 4357, "tokens": 13498, "raw": 31450, "s": 5.3}
+15:54:21 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/clawopatra-and-the-gods-of-egypt.txt", "bytes": 2831, "tokens": 14247, "raw": 41739, "s": 5.7}
+15:54:28 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/infinite-hunger.txt", "bytes": 4213, "tokens": 14925, "raw": 30439, "s": 6.3}
+15:54:34 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/dinner-for-two.txt", "bytes": 4182, "tokens": 15898, "raw": 28737, "s": 6.6}
+15:54:43 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/basement-cat-ascends.txt", "bytes": 4973, "tokens": 18695, "raw": 53027, "s": 8.6}
+15:55:00 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/heimao.txt", "bytes": 2325, "tokens": 21801, "raw": 44402, "s": 17.1}
+15:55:43 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 0, "segments": 1, "file": "llm/data/boing-kat.txt", "bytes": 2683, "tokens": 46960, "raw": 62926, "s": 42.8}
+15:55:45 corpus window 2048
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]Fetching 9 files: 100%|██████████| 9/9 [00:00<00:00, 3854.67it/s]
+15:55:52 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 2048, "segments": 1, "file": "llm/data/snowball.txt", "bytes": 863, "tokens": 4201, "raw": 12188, "s": 4.2}
+15:55:59 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 2048, "segments": 1, "file": "llm/data/run-from-the-black-cat.txt", "bytes": 5249, "tokens": 5084, "raw": 7365, "s": 6.1}
+15:56:06 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 2048, "segments": 1, "file": "llm/data/tom-black-cat.txt", "bytes": 1808, "tokens": 5662, "raw": 13040, "s": 7.9}
+15:56:17 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 2048, "segments": 1, "file": "llm/data/cat-and-spikes.txt", "bytes": 770, "tokens": 6763, "raw": 15413, "s": 10.8}
+15:56:27 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 2048, "segments": 1, "file": "llm/data/cat-mouse-hunt.txt", "bytes": 1852, "tokens": 7467, "raw": 12777, "s": 9.7}
+15:56:37 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 2048, "segments": 1, "file": "llm/data/order-of-the-crimson-dot.txt", "bytes": 8377, "tokens": 8250, "raw": 12430, "s": 10.0}
+15:56:45 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 2048, "segments": 1, "file": "llm/data/alley-cat-noir.txt", "bytes": 9420, "tokens": 8885, "raw": 12567, "s": 8.5}
+15:56:55 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 2048, "segments": 1, "file": "llm/data/memorygame.txt", "bytes": 1518, "tokens": 9608, "raw": 41696, "s": 9.6}
+15:57:05 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 2048, "segments": 1, "file": "llm/data/cash-cats-13.txt", "bytes": 1116, "tokens": 9993, "raw": 45948, "s": 10.0}
+15:57:16 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 2048, "segments": 1, "file": "llm/data/project-panther.txt", "bytes": 11004, "tokens": 10155, "raw": 14307, "s": 10.6}
+15:57:30 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 2048, "segments": 1, "file": "llm/data/rin-the-cat-sorceresses.txt", "bytes": 2540, "tokens": 10620, "raw": 27327, "s": 14.2}
+15:57:44 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 2048, "segments": 1, "file": "llm/data/lazy-claws.txt", "bytes": 2897, "tokens": 11214, "raw": 27739, "s": 14.1}
+15:57:59 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 2048, "segments": 1, "file": "llm/data/all-you-have-to-do-is-dream.txt", "bytes": 11098, "tokens": 11510, "raw": 17973, "s": 14.6}
+15:58:13 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 2048, "segments": 1, "file": "llm/data/superstition-the-black-cat-game.txt", "bytes": 2732, "tokens": 11622, "raw": 28776, "s": 14.8}
+15:58:31 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 2048, "segments": 1, "file": "llm/data/roni-and-kira.txt", "bytes": 3115, "tokens": 11889, "raw": 27976, "s": 17.4}
+15:58:51 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 2048, "segments": 1, "file": "llm/data/cancel-elon.txt", "bytes": 12878, "tokens": 12181, "raw": 17178, "s": 20.4}
+15:59:10 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 2048, "segments": 1, "file": "llm/data/inside-cat.txt", "bytes": 12794, "tokens": 12352, "raw": 18157, "s": 18.9}
+15:59:27 {"repo": "mlx-community/Qwen2.5-Coder-0.5B-bf16", "window": 2048, "segments": 1, "file": "llm/data/blacky-returns-home.txt", "bytes": 3715, "tokens": 12409, "raw": 32032, "s": 17.1}

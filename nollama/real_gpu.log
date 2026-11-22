@@ -1,0 +1,13 @@
+15:20:50 encode
+encode: model Qwen3-0.6B-Base Q8_0 on metal (Apple M1 Max), load 0.1s
+  15:21:12 token 2000: 90.4 tok/s over the last 2000
+  15:21:37 token 4000: 82.7 tok/s over the last 2000
+  15:22:04 token 6000: 71.9 tok/s over the last 2000
+  15:22:38 token 8000: 59.9 tok/s over the last 2000
+  15:23:15 token 10000: 53.5 tok/s over the last 2000
+  15:23:58 token 12000: 46.9 tok/s over the last 2000
+  15:24:58 token 14000: 33.0 tok/s over the last 2000
+  15:26:15 token 16000: 26.2 tok/s over the last 2000
+  15:27:30 token 18000: 26.7 tok/s over the last 2000
+  15:28:48 token 20000: 25.6 tok/s over the last 2000
+  15:30:10 token 22000: 24.3 tok/s over the last 2000

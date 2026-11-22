@@ -1,0 +1,19 @@
+09:53:05 start Qwen/Qwen3-1.7B-Base (window 32768)
+{"repo": "Qwen/Qwen3-1.7B-Base", "window": 32768, "load_s": 203.4, "files": {"1-readable.html": {"bytes": 6121, "tokens": 26528, "bpb": 0.7295, "score_s": 51.0}, "3-fully-minified.html": {"bytes": 5983, "tokens": 24126, "bpb": 0.856, "score_s": 42.8}}, "decode_tok_s": 32.9, "peak_mem_gb": 9.71, "params_b": 1.721}
+09:58:14 start HuggingFaceTB/SmolLM2-1.7B (window 8192)
+[transformers] Token indices sequence length is longer than the specified maximum sequence length for this model (34420 > 8192). Running this sequence through the model will result in indexing errors
+{"repo": "HuggingFaceTB/SmolLM2-1.7B", "window": 8192, "load_s": 117.4, "files": {"1-readable.html": {"bytes": 6916, "tokens": 34420, "bpb": 0.8243, "score_s": 34.5}, "3-fully-minified.html": {"bytes": 7016, "tokens": 31597, "bpb": 1.0039, "score_s": 32.5}}, "decode_tok_s": 58.6, "peak_mem_gb": 6.37, "params_b": 1.711}
+10:01:28 start mlx-community/deepseek-coder-1.3b-base-mlx (window 16384)
+    raise FileNotFoundError(f"No safetensors found in {model_path}")
+FileNotFoundError: No safetensors found in /Volumes/Code/repos/spikes/model-assisted-compression/llm/hf-cache/models--mlx-community--deepseek-coder-1.3b-base-mlx/snapshots/ac8b62bca65c97845a6cd0a359c3017c47201c8c
+10:01:32 start mlx-community/Qwen2.5-Coder-3B-bf16 (window 32768)
+{"repo": "mlx-community/Qwen2.5-Coder-3B-bf16", "window": 32768, "load_s": 122.1, "files": {"1-readable.html": {"bytes": 5416, "tokens": 26528, "bpb": 0.6454, "score_s": 62.7}, "3-fully-minified.html": {"bytes": 5256, "tokens": 24126, "bpb": 0.7519, "score_s": 46.9}}, "decode_tok_s": 28.3, "peak_mem_gb": 10.51, "params_b": 3.086}
+10:05:39 start mlx-community/Llama-3.2-3B-bf16 (window 32768)
+{"repo": "mlx-community/Llama-3.2-3B-bf16", "window": 32768, "load_s": 133.9, "files": {"1-readable.html": {"bytes": 6083, "tokens": 25759, "bpb": 0.7249, "score_s": 61.4}, "3-fully-minified.html": {"bytes": 6186, "tokens": 23266, "bpb": 0.8851, "score_s": 48.3}}, "decode_tok_s": 39.4, "peak_mem_gb": 12.2, "params_b": 3.213}
+10:09:55 start Qwen/Qwen3-4B-Base (window 32768)
+{"repo": "Qwen/Qwen3-4B-Base", "window": 32768, "load_s": 267.8, "files": {"1-readable.html": {"bytes": 5350, "tokens": 26528, "bpb": 0.6375, "score_s": 78.1}, "3-fully-minified.html": {"bytes": 5166, "tokens": 24126, "bpb": 0.7389, "score_s": 61.4}}, "decode_tok_s": 33.8, "peak_mem_gb": 15.13, "params_b": 4.022}
+10:16:57 start mlx-community/Qwen2.5-Coder-7B-bf16 (window 32768)
+{"repo": "mlx-community/Qwen2.5-Coder-7B-bf16", "window": 32768, "load_s": 285.3, "files": {"1-readable.html": {"bytes": 5023, "tokens": 26528, "bpb": 0.5985, "score_s": 112.9}, "3-fully-minified.html": {"bytes": 4930, "tokens": 24126, "bpb": 0.7052, "score_s": 90.8}}, "decode_tok_s": 16.5, "peak_mem_gb": 20.1, "params_b": 7.616}
+10:25:31 start mlx-community/Qwen3-8B-Base-bf16 (window 32768)
+{"repo": "mlx-community/Qwen3-8B-Base-bf16", "window": 32768, "load_s": 483.3, "files": {"1-readable.html": {"bytes": 4995, "tokens": 26528, "bpb": 0.5952, "score_s": 152.4}, "3-fully-minified.html": {"bytes": 4821, "tokens": 24126, "bpb": 0.6896, "score_s": 170.2}}, "decode_tok_s": 12.4, "peak_mem_gb": 23.48, "params_b": 8.191}
+10:39:39 all done

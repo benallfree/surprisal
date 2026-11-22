@@ -1,0 +1,580 @@
+<!doctype html><html><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>Leverage</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#0d0f14;font-family:system-ui,-apple-system,sans-serif;color:#e8e8ee}
+canvas{display:block}
+#hud{position:fixed;inset:0;pointer-events:none}
+.pn{position:absolute;background:rgba(10,12,18,.74);border:1px solid #ffffff22;border-radius:8px;padding:8px 10px;font-size:13px}
+#top{top:10px;left:50%;transform:translateX(-50%);display:flex;gap:18px;align-items:center;font-weight:700;font-size:17px;white-space:nowrap}
+#top .you{color:#6fa0ff}#top .opp{color:#ff8a7a}
+#limbs{left:10px;bottom:10px;min-width:220px}
+#drill{left:10px;top:64px;max-width:330px;font-size:13px;line-height:1.45;display:none}#drill .ds{padding:3px 0;color:#778}#drill .ds.cur{color:#fff}#drill .ds.done{color:#6c9}#drill kbd{background:#ffffff1a;border-radius:3px;padding:0 4px;font-family:inherit;color:#fff}
+#pos{position:absolute;top:52px;left:50%;transform:translateX(-50%);font-size:13px;color:#cfd6e6;text-shadow:0 1px 6px #000;text-align:center;max-width:60vw}
+.limb{display:flex;gap:8px;align-items:center;padding:3px 6px;border-radius:5px;margin:1px 0}
+.limb.sel{background:#ffffff1c;outline:1px solid #ffffff44}
+.limb b{width:14px}.limb span{width:62px}.limb em{font-style:normal;width:58px;color:#aab}
+.eff{width:60px;height:6px;background:#fff2;border-radius:3px;position:relative}.eff i{position:absolute;top:0;height:100%;border-radius:3px}
+#strain{right:10px;top:10px;width:190px}
+.bar{height:6px;background:#ffffff1f;border-radius:3px;margin:2px 0 6px;overflow:hidden}.bar i{display:block;height:100%;border-radius:3px}
+#help{right:10px;bottom:10px;font-size:12px;line-height:1.55;color:#b8bcc8;max-width:300px}
+#help kbd{background:#ffffff1a;border-radius:3px;padding:0 4px;font-family:inherit;color:#fff}
+#banner{position:absolute;top:26%;width:100%;text-align:center;font-size:54px;font-weight:900;letter-spacing:2px;text-shadow:0 4px 24px #000;opacity:0;transition:opacity .25s}
+#sub{position:absolute;top:calc(26% + 70px);width:100%;text-align:center;font-size:18px;opacity:0;transition:opacity .25s;text-shadow:0 2px 10px #000}
+#tip{position:absolute;display:none;font-size:12px;font-weight:700;background:#000a;padding:2px 6px;border-radius:4px;color:#ffe14d}
+#drag{position:absolute;display:none;height:3px;background:linear-gradient(90deg,#6cf0,#6cf);transform-origin:0 50%;border-radius:2px}
+#cross{position:absolute;width:10px;height:10px;border:2px solid #fff;border-radius:50%;transform:translate(-50%,-50%);opacity:.7}
+#menu{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,6,10,.86);z-index:5}
+#menu .card{max-width:560px;padding:28px 32px;background:#151821;border:1px solid #ffffff22;border-radius:14px;box-shadow:0 20px 60px #000}
+#menu h1{margin:0;font-size:46px;letter-spacing:6px}#menu h1 small{display:block;font-size:14px;letter-spacing:1px;color:#99a;font-weight:500;margin-top:4px}
+#menu p{color:#bbc;line-height:1.5;font-size:14px}
+.br{display:flex;gap:10px;margin:16px 0}.br div{flex:1;padding:10px;border-radius:8px;background:#ffffff0d;font-size:13px;border:1px solid transparent}
+.br div.cur{border-color:#6fa0ff}.br div.won{opacity:.55}.br div b{display:block;font-size:15px;margin-bottom:3px}
+button{font:inherit;font-weight:700;padding:10px 18px;border-radius:8px;border:0;background:#3b6fe0;color:#fff;cursor:pointer;margin-right:8px}
+button.alt{background:#ffffff1a}
+.sec{margin:16px 0 6px;font-size:12px;font-weight:800;letter-spacing:1px;color:#aab}
+.drills{display:grid;grid-template-columns:1fr 1fr;gap:6px}.drills button{margin:0;text-align:left;font-size:13px}.drills small{display:block;font-weight:400;color:#99a;font-size:11px;margin-top:2px}
+#menu .card{max-height:92vh;overflow:auto}
+</style></head><body>
+<div id=hud>
+ <div id=top class=pn><span class=you>YOU <span id=ps>0</span></span><span id=clock>3:00</span><span class=opp><span id=os>0</span> <span id=on>OPP</span></span></div>
+ <div id=pos></div><div id=drill class=pn></div><div id=limbs class=pn></div>
+ <div id=strain class=pn></div>
+ <div id=help class=pn><div id=helpx style='color:#fff;font-weight:700;margin-bottom:4px'>Controls <span style='color:#889;font-weight:400'>(H to hide)</span></div><div id=helpb>
+  <kbd>1</kbd>–<kbd>4</kbd> pick a hand or foot · <kbd>click</kbd> a body part to grip/hook (click again to let go)<br>
+  <kbd>right-drag</kbd> pull the gripped limb any direction · <kbd>wheel</kbd>/<kbd>Q</kbd>/<kbd>E</kbd> hold a steady pull (+) or push (−) · <kbd>X</kbd> relax<br>
+  <kbd>WASD</kbd> walk / drive (standing) · shift hips (ground)<br>
+  <kbd>Space</kbd> level change (standing) · drive hips into the aimed spot, or bridge (ground)<br>
+  <kbd>F</kbd> drop to the mat · <kbd>R</kbd> stand up · <kbd>C</kbd> camera<br>
+  <span style=color:#889>Arrows on their elbows/knees show which way the joint breaks. Gold = you control both sides of it. Lever it.</span></div>
+ </div>
+ <div id=tip></div><div id=drag></div><div id=banner></div><div id=sub></div><div id=cross></div>
+</div>
+<div id=menu><div class=card id=card></div></div>
+<script type=importmap>{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
+<script type=module>
+import * as THREE from 'three';
+const $=id=>document.getElementById(id), clamp=(v,a,b)=>v<a?a:v>b?b:v, PI=Math.PI;
+const DT=1/120, IT=6, TUNE=window.TUNE={k:.1,cap:.0016,sk:1.2,lean:.5};
+
+// ================= skeleton =================
+const HEAD=0,NECK=1,CHEST=2,PELV=3,LSHO=4,LELB=5,LWRI=6,RSHO=7,RELB=8,RWRI=9,LHIP=10,LKNE=11,LANK=12,RHIP=13,RKNE=14,RANK=15;
+// rest pose, metres, facing +z, y up; stance with hands up
+const REST=[[0,1.68,.02],[0,1.52,0],[0,1.32,.07],[0,.95,0],[-.2,1.45,0],[-.27,1.2,.12],[-.17,1.25,.37],[.2,1.45,0],[.27,1.2,.12],[.17,1.25,.37],
+ [-.11,.9,0],[-.14,.49,.07],[-.16,.06,-.02],[.11,.9,0],[.14,.49,.07],[.16,.06,-.02]];
+const RAD=[.11,.06,.12,.12,.07,.055,.05,.07,.055,.05,.08,.065,.06,.08,.065,.06];
+// bones [a,b,radius] (rendered + collide)
+const BONES=[[HEAD,HEAD,.11],[HEAD,NECK,.065],[NECK,CHEST,.1],[CHEST,PELV,.13],[LSHO,RSHO,.07],[LHIP,RHIP,.08],[LSHO,LHIP,.07],[RSHO,RHIP,.07],
+ [LSHO,LELB,.055],[LELB,LWRI,.047],[RSHO,RELB,.055],[RELB,RWRI,.047],[LHIP,LKNE,.075],[LKNE,LANK,.057],[RHIP,RKNE,.075],[RKNE,RANK,.057]];
+const THROAT=1;
+const STICKS=[[HEAD,NECK],[HEAD,CHEST],[HEAD,LSHO],[HEAD,RSHO],[NECK,CHEST],[NECK,LSHO],[NECK,RSHO],[NECK,PELV],[CHEST,PELV],[CHEST,LSHO],[CHEST,RSHO],[CHEST,LHIP],[CHEST,RHIP],
+ [LSHO,RSHO],[LHIP,RHIP],[PELV,LHIP],[PELV,RHIP],[LSHO,LHIP],[RSHO,RHIP],[LSHO,RHIP],[RSHO,LHIP],[NECK,LHIP],[NECK,RHIP],
+ [LSHO,LELB],[LELB,LWRI],[RSHO,RELB],[RELB,RWRI],[LHIP,LKNE],[LKNE,LANK],[RHIP,RKNE],[RKNE,RANK]];
+const MIND=[[LSHO,LWRI,.15],[RSHO,RWRI,.15],[LHIP,LANK,.22],[RHIP,RANK,.22]];
+const HINGES=[[LSHO,LELB,LWRI,'L elbow'],[RSHO,RELB,RWRI,'R elbow'],[LHIP,LKNE,LANK,'L knee'],[RHIP,RKNE,RANK,'R knee']];
+const LEG=[[LHIP,LKNE,LANK],[RHIP,RKNE,RANK]];
+const d3=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);
+const sub=(a,b)=>({x:a.x-b.x,y:a.y-b.y,z:a.z-b.z}), dot=(a,b)=>a.x*b.x+a.y*b.y+a.z*b.z, len=a=>Math.hypot(a.x,a.y,a.z);
+const nrm=a=>{const l=len(a)||1;return{x:a.x/l,y:a.y/l,z:a.z/l}}, cross=(a,b)=>({x:a.y*b.z-a.z*b.y,y:a.z*b.x-a.x*b.z,z:a.x*b.y-a.y*b.x});
+const lerpP=(A,B,t)=>({x:A.x+(B.x-A.x)*t,y:A.y+(B.y-A.y)*t,z:A.z+(B.z-A.z)*t});
+
+class Body{
+ constructor(c){Object.assign(this,{mass:80,strength:1,balance:1,lim:.012,frag:1,sprawl:0},c);
+  this.P=REST.map(()=>({x:0,y:0,z:0,ox:0,oy:0,oz:0,w:16/this.mass,fx:0,fy:0,fz:0,pin:0}));
+  this.L=STICKS.map(([a,b])=>d3(REST[a],REST[b]));
+  this.H=HINGES.map(([a,b,c,n])=>({j:[a,b,c],n,f:{x:0,y:-1,z:0},load:0,s:0}));
+  this.neck={s:0,push:new Map()};this.S=SHR.map(d=>({n:d.n,j:d.j,s:0,load:0}));this.twist=[0,0];
+  this.limbs=[[LWRI,LSHO,'L hand',CHEST],[RWRI,RSHO,'R hand',CHEST],[LANK,LHIP,'L foot',PELV],[RANK,RHIP,'R foot',PELV]]
+   .map(([end,root,name,anchor])=>({end,root,name,anchor,st:'idle',g:null,eff:0,ten:0,acc:0,t:0,dir:null}));
+ }
+ place(x,z,yaw,pitch=0,yOff=0){const cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);
+  REST.forEach((r,i)=>{let[X,Y,Z]=r;const Y2=Y*cp-Z*sp,Z2=Y*sp+Z*cp;const p=this.P[i];
+   p.x=p.ox=x+X*cy+Z2*sy;p.y=p.oy=Y2+yOff;p.z=p.oz=z-X*sy+Z2*cy;p.pin=0;p.fx=p.fy=p.fz=0});
+  this.yaw=yaw;this.mode='stand';this.rise=1;this.crouch=0;this.move={x:0,z:0};this.bridge=0;this.stam=1;this.lean=0;this.downT=0;this.sprawlT=0;
+  this.steps=[null,null];this.plants=[LANK,RANK].map(i=>({x:this.P[i].x,z:this.P[i].z}));
+  this.limbs.forEach(l=>{l.st='idle';l.g=null;l.eff=0;l.ten=0});
+  this.H.forEach(h=>{h.s=0;const[A,B,C]=h.j.map(i=>this.P[i]);const d=hingeD(A,B,C).d;h.f=nrm(d)});this.neck.s=0;this.S.forEach(x=>x.s=0);
+ }
+ frame(){const P=this.P,r=nrm(sub(P[RSHO],P[LSHO]));let u=sub(P[NECK],P[PELV]);const k=dot(u,r);u=nrm({x:u.x-r.x*k,y:u.y-r.y*k,z:u.z-r.z*k});return{r,u,f:cross(r,u)}}
+ get chest(){return this.P[CHEST]}
+}
+function hingeD(A,B,C){const ac=sub(C,A),l2=dot(ac,ac)||1e-6;const t=clamp(dot(sub(B,A),ac)/l2,0,1);const p=lerpP(A,C,t);return{d:sub(B,p),t,ac}}
+
+// ================= physics =================
+const W=p=>p.pin?0:p.w;
+function force(p,x,y,z){p.fx+=x;p.fy+=y;p.fz+=z}
+function pushF(p,dir,m){force(p,dir.x*m,dir.y*m,dir.z*m)}
+function integrate(b){const g=-9.8;for(const p of b.P){if(p.pin){p.fx=p.fy=p.fz=0;continue}
+ const ax=p.fx*p.w,ay=p.fy*p.w+g,az=p.fz*p.w,k=.992;
+ const vx=(p.x-p.ox)*k,vy=(p.y-p.oy)*k,vz=(p.z-p.oz)*k;p.ox=p.x;p.oy=p.y;p.oz=p.z;
+ p.x+=vx+ax*DT*DT;p.y+=vy+ay*DT*DT;p.z+=vz+az*DT*DT;p.fx=p.fy=p.fz=0}}
+function drive(p,x,y,z,k,cap){if(p.pin)return;let dx=(x-p.x)*k,dy=(y-p.y)*k,dz=(z-p.z)*k;const l=Math.hypot(dx,dy,dz);if(l>cap){dx*=cap/l;dy*=cap/l;dz*=cap/l}p.x+=dx;p.y+=dy;p.z+=dz}
+function sticks(b){const P=b.P;for(let k=0;k<STICKS.length;k++){const p=P[STICKS[k][0]],q=P[STICKS[k][1]],wi=W(p),wj=W(q),ws=wi+wj;if(!ws)continue;
+ const dx=q.x-p.x,dy=q.y-p.y,dz=q.z-p.z,d=Math.hypot(dx,dy,dz)||1e-6,c=(d-b.L[k])/d/ws;
+ p.x+=dx*c*wi;p.y+=dy*c*wi;p.z+=dz*c*wi;q.x-=dx*c*wj;q.y-=dy*c*wj;q.z-=dz*c*wj}
+ for(const[i,j,m]of MIND){const p=P[i],q=P[j],wi=W(p),wj=W(q),ws=wi+wj;const dx=q.x-p.x,dy=q.y-p.y,dz=q.z-p.z,d=Math.hypot(dx,dy,dz)||1e-6;if(d>=m||!ws)continue;
+  const c=(d-m)/d/ws;p.x+=dx*c*wi;p.y+=dy*c*wi;p.z+=dz*c*wi;q.x-=dx*c*wj;q.y-=dy*c*wj;q.z-=dz*c*wj}}
+// hinge: joint B may not cross the A–C line opposite its flex direction by more than lim. The correction it needs is the load (pain).
+function hinges(b){for(const h of b.H){const[A,B,C]=h.j.map(i=>b.P[i]);const{d,t}=hingeD(A,B,C);const s=dot(d,h.f);if(s>=-b.lim)continue;
+ const c=-b.lim-s,wb=W(B),wa=W(A)*(1-t),wc=W(C)*t,tot=wb+wa*(1-t)+wc*t;if(!tot)continue;const l=c/tot,f=h.f;
+ B.x+=f.x*l*wb;B.y+=f.y*l*wb;B.z+=f.z*l*wb;A.x-=f.x*l*wa;A.y-=f.y*l*wa;A.z-=f.z*l*wa;C.x-=f.x*l*wc;C.y-=f.y*l*wc;C.z-=f.z*l*wc;h.load+=c}}
+function hingeTrack(b){for(const h of b.H){const[A,B,C]=h.j.map(i=>b.P[i]);const{d,ac}=hingeD(A,B,C);const an=nrm(ac);let f=h.f;const k=dot(f,an);
+ f={x:f.x-an.x*k,y:f.y-an.y*k,z:f.z-an.z*k};if(len(f)>.2)f=nrm(f);else f=h.f;
+ const dl=len(d);if(dl>.03&&dot(d,f)>0){const dn=nrm(d);f=nrm({x:f.x*.85+dn.x*.15,y:f.y*.85+dn.y*.15,z:f.z*.85+dn.z*.15})}h.f=f}}
+// shoulder rotation: twist of the forearm about the upper arm, measured against the torso (swing-twist), limited to a human range
+const toL=(v,fr)=>({x:dot(v,fr.r),y:dot(v,fr.u),z:dot(v,fr.f)}),toW=(v,fr)=>({x:fr.r.x*v.x+fr.u.x*v.y+fr.f.x*v.z,y:fr.r.y*v.x+fr.u.y*v.y+fr.f.y*v.z,z:fr.r.z*v.x+fr.u.z*v.y+fr.f.z*v.z});
+const perp=(v,a)=>{const k=dot(v,a);return{x:v.x-a.x*k,y:v.y-a.y*k,z:v.z-a.z*k}};
+function rotAxis(v,ax,ang){const c=Math.cos(ang),sn=Math.sin(ang),cr=cross(ax,v),d=dot(ax,v);return{x:v.x*c+cr.x*sn+ax.x*d*(1-c),y:v.y*c+cr.y*sn+ax.y*d*(1-c),z:v.z*c+cr.z*sn+ax.z*d*(1-c)}}
+const SHR=[[LSHO,LELB,LWRI,'L shoulder'],[RSHO,RELB,RWRI,'R shoulder']].map(([s,e,w,n])=>{const RP=i=>({x:REST[i][0],y:REST[i][1],z:REST[i][2]});const a0=nrm(sub(RP(e),RP(s))),p0=nrm(perp(sub(RP(w),RP(e)),a0));return{j:[s,e,w],n,a0,p0}});
+const SHLIM=2.05;
+function twist(b,k,fr){const d=SHR[k],[S,E,Wr]=d.j.map(i=>b.P[i]);const a=nrm(sub(E,S)),fore=sub(Wr,E),fp=perp(fore,a),fl=len(fp);if(fl<.1*len(fore))return null;
+ const al=toL(a,fr),c=clamp(dot(d.a0,al),-1,1);if(c<-.95)return null;const ax=cross(d.a0,al),axl=len(ax);let pr=d.p0;if(axl>1e-5)pr=rotAxis(d.p0,{x:ax.x/axl,y:ax.y/axl,z:ax.z/axl},Math.acos(c));
+ const prw=nrm(toW(pr,fr)),fn={x:fp.x/fl,y:fp.y/fl,z:fp.z/fl};return{th:Math.atan2(dot(cross(prw,fn),a),dot(prw,fn)),a,prw,fl,E,Wr,along:dot(fore,a)}}
+function shoulders(b){const fr=b.frame();for(let k=0;k<2;k++){const t=twist(b,k,fr);if(!t)continue;b.twist[k]=t.th;if(Math.abs(t.th)<=SHLIM||t.fl<.6*Math.hypot(t.fl,t.along))continue;b.S[k].load+=Math.min(.4,Math.abs(t.th)-SHLIM)*.012}}
+function ground(b){for(let i=0;i<16;i++){const p=b.P[i],r=RAD[i];if(p.y<r+.005&&!p.pin){if(p.y<r)p.y=r;p.ox=p.x-(p.x-p.ox)*.6;p.oz=p.z-(p.z-p.oz)*.6}}}
+function segseg(P1,Q1,P2,Q2){const d1=sub(Q1,P1),d2=sub(Q2,P2),r=sub(P1,P2),a=dot(d1,d1),e=dot(d2,d2),f=dot(d2,r);let s,t;
+ if(a<1e-9&&e<1e-9)s=t=0;else if(a<1e-9){s=0;t=clamp(f/e,0,1)}else{const c=dot(d1,r);if(e<1e-9){t=0;s=clamp(-c/a,0,1)}else{const bb=dot(d1,d2),den=a*e-bb*bb;
+ s=den>1e-9?clamp((bb*f-c*e)/den,0,1):0;t=(bb*s+f)/e;if(t<0){t=0;s=clamp(-c/a,0,1)}else if(t>1){t=1;s=clamp((bb-c)/a,0,1)}}}return[s,t]}
+function colPair(A,i,B,j,rec){const[a1,b1,r1]=BONES[i],P1=A.P[a1],Q1=A.P[b1],[a2,b2,r2]=BONES[j],P2=B.P[a2],Q2=B.P[b2];const[s,t]=segseg(P1,Q1,P2,Q2);
+ const c1=lerpP(P1,Q1,s),c2=lerpP(P2,Q2,t);let n=sub(c1,c2);const d=len(n),R=r1+r2;if(d>=R)return;n=d>1e-6?{x:n.x/d,y:n.y/d,z:n.z/d}:{x:0,y:1,z:0};
+ const wa=W(P1)*(a1==b1?1:1-s),wb=a1==b1?0:W(Q1)*s,wc=W(P2)*(a2==b2?1:1-t),wd=a2==b2?0:W(Q2)*t;
+ const tot=wa*(a1==b1?1:1-s)+wb*s+wc*(a2==b2?1:1-t)+wd*t;if(!tot)return;const l=(R-d)/tot;
+ P1.x+=n.x*l*wa;P1.y+=n.y*l*wa;P1.z+=n.z*l*wa;Q1.x+=n.x*l*wb;Q1.y+=n.y*l*wb;Q1.z+=n.z*l*wb;
+ P2.x-=n.x*l*wc;P2.y-=n.y*l*wc;P2.z-=n.z*l*wc;Q2.x-=n.x*l*wd;Q2.y-=n.y*l*wd;Q2.z-=n.z*l*wd;
+ if(rec){const m=R-d;if(j==THROAT)acc(B.neck.push,i,-n.x*m,-n.y*m,-n.z*m);if(i==THROAT)acc(A.neck.push,j,n.x*m,n.y*m,n.z*m);A.touch=B.touch=1}}
+function collide(A,B){for(let i=0;i<BONES.length;i++)for(let j=0;j<BONES.length;j++)colPair(A,i,B,j,1)}
+// self-collision: limb bones vs the rest of the same body, for pairs that share no joint and are clear of each other at rest
+const SELF=[];{const RP=REST.map(([x,y,z])=>({x,y,z}));for(let i=8;i<BONES.length;i++)for(let j=0;j<i;j++){const A=BONES[i],B=BONES[j];
+ if([A[0],A[1]].some(k=>k==B[0]||k==B[1]))continue;if(i<=11&&j>=8)continue;const[s,t]=segseg(RP[A[0]],RP[A[1]],RP[B[0]],RP[B[1]]);
+ if(len(sub(lerpP(RP[A[0]],RP[A[1]],s),lerpP(RP[B[0]],RP[B[1]],t)))>A[2]+B[2]+.03)SELF.push([i,j])}}
+function selfCollide(b){for(const[i,j]of SELF)colPair(b,i,b,j,0)}
+function acc(map,k,x,y,z){const v=map.get(k)||{x:0,y:0,z:0};v.x+=x;v.y+=y;v.z+=z;map.set(k,v)}
+// grip = rope: hand/foot may be at most r from a point on the target bone
+function gripPt(g){const A=g.body.P[g.a],B=g.body.P[g.b];return lerpP(A,B,g.t)}
+function solveGrip(owner,l){const g=l.g,o=owner.P[l.end],A=g.body.P[g.a],B=g.body.P[g.b],t=g.t;const q=lerpP(A,B,t);
+ const dx=q.x-o.x,dy=q.y-o.y,dz=q.z-o.z,d=Math.hypot(dx,dy,dz);if(d<=g.r)return;
+ const wo=W(o),wa=W(A)*(1-t),wb=W(B)*t,tot=wo+wa*(1-t)+wb*t;if(!tot)return;const s=(d-g.r)/d/tot*.9;
+ o.x+=dx*s*wo;o.y+=dy*s*wo;o.z+=dz*s*wo;A.x-=dx*s*wa;A.y-=dy*s*wa;A.z-=dz*s*wa;B.x-=dx*s*wb;B.y-=dy*s*wb;B.z-=dz*s*wb}
+
+// ================= muscles: standing, stepping, tone =================
+const KNEEL=[[0,1.2,.04],[0,1.04,0],[0,.86,.06],[0,.5,0],[-.2,.98,0],[-.26,.74,.14],[-.18,.78,.38],[.2,.98,0],[.26,.74,.14],[.18,.78,.38],[-.11,.46,0],[-.15,.07,.13],[-.15,.06,-.32],[.11,.46,0],[.15,.07,.13],[.15,.06,-.32]];
+const GLEG={[LKNE]:[-.25,-.6,.28],[LANK]:[-.28,-.98,.06],[RKNE]:[.25,-.6,.28],[RANK]:[.28,-.98,.06]};
+const POSE=REST.map(r=>[r[0]-REST[CHEST][0],r[1]-REST[CHEST][1],r[2]-REST[CHEST][2]]);
+function poseTarget(b,fr,i){const c=b.P[CHEST],o=(b.mode!='stand'&&GLEG[i])||POSE[i];return{x:c.x+fr.r.x*o[0]+fr.u.x*o[1]+fr.f.x*o[2],y:c.y+fr.r.y*o[0]+fr.u.y*o[1]+fr.f.y*o[2],z:c.z+fr.r.z*o[0]+fr.u.z*o[1]+fr.f.z*o[2]}}
+function legBlocked(b,o,f){const L=LEG[f];return o.limbs.some(l=>l.st=='grip'&&l.g.body==b&&(L.includes(l.g.a)||L.includes(l.g.b)))}
+function muscles(b,o){const P=b.P,fr=b.frame();
+ // tone: idle limbs drift back toward a guard pose (AI tone = its defence)
+ const tk=(b.mode=='stand'?.07:.02)*(b.ai&&b.mode!='stand'?2:1)*b.strength;
+ for(const l of b.limbs){if(l.st!='idle')continue;const legs=l.end==LANK||l.end==RANK;if(legs&&b.mode=='stand')continue;
+  const mid=l.end==LWRI?LELB:l.end==RWRI?RELB:l.end==LANK?LKNE:RKNE;for(const i of[mid,l.end]){const t=poseTarget(b,fr,i);drive(P[i],t.x,t.y,t.z,tk,.004)}}
+ if(b.mode!='stand'){if(b.posture){const pel=P[PELV],c=.0013*b.strength;
+   drive(pel,pel.x,.5,pel.z,.06,c);for(const[i,h]of[[CHEST,.32],[NECK,.52],[HEAD,.68]])drive(P[i],pel.x+(P[i].x-pel.x)*.5,.5+h,pel.z+(P[i].z-pel.z)*.5,.06,c);
+   for(const[hp,kn,an]of LEG){drive(P[kn],P[kn].x,.07,P[kn].z,.1,.004);const kk=P[kn],hh=P[hp];drive(P[an],kk.x+(kk.x-hh.x)*.6,.07,kk.z+(kk.z-hh.z)*.6,.06,.004)}}
+  return}
+ const oc=o.P[CHEST],ty=Math.atan2(oc.x-P[CHEST].x,oc.z-P[CHEST].z);let dy=ty-b.yaw;dy=Math.atan2(Math.sin(dy),Math.cos(dy));b.yaw+=dy*.04;
+ const cy=Math.cos(b.yaw),sy=Math.sin(b.yaw),fw={x:sy,z:cy},rt={x:cy,z:-sy};
+ // feet first: planted (pinned) or mid-step
+ const osf=(.35+.65*o.stam)*o.strength,lifted=[0,1].map(f=>o.limbs.filter(l=>l.st=='grip'&&l.g.body==b&&(LEG[f].includes(l.g.a)||LEG[f].includes(l.g.b))&&l.eff>0&&l.ten>.2).reduce((s,l)=>s+l.eff*PULL*osf,0)>.8*b.mass*4.9*b.balance);b.lifted=lifted;
+ if(lifted[0]&&lifted[1])return fall(b,'legs lifted');
+ for(let f=0;f<2;f++){const a=P[f?RANK:LANK],s=b.steps[f];
+  if(lifted[f]){a.pin=0;b.steps[f]=null;continue}
+  if(s){s.u=Math.min(1,s.u+DT/s.d);a.x=a.ox=s.fx+(s.tx-s.fx)*s.u;a.z=a.oz=s.fz+(s.tz-s.fz)*s.u;a.y=a.oy=.06+Math.sin(s.u*PI)*.1;a.pin=1;
+   if(s.u>=1){b.plants[f]={x:s.tx,z:s.tz};b.steps[f]=null}}
+  else{a.x=a.ox=b.plants[f].x;a.z=a.oz=b.plants[f].z;a.y=a.oy=.06;a.pin=1}}
+ // whole-body pose anchored on the feet; muscles pull toward it with capped strength
+ const pm={x:(b.plants[0].x+b.plants[1].x)/2,z:(b.plants[0].z+b.plants[1].z)/2};
+ const sprawl=b.sprawlT>0,lb=b.lean||0,cr=sprawl?.66:b.crouch?.76:.97-.07*lb,lean=sprawl?.85:b.crouch?.45:.06-.32*lb,mv=b.crouch?.16:.1;
+ const bx=pm.x+b.move.x*mv-(sprawl?fw.x*.25:0)-fw.x*.07*lb,bz=pm.z+b.move.z*mv-(sprawl?fw.z*.25:0)-fw.z*.07*lb;
+ const k=TUNE.k*b.rise,cap=TUNE.cap*b.strength*b.rise;let pc={x:0,z:0};
+ for(const i of[HEAD,NECK,CHEST,PELV,LSHO,RSHO,LHIP,RHIP,LKNE,RKNE]){const r=REST[i];let X=r[0],Y=r[1]*cr,Z=r[2]+.02;
+  if(i==LKNE||i==RKNE)Z+=(1-cr)*.9;const hp=.9*cr;if(Y>hp){const h=Y-hp;Z+=h*Math.sin(lean);Y=hp+h*Math.cos(lean)}
+  const tx=bx+X*cy+Z*sy,tz=bz-X*sy+Z*cy;drive(P[i],tx,Y,tz,i==LKNE||i==RKNE?k*.5:k,cap);
+  if(i==PELV||i==CHEST||i==NECK){pc.x+=tx/3;pc.z+=tz/3}}
+ if(b.rise<1)return;
+ // balance: centre of mass vs where the pose says it should sit over the feet
+ const com={x:(P[PELV].x+P[CHEST].x+P[NECK].x)/3,z:(P[PELV].z+P[CHEST].z+P[NECK].z)/3};
+ const ox=com.x-(pc.x-b.move.x*mv),oz=com.z-(pc.z-b.move.z*mv),off=Math.hypot(ox,oz);b.off=off;
+ const mvm=Math.hypot(b.move.x,b.move.z);
+ if(!b.steps[0]&&!b.steps[1]&&off<=.09&&mvm>.3){// deliberate step in the direction you want to walk
+  const mx=b.move.x/mvm,mz=b.move.z/mvm;let best=-1,bd=1e9;for(let f=0;f<2;f++){if(legBlocked(b,o,f))continue;const pl=b.plants[f],sc=(pl.x-com.x)*mx+(pl.z-com.z)*mz;if(sc<bd){bd=sc;best=f}}
+  if(best>=0){const sd=best?1:-1,tx=com.x+mx*.2+rt.x*.15*sd,tz=com.z+mz*.2+rt.z*.15*sd;b.steps[best]={fx:b.plants[best].x,fz:b.plants[best].z,tx,tz,u:0,d:.22}}}
+ if(!b.steps[0]&&!b.steps[1]&&off>.09){let best=-1,bd=-1e9;
+  for(let f=0;f<2;f++){if(legBlocked(b,o,f))continue;const pl=b.plants[f],sc=-((pl.x-com.x)*ox+(pl.z-com.z)*oz)/off;if(sc>bd){bd=sc;best=f}}
+  if(best>=0){const pl=b.plants[best],sd=best?1:-1,m=Math.min(1.5,.3/off);let tx=pl.x+ox*m,tz=pl.z+oz*m;
+   const ot=b.plants[1-best],lat=(tx-ot.x)*rt.x+(tz-ot.z)*rt.z;if(lat*sd<.2){tx+=rt.x*(.2*sd-lat);tz+=rt.z*(.2*sd-lat)}
+   b.steps[best]={fx:pl.x,fz:pl.z,tx,tz,u:0,d:off>.2?.14:.2}}
+  else if(off>.2*b.balance)return fall(b,'legs trapped');}
+ if(off>(lifted[0]||lifted[1]?.12:.5)*b.balance)fall(b,'off balance');}
+function fall(b,why){if(b.mode!='stand')return;SFX.thud();b.mode='ground';b.steps=[null,null];b.P.forEach(p=>p.pin=0);b.downT=0;onFall(b,why)}
+function canRise(b,o){if(o.limbs.some(l=>l.st=='grip'&&l.g.body==b))return false;const a=b.P[CHEST],c=o.P[CHEST];return!(Math.hypot(a.x-c.x,a.z-c.z)<.6&&c.y>a.y+.05)}
+function rise(b){b.posture=0;b.mode='stand';b.rise=0;b.crouch=0;b.plants=[LANK,RANK].map(i=>({x:b.P[i].x,z:b.P[i].z}));b.steps=[null,null];b.limbs.forEach(l=>{if(l.end==LANK||l.end==RANK){l.st='idle';l.g=null;l.eff=0}})}
+
+// ================= limb control (shared by player and AI) =================
+const REACH=260,PULL=520;
+function limbForces(b){const P=b.P,sf=(.35+.65*b.stam)*b.strength;
+ // leaning back: a planted stander hangs bodyweight on pulling hands; the reaction goes into the floor, so heavier = harder pull
+ const planted=b.mode=='stand'&&b.rise>=1&&!b.steps[0]&&!b.steps[1]&&!(b.lifted&&(b.lifted[0]||b.lifted[1]))&&b.sprawlT<=0&&!b.crouch;
+ const pullers=planted?b.limbs.filter((l,i)=>i<2&&l.st=='grip'&&l.eff>0):[];let lean=0;
+ for(const l of pullers){const e=P[l.end],c=P[CHEST];let hx=c.x-e.x,hz=c.z-e.z;const hl=Math.hypot(hx,hz);if(hl<.05)continue;
+  const m=TUNE.lean*b.mass*9.8*l.eff*(.5+.5*b.stam)/pullers.length;force(e,hx/hl*m,0,hz/hl*m);lean+=l.eff/pullers.length}
+ b.lean+=((planted?lean:0)-b.lean)*.03;
+ for(const l of b.limbs){const e=P[l.end];
+  if(l.st=='reach'){const q=gripPt(l.g),d=sub(q,e),dl=len(d);l.t+=DT;
+   if(dl<l.g.r+.05){l.st='grip';l.ten=0;if(b==me)SFX.grip()}else if(l.t>2){l.st='idle';l.g=null}else{const m=REACH*sf*(l.end==LANK||l.end==RANK?1.7:1)*Math.min(1,dl*5)/dl;force(e,d.x*m,d.y*m,d.z*m);force(P[l.root],-d.x*m,-d.y*m,-d.z*m)}}
+  else if(l.st=='grip'){if(l.eff){const a=P[l.anchor],d=nrm(sub(a,e)),m=l.eff*PULL*sf;pushF(e,d,m);pushF(a,d,-m)}
+   if(l.dir){const a=P[l.anchor],m=PULL*1.15*sf;force(e,l.dir.x*m,l.dir.y*m,l.dir.z*m);force(a,-l.dir.x*m,-l.dir.y*m,-l.dir.z*m)}}}
+ if(b.mode!='stand'){if(b.bridge&&b.hipT){const q=gripPt(b.hipT),d=sub(q,P[PELV]),dl=len(d);if(dl>.05){const m=Math.min(1,dl*4)*750*sf/dl;force(P[PELV],d.x*m*.6,d.y*m*.6,d.z*m*.6);force(P[LHIP],d.x*m*.2,d.y*m*.2,d.z*m*.2);force(P[RHIP],d.x*m*.2,d.y*m*.2,d.z*m*.2);force(P[LSHO],-d.x*m*.5,-d.y*m*.5,-d.z*m*.5);force(P[RSHO],-d.x*m*.5,-d.y*m*.5,-d.z*m*.5)}}
+  else if(b.bridge){const F=clamp((.42-P[PELV].y)*2600,0,700)*sf;force(P[PELV],0,F*.6,0);force(P[LHIP],0,F*.2,0);force(P[RHIP],0,F*.2,0);force(P[LSHO],0,-F*.3,0);force(P[RSHO],0,-F*.3,0);force(P[LANK],0,-F*.2,0);force(P[RANK],0,-F*.2,0)}
+  if(b.move.x||b.move.z){const m=600*sf;force(P[PELV],b.move.x*m,0,b.move.z*m);force(P[CHEST],-b.move.x*m*.5,0,-b.move.z*m*.5)}}}
+
+// ================= world =================
+const OPPS=[
+ {name:'Hank',tag:'Wrestler',desc:'Shoots double-legs, sprawls on yours.',shoot:.45,choke:.4,guardAtk:0,mass:92,strength:1.15,balance:1.25,sprawl:.75,lim:.012,frag:1,color:0xdcdcdc,belt:0x6b3fa0},
+ {name:'Pip',tag:'Rubber Guard',desc:'Pulls you into guard and hunts armbars. Joints bend way past normal.',shoot:.1,choke:.3,guardAtk:1,mass:64,strength:.85,balance:.9,sprawl:.2,lim:.045,frag:.6,color:0x23262e,belt:0x7a4a1c},
+ {name:'Moose',tag:'Heavyweight',desc:'130 kg. Passes, smashes, chokes.',shoot:.28,choke:1,guardAtk:0,mass:130,strength:1.45,balance:1.15,sprawl:.35,lim:.012,frag:.9,color:0x8a2a24,belt:0x111111}];
+let lockSeen=[0,0,0,0];
+let me=new Body({name:'You',color:0x2f62d8,belt:0x111111}),opp=null,bodies=[];
+let G={state:'menu',round:0,won:[],time:180,ps:0,os:0,practice:false,pending:null,over:false,simT:0};
+window.G=G;
+function startMatch(practice,drillId){G.drill=drillId?DRILLS.find(d=>d.id==drillId):null;if(G.drill){practice=G.drill.start;G.round0=G.round;G.round=G.drill.opp}G.practice=practice;const c=OPPS[G.round];opp=new Body({...c,ai:true});me=new Body({name:'You',color:0x2f62d8,belt:0x111111,lim:.012});
+ bodies=[me,opp];G.time=180;G.ps=G.os=0;G.pending=null;G.over=false;G.state='match';G.paused=false;G.track=null;G.guardTop=null;G.pos=null;lockSeen=[0,0,0,0];
+ if(practice&&practice!='stand'){const[bot,top]=practice=='top'?[opp,me]:[me,opp];
+  bot.place(0,.95,0,-PI/2,.13);bot.mode='ground';bot.P.forEach(p=>p.pin=0);
+  for(const[i,x,y,z]of[[LKNE,-.4,.38,.22],[LANK,-.32,.12,.6],[RKNE,.4,.38,.22],[RANK,.32,.12,.6]])Object.assign(bot.P[i],{x,y,z,ox:x,oy:y,oz:z});
+  top.place(0,.5,PI);top.mode='ground';top.posture=1;KNEEL.forEach(([x,y,z],i)=>Object.assign(top.P[i],{x:-x,y,z:.5-z,ox:-x,oy:y,oz:.5-z,pin:0}));
+  for(const b of[me,opp])b.H.forEach(h=>{const[A,B,C]=h.j.map(i=>b.P[i]);h.f=nrm(hingeD(A,B,C).d)})}
+ else{me.place(0,-.75,0);opp.place(0,.75,PI)}
+ opp.aiT=0;opp.aiPlan=0;if(G.drill)G.round=G.round0;drillPanel();window.me=me;window.opp=opp;buildMeshes();$('menu').style.display='none';$('on').textContent=c.name.toUpperCase();
+ SFX.whistle();if(G.drill)drillStart();else banner(practice?'PRACTICE':'ROUND '+(G.round+1),practice=='top'?'You are in '+c.name+"'s guard. Posture up, then pass.":practice=='stand'?'Standing. Work grips and takedowns.':practice?'Bottom position. Find a lock.':c.name+' — '+c.tag+'. Hands up. Fight for grips.')}
+function onFall(b,why){if(G.over)return;if(!G.pending)G.pending={t:0}}
+function settleTakedown(){if(G.drill)return;const a=me,b=opp;let w=null;
+ if(a.mode=='stand'&&b.mode!='stand')w=a;else if(b.mode=='stand'&&a.mode!='stand')w=b;
+ else if(a.mode!='stand'&&b.mode!='stand'){const d=a.P[CHEST].y-b.P[CHEST].y;if(Math.abs(d)>.1)w=d>0?a:b}
+ if(w&&Math.hypot(a.P[CHEST].x-b.P[CHEST].x,a.P[CHEST].z-b.P[CHEST].z)<1.6){if(w==me)G.ps+=2;else G.os+=2;SFX.score();banner(w==me?'TAKEDOWN +2':'TAKEN DOWN',w==me?'You came out on top.':opp.name+' scores 2.')}}
+
+// ================= positions + scoring =================
+function classify(){const a=me,b=opp;if(a.mode=='stand'||b.mode=='stand')return{pos:'standing'};
+ const ac=a.P[CHEST],bc=b.P[CHEST];if(Math.hypot(ac.x-bc.x,ac.z-bc.z)>1.1)return{pos:'apart'};
+ for(const[t,u]of[[a,b],[b,a]]){const fr=u.frame(),d=sub(t.P[CHEST],u.P[CHEST]);if(len(d)<.45&&dot(d,fr.f)<-.12&&t.P[CHEST].y>.2)return{pos:'back',top:t,bot:u}}
+ const hd=ac.y-bc.y,top=hd>.07?a:hd<-.07?b:null;if(!top)return{pos:'scramble'};
+ const bot=top==a?b:a,fr=bot.frame(),onBack=fr.f.y>.25,bp=bot.P[PELV],tp=top.P[PELV];
+ const lat=p=>dot(sub(p,bp),fr.r),along=dot(sub(tp,bp),fr.u),kL=lat(bot.P[LKNE]),kR=lat(bot.P[RKNE]),x=lat(tp);
+ if(onBack&&along<.15&&len(sub(tp,bp))<.8&&x>Math.min(kL,kR)-.03&&x<Math.max(kL,kR)+.03&&Math.abs(kL-kR)>.15)return{pos:'guard',top,bot};
+ if(onBack&&along>=.15&&along<.6&&Math.abs(x)<.22&&tp.y<.6)return{pos:'mount',top,bot};
+ if(onBack&&Math.hypot(top.P[CHEST].x-bot.P[CHEST].x,top.P[CHEST].z-bot.P[CHEST].z)<.55)return{pos:'side',top,bot};
+ return{pos:'top',top,bot}}
+const POSNAME={standing:'Standing',apart:'Separated',scramble:'Scramble',back:'Back control',guard:'Guard',mount:'Mount',side:'Side control',top:'Top position'};
+function posLabel(c){if(!c||!c.top)return POSNAME[c?c.pos:'standing'];const you=c.top==me;
+ return c.pos=='guard'?(you?'You are in '+opp.name+"'s guard":opp.name+' is in your guard'):c.pos=='back'?(you?'You have '+opp.name+"'s back":opp.name+' has your back'):(you?'You: ':opp.name+': ')+POSNAME[c.pos]}
+function award(w,pts,what){if(G.drill)return;if(w==me)G.ps+=pts;else G.os+=pts;SFX.score();banner((w==me?'':opp.name.toUpperCase()+' — ')+what+' +'+pts,w==me?'':'')}
+function trackPos(dt){const c=classify(),P=G.track,diff=!P||P.pos!=c.pos||P.top!=c.top;
+ // hysteresis: a new position must hold for 0.4 s before it counts (standing up/down is immediate)
+ if(diff){const C=G.cand;if(C&&C.pos==c.pos&&C.top==c.top)C.t+=dt;else G.cand={pos:c.pos,top:c.top,t:0}}else G.cand=null;
+ if(diff&&P&&c.pos!='standing'&&P.pos!='standing'&&G.cand.t<.4){G.pos=P.pos;return}
+ if(diff){G.cand=null;
+  if(P&&P.pos=='guard'&&P.t>1&&c.top&&c.top==P.bot&&['side','mount','top','back'].includes(c.pos))award(c.top,2,'SWEEP');
+  if(c.pos=='guard')G.guardTop=c.top;
+  G.track={...c,t:0,scored:false}}
+ else{P.t+=dt;if(!P.scored&&P.t>3){P.scored=true;
+  if(P.pos=='side'&&G.guardTop==P.top){award(P.top,3,'GUARD PASS');G.guardTop=null}
+  else if(P.pos=='mount')award(P.top,4,'MOUNT');else if(P.pos=='back')award(P.top,4,'BACK TAKE')}}
+ G.pos=G.track.pos}
+
+// ================= AI =================
+function AI(b,o,dt){if(G.drill){b.bridge=0;b.move={x:0,z:0};b.crouch=0;b.sprawlT=0;b.hipT=null;
+  if(b.mode!='stand'&&G.drill.start===true){const rc=(i,a,bb,t)=>{const l=b.limbs[i];if(l.st=='idle'){l.st='reach';l.t=0;l.g={body:o,a,b:bb,t,r:BONES.find(x=>x[0]==a&&x[1]==bb)[2]+.075}}};rc(1,NECK,CHEST,.5);rc(0,CHEST,PELV,.8);b.limbs[0].eff=b.limbs[1].eff=.15}
+  else b.limbs.forEach(l=>{if(l.st!='idle'){l.st='idle';l.g=null}});return}b.aiT-=dt;const P=b.P,oc=o.P[CHEST],bc=P[CHEST],dx=oc.x-bc.x,dz=oc.z-bc.z,dist=Math.hypot(dx,dz)||1,to={x:dx/dist,z:dz/dist};
+ const myGripsOn=o.limbs.filter(l=>l.st=='grip'&&l.g.body==b);
+ const reach=(i,a,bb,t)=>{const l=b.limbs[i];if(l.st=='idle'){l.st='reach';l.t=0;l.dir=null;l.g={body:o,a,b:bb,t,r:BONES.find(x=>x[0]==a&&x[1]==bb)[2]+.075}}};
+ const drop=i=>{const l=b.limbs[i];if(l.st!='idle'){l.st='idle';l.g=null;l.eff=0;l.dir=null}};
+ const on=(i,a,bb)=>{const l=b.limbs[i];return l.st!='idle'&&l.g.a==a&&l.g.b==bb};
+ const keep=(i,a,bb,t)=>{if(!on(i,a,bb))drop(i);reach(i,a,bb,t)};
+ const gripping=i=>b.limbs[i].st=='grip';
+ b.bridge=0;b.move={x:0,z:0};b.crouch=0;b.hipT=null;b.limbs.forEach(l=>l.dir=null);
+ const pl=b.plan||(b.plan={k:'',t:0,side:1});pl.t-=dt;if(pl.k!==pl.lk){pl.lk=pl.k;pl.age=0}else pl.age+=dt;
+ if(b.mode=='stand'){if(b.sprawlT>0){b.sprawlT-=dt;b.move={x:-to.x,z:-to.z}}
+  if(o.mode=='stand'){
+   if(pl.k=='shoot'&&pl.t>0){b.crouch=1;b.move={x:to.x,z:to.z};keep(0,LHIP,LKNE,.85);keep(1,RHIP,RKNE,.85);b.limbs[0].eff=b.limbs[1].eff=gripping(0)&&gripping(1)?1:0}
+   else if(pl.k=='snap'&&pl.t>0){// chain: shot stuffed, snap the head down
+    keep(0,HEAD,NECK,.5);keep(1,NECK,CHEST,.2);b.move={x:-to.x*.25,z:-to.z*.25};
+    if(gripping(0)&&gripping(1)){const d=nrm({x:-to.x*.45,y:-1,z:-to.z*.45});b.limbs[0].dir=b.limbs[1].dir=d;b.limbs[0].eff=b.limbs[1].eff=.4}}
+   else{if(pl.k=='shoot'){drop(0);drop(1);if(dist<1.05&&b.stam>.3){pl.k='snap';pl.t=1.8;b.aiT=2.2;warn(b.name+' snaps your head down!','Posture up: step back (S), push his arms off (E).')}else pl.k=''}
+    else if(pl.k=='snap'){drop(0);drop(1);pl.k='';if(o.P[HEAD].y<1.45&&dist<1.05){pl.k='shoot';pl.t=2.4;b.aiT=3;warn(b.name+' re-shoots while your head is down!','Sprawl: hold Space + S.')}}
+    if(dist>.62&&b.sprawlT<=0)b.move={x:to.x*.5,z:to.z*.5};
+    if(o.crouch&&dist<1&&b.sprawlT<=0&&Math.random()<b.sprawl*dt*3){b.sprawlT=.9;drop(0);drop(1)}
+    if(dist<.95){reach(1,NECK,CHEST,.3);reach(0,RELB,RWRI,.2)}
+    if(b.aiT<=0){b.aiT=.6+Math.random()*1.2;const e=Math.random();b.limbs[0].eff=b.limbs[1].eff=e<.45?1:e<.7?-.8:.2;
+     if(dist<1.05&&Math.random()<b.shoot){pl.k='shoot';pl.t=2.4;drop(0);drop(1);warn(b.name+' shoots for your legs!','Sprawl: hold Space + S. Or break his grips.')}}}}
+  else{b.limbs.forEach(l=>{if(l.st=='grip'&&l.g.body==o)l.eff=.3});if(dist>.5)b.move={x:to.x*.6,z:to.z*.6};
+   G.drop=(G.drop||0)+dt;if(G.drop>1.1&&dist<.8){G.drop=0;fall(b,'dive')}}}
+ else{G.drop=0;b.downT+=dt;const c=classify(),top=c.top==b,bot=c.top==o;
+  // ---- defence first: bend loaded joints back to safety, protect the neck, rip at grips
+  const df=(.25+.75*b.stam)*b.strength;let hurt=false;
+  b.H.forEach(h=>{if(h.s>.04){hurt=true;b.stam=Math.max(0,b.stam-dt*.05);const end=P[h.j[2]],root=P[h.j[0]],d=nrm(sub(root,end)),m=260*df*(1+h.s);pushF(end,d,m);pushF(root,d,-m);const aw=nrm(sub(end,oc));pushF(end,aw,120*df);pushF(P[CHEST],aw,-120*df)}});
+  b.S.forEach((x,k)=>{if(x.s>.04){hurt=true;const[s_,e,w]=x.j,d=nrm(sub(P[CHEST],P[w])),m=220*df*(1+x.s);pushF(P[w],d,m);pushF(P[CHEST],d,-m)}});
+  if(b.neck.s>.04||b.choking){hurt=true;const d=nrm(sub(P[HEAD],oc));pushF(P[HEAD],d,300*df);pushF(P[PELV],d,-300*df);
+   // hand fighting: grab the wrist of a choking hand and push it off
+   const ch=o.limbs.findIndex(l=>l.st=='grip'&&l.g.body==b&&(l.g.a==HEAD||l.g.a==NECK));if(ch>=0&&ch<2){const wr=ch==0?[LELB,LWRI]:[RELB,RWRI];keep(0,wr[0],wr[1],.9);if(gripping(0))b.limbs[0].eff=-1}}
+  if(myGripsOn.length&&b.aiT<=0){b.aiT=.4+Math.random()*.6;b.struggle=.35}
+  if(b.struggle>0){b.struggle-=dt;for(const l of myGripsOn){const A=P[l.g.a],aw=nrm(sub(A,o.P[l.end]));pushF(A,aw,380*df);pushF(P[l.g.a==CHEST||l.g.a==PELV?NECK:CHEST],aw,-380*df);b.stam=Math.max(0,b.stam-dt*.03)}}
+  b.posture=top&&c.pos=='guard'&&b.stam>.25;
+  if(top&&!hurt){
+   if(c.pos=='guard'){// pass: pin a knee down, circle the hips to that side
+    if(pl.k!='pass'){pl.k='pass';pl.side=Math.random()<.5?-1:1;warn(b.name+' is passing your guard.','Feet on his hips (3/4 + click), push (E). Keep him in front of you.')}if(pl.age>5){pl.side*=-1;pl.age=0;drop(0);warn(b.name+' switches sides.','Follow him: shrimp (A/D) to keep your knees in front.')}
+    const kn=pl.side<0?[LHIP,LKNE]:[RHIP,RKNE];keep(0,kn[0],kn[1],.9);if(gripping(0))b.limbs[0].eff=-1;keep(1,NECK,CHEST,.5);b.limbs[1].eff=.3;
+    const fr=o.frame();b.move={x:fr.r.x*pl.side+fr.u.x*.5,z:fr.r.z*pl.side+fr.u.z*.5}}
+   else{// heavy top: chest pressure toward the head, then a scissor collar choke
+    if(pl.k!='smash')warn(b.name+' is smashing for a choke.','Frame: grip his collar, push (E). Bridge (Space) and shift hips (A/D).');pl.k='smash';b.move={x:to.x*.4,z:to.z*.4};
+    if(Math.random()<b.choke*dt*.6||b.limbs[0].g&&b.limbs[0].g.a==NECK){keep(0,NECK,CHEST,.1);keep(1,HEAD,NECK,.6);
+     if(gripping(0)&&gripping(1)){const h0=P[LWRI],h1=P[RWRI],d=nrm(sub(h0,h1));b.limbs[0].dir=d;b.limbs[1].dir={x:-d.x,y:-d.y,z:-d.z};b.limbs[0].eff=b.limbs[1].eff=.5}}}}
+  else if(bot&&!hurt){
+   if(c.pos=='guard'&&b.guardAtk&&b.stam>.3){// armbar from guard: both hands on a wrist, feet on head + shoulder, hips into the elbow
+    const arm=pl.side<0?[LSHO,LELB,LWRI]:[RSHO,RELB,RWRI];if(pl.k!='arm'){pl.k='arm';pl.side=Math.random()<.5?-1:1;warn(b.name+' is hunting your arm!','Pull your arm back: let go and keep elbows tight. Stack him: W.')}
+    if(pl.age>7&&o.H[arm[0]==LSHO?0:1].s<.15){pl.side*=-1;pl.age=0;[0,1,2,3].forEach(drop);warn(b.name+' switches to your other arm!','Same answer: pull that arm back, elbows tight.')}
+    keep(0,arm[1],arm[2],.9);keep(1,arm[1],arm[2],.75);
+    if(gripping(0)&&gripping(1)){b.limbs[0].eff=b.limbs[1].eff=1;keep(2,HEAD,HEAD,0);keep(3,arm[0],arm[1],.1);
+     if(gripping(2)&&gripping(3)){b.limbs[2].eff=b.limbs[3].eff=-1;b.bridge=1;b.hipT={body:o,a:arm[0],b:arm[1],t:.92};const h=o.H[arm[0]==LSHO?0:1];b.limbs[0].dir=b.limbs[1].dir={x:h.f.x,y:h.f.y,z:h.f.z}}}}
+   else if(c.pos=='guard'){// closed guard: feet hook the back and pull him down
+    keep(2,CHEST,PELV,.6);keep(3,CHEST,PELV,.6);b.limbs[2].eff=b.limbs[3].eff=.6;reach(1,NECK,CHEST,.25);b.limbs[1].eff=.6}
+   else{// mount/side bottom: bridge and shrimp away
+    if(Math.sin(G.simT*2.3)>.4)b.bridge=1;const tp=o.P[PELV],aw=nrm(sub(P[PELV],tp));b.move={x:aw.x,z:aw.z}}}
+  else if(!top&&!bot&&!hurt){if(Math.sin(G.simT*2.3)>.6)b.bridge=1}
+  if(!myGripsOn.length&&b.downT>2&&canRise(b,o)&&!top&&dist>.9){rise(b);b.limbs.forEach(l=>{l.st='idle';l.g=null})}}
+ for(const l of b.limbs)if(l.st=='grip'&&(l.g.body!=o||(b.mode=='stand'&&o.mode!='stand'&&dist>1.2))){l.st='idle';l.g=null}}
+
+// ================= step =================
+function simStep(){
+ for(const b of bodies)limbForces(b);
+ for(const b of bodies)integrate(b);
+ const o=[opp,me];bodies.forEach((b,i)=>muscles(b,o[i]));
+ for(const b of bodies){b.limbs.forEach(l=>{l.acc=0;if(l.st=='grip'){const q=gripPt(l.g),e=b.P[l.end];l.acc=Math.max(0,len(sub(q,e))-l.g.r)}});b.H.forEach(h=>h.load=0);b.S.forEach(x=>x.load=0);b.neck.push.clear()}
+ for(let it=0;it<IT;it++){for(const b of bodies){sticks(b);hinges(b);if(it%2==0)shoulders(b)}
+  for(const b of bodies)for(const l of b.limbs)if(l.st=='grip')solveGrip(b,l);
+  collide(me,opp);if(it%2==0)for(const b of bodies)selfCollide(b);for(const b of bodies)ground(b)}
+ for(const b of bodies){hingeTrack(b);const ob=b==me?opp:me;
+  // control of a segment = a grip on it, or hips driving into it
+  const on=(x,y)=>ob.limbs.some(l=>l.st=='grip'&&l.g.body==b&&((l.g.a==x&&l.g.b==y)||(l.g.a==y&&l.g.b==x)))||(ob.bridge&&ob.hipT&&ob.hipT.body==b&&((ob.hipT.a==x&&ob.hipT.b==y)||(ob.hipT.a==y&&ob.hipT.b==x)));
+  const ctl=j=>j.some(x=>ob.limbs.some(l=>l.st=='grip'&&l.g.body==b&&(l.g.a==x||l.g.b==x)));
+  // a joint lock needs control above AND below the joint (the upper segment may also be pinned by the torso: head/shoulder grips count for arms, hip grips for legs)
+  const lock=h=>{const[a,m,c]=h.j,arm=a==LSHO||a==RSHO;return on(m,c)&&(on(a,m)||(arm?ctl([HEAD,NECK,a]):ctl([PELV,a])))};
+  const shLock=k=>{const[s_,e,w]=SHR[k].j;const crank=ob.limbs.some(l=>l.st=='grip'&&l.g.body==b&&((l.g.a==e&&l.g.b==w))&&(l.dir||l.eff));return crank&&on(e,w)&&on(s_,e)};b.shOK=[0,1].map(shLock);for(let k=0;k<2;k++){const x=b.S[k];x.s=clamp(x.s+(b.shOK[k]?x.load*TUNE.sk*.8*b.frag:0)-DT*.12,0,1)}
+  b.lockOK=b.H.map(lock);for(let i=0;i<4;i++){const h=b.H[i];h.s=clamp(h.s+(b.lockOK[i]?h.load*TUNE.sk*b.frag:0)-DT*.12,0,1)}
+  const v=[...b.neck.push.values()];let comp=0;for(let i=0;i<v.length;i++)for(let j=i+1;j<v.length;j++){const a=v[i],c=v[j],la=len(a),lc=len(c);if(la&&lc&&dot(a,c)/(la*lc)<-.3)comp=Math.max(comp,Math.min(la,lc))}
+  const cg=ob.limbs.filter(l=>l.st=='grip'&&l.g.body==b&&((l.g.a==HEAD&&l.g.b==NECK)||(l.g.a==NECK&&l.g.b==CHEST&&l.g.t<.45))&&(l.eff>0||l.dir));let gc=0;
+  if(cg.length>=2){const fr=b.frame(),s1=dot(sub(ob.P[cg[0].end],b.P[NECK]),fr.r),s2=dot(sub(ob.P[cg[1].end],b.P[NECK]),fr.r);if(s1*s2<0&&Math.abs(s1-s2)>.1)gc=Math.min(cg[0].ten,cg[1].ten)}
+  if(gc>.15&&!b.choking&&b==me)warn('You are being choked!','Grab his wrist (click his forearm) and push it off (E).');b.choking=gc>.15;b.neck.s=clamp(b.neck.s+(ctl([HEAD,NECK])?comp*.35*b.frag+gc*DT*.5*b.frag:0)-DT*.1,0,1);
+  let used=0;for(const l of b.limbs){if(l.st!='grip')continue;used+=.3+Math.abs(l.eff)+(l.dir?len(l.dir):0);l.ten=l.ten*.95+l.acc*120*.05;l.tenMax=Math.max(l.tenMax||0,l.ten);
+   const brk=(.95+1.05*b.stam)*b.strength*(l.end==LANK||l.end==RANK?1.4:1);if(l.ten>brk){l.st='idle';l.g=null;l.eff=0;l.dir=null;SFX.snap();if(b==me)flash(b.lean>.35&&b.mode=='stand'?'your grip broke — you stumble back':'your grip broke');
+    if(b.lean>.35&&b.mode=='stand'){const ob=b==me?opp:me,c=b.P[CHEST],oc=ob.P[CHEST];let dx=c.x-oc.x,dz=c.z-oc.z;const dl=Math.hypot(dx,dz)||1,v=.012*b.lean;for(const i of[NECK,CHEST,PELV,HEAD]){b.P[i].ox-=dx/dl*v;b.P[i].oz-=dz/dl*v}b.lean=0}}}
+  if(b.bridge)used+=1.5;b.stam=clamp(b.stam+DT*(used?-used*.009:.09),0,1);
+  if(b.mode=='stand'&&b.rise<1)b.rise=Math.min(1,b.rise+DT/1.2)}
+ G.simT+=DT}
+
+// ================= render =================
+const R=new THREE.WebGLRenderer({antialias:true});R.setPixelRatio(Math.min(2,devicePixelRatio));R.shadowMap.enabled=true;document.body.prepend(R.domElement);
+const S=new THREE.Scene();S.background=new THREE.Color(0x0d0f14);S.fog=new THREE.Fog(0x0d0f14,8,22);
+const cam=new THREE.PerspectiveCamera(80,1,.03,60);
+S.add(new THREE.HemisphereLight(0xc8d4ff,0x302018,1.1));const sun=new THREE.DirectionalLight(0xffffff,1.6);sun.position.set(3,8,2);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);
+Object.assign(sun.shadow.camera,{left:-3,right:3,top:3,bottom:-3});S.add(sun);
+const mat=new THREE.Mesh(new THREE.PlaneGeometry(14,14),new THREE.MeshStandardMaterial({color:0x7a2a2a,roughness:.9}));mat.rotation.x=-PI/2;mat.receiveShadow=true;S.add(mat);
+const inner=new THREE.Mesh(new THREE.PlaneGeometry(8,8),new THREE.MeshStandardMaterial({color:0x2a4c78,roughness:.9}));inner.rotation.x=-PI/2;inner.position.y=.002;inner.receiveShadow=true;S.add(inner);
+const grid=new THREE.GridHelper(8,8,0x9fb6e0,0x40608a);grid.position.y=.004;grid.material.transparent=true;grid.material.opacity=.25;S.add(grid);
+const CYL=new THREE.CylinderGeometry(1,1,1,14),SPH=new THREE.SphereGeometry(1,16,12),UP=new THREE.Vector3(0,1,0);
+let vis=[];const tv=new THREE.Vector3(),tv2=new THREE.Vector3();
+function buildMeshes(){vis.forEach(v=>v.grp.removeFromParent());vis=[];
+ for(const b of bodies){const grp=new THREE.Group();S.add(grp);const gi=new THREE.MeshStandardMaterial({color:b.color,roughness:.75}),skin=new THREE.MeshStandardMaterial({color:0xd9a37e,roughness:.6}),belt=new THREE.MeshStandardMaterial({color:b.belt});
+  const ghost=new THREE.MeshBasicMaterial({color:0x8fb6ff,transparent:true,opacity:.28,depthFunc:THREE.GreaterDepth,depthWrite:false});
+  const bones=BONES.map(([a,c,r],i)=>{const m=new THREE.Mesh(a==c?SPH:CYL,a==c||i==THROAT?skin:gi);m.castShadow=true;m.userData={a,b:c,r,body:b};grp.add(m);
+   let gm=null;if(b==me){gm=new THREE.Mesh(a==c?SPH:CYL,ghost);gm.renderOrder=9;grp.add(gm)}return{m,gm,a,c,r}});
+  const joints=REST.map((_,i)=>{const m=new THREE.Mesh(SPH,i==LWRI||i==RWRI?skin:gi.clone());m.castShadow=true;m.userData={a:i,b:i,r:RAD[i],body:b,joint:1};grp.add(m);return m});
+  const bm=new THREE.Mesh(new THREE.TorusGeometry(.135,.022,8,20),belt);bm.rotation.x=PI/2;grp.add(bm);
+  vis.push({b,grp,bones,joints,bm})}
+ buildLevers();dirA.forEach(a=>a.removeFromParent());dirA=me.limbs.map(()=>{const a=new THREE.ArrowHelper(new THREE.Vector3(0,1,0),new THREE.Vector3(),.22,0x66ccff,.07,.05);a.traverse(o=>{if(o.material){o.material.depthTest=false}});a.renderOrder=12;S.add(a);return a});
+ lines.forEach(l=>l.removeFromParent());lines=me.limbs.map(()=>{const g=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]);
+  const ln=new THREE.Line(g,new THREE.LineBasicMaterial({color:0xffffff,transparent:true,depthTest:false}));ln.renderOrder=10;S.add(ln);return ln})}
+let lines=[],levers=[],dirA=[];
+function buildLevers(){levers.forEach(a=>a.removeFromParent());levers=HINGES.map(()=>{const a=new THREE.ArrowHelper(new THREE.Vector3(0,1,0),new THREE.Vector3(),.2,0xffffff,.07,.05);
+ a.traverse(o=>{if(o.material){o.material.depthTest=false;o.material.transparent=true}});a.renderOrder=12;S.add(a);return a})}
+const selM=new THREE.Mesh(new THREE.TorusGeometry(.075,.012,8,24),new THREE.MeshBasicMaterial({color:0x6cf,depthTest:false,transparent:true}));selM.renderOrder=11;S.add(selM);
+const aimM=new THREE.Mesh(new THREE.SphereGeometry(.035,12,8),new THREE.MeshBasicMaterial({color:0xffe14d,depthTest:false}));aimM.renderOrder=11;S.add(aimM);
+function setBone(m,A,B,r){if(A==B){m.position.set(A.x,A.y,A.z);m.scale.setScalar(r);return}tv.set(B.x-A.x,B.y-A.y,B.z-A.z);const l=tv.length();m.position.set((A.x+B.x)/2,(A.y+B.y)/2,(A.z+B.z)/2);m.quaternion.setFromUnitVectors(UP,tv.normalize());m.scale.set(r,l,r)}
+let camMode=0;const camPos=new THREE.Vector3(0,1.6,-2),camLook=new THREE.Vector3();
+function render(){for(const v of vis){const P=v.b.P,fp=v.b==me&&camMode==0;
+  v.bones.forEach(({m,gm,a,c,r},i)=>{setBone(m,P[a],P[c],r);m.visible=!(fp&&me.mode=='stand'&&(i==0||i==THROAT));if(gm){setBone(gm,P[a],P[c],r*1.02);gm.visible=i>1}});
+  v.joints.forEach((m,i)=>{m.position.set(P[i].x,P[i].y,P[i].z);m.scale.setScalar(RAD[i]*.95);m.visible=!(fp&&me.mode=='stand'&&i<=1);
+   if(m.material.emissive){const h=v.b.H.find(h=>h.j[1]==i);const s=h?h.s:i==NECK?v.b.neck.s:0;m.material.emissive.setRGB(s*1.6,s*.25,0)}});
+  const pl=P[PELV],ch=P[CHEST];v.bm.position.set(pl.x+(ch.x-pl.x)*.15,pl.y+(ch.y-pl.y)*.15,pl.z+(ch.z-pl.z)*.15);tv.set(ch.x-pl.x,ch.y-pl.y,ch.z-pl.z).normalize();v.bm.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),tv)}
+ me.limbs.forEach((l,i)=>{const ln=lines[i];if(!ln)return;ln.visible=l.st!='idle';if(!ln.visible)return;const e=me.P[l.end],q=gripPt(l.g),pa=ln.geometry.attributes.position;
+  pa.setXYZ(0,e.x,e.y,e.z);pa.setXYZ(1,q.x,q.y,q.z);pa.needsUpdate=true;const t=clamp(l.ten/1.1,0,1);ln.material.color.setRGB(.4+t*.6,1-t*.7,1-t);ln.material.opacity=l.st=='reach'?.35:.95});
+ me.limbs.forEach((l,i)=>{const a=dirA[i];if(!a)return;a.visible=!!(l.dir&&l.st=='grip');if(!a.visible)return;const e=me.P[l.end],m=len(l.dir);a.position.set(e.x,e.y,e.z);a.setDirection(tv.set(l.dir.x,l.dir.y,l.dir.z).normalize());a.setLength(.08+m*.22,.07,.05)});
+ // lever arrows: which way each of the opponent's elbows/knees breaks; shown when you're touching that limb
+ opp.H.forEach((h,i)=>{const a=levers[i];if(!a)return;const[A,B,C]=h.j,lim=[A,B,C];const near=me.limbs.some(l=>l.st=='grip'&&l.g.body==opp&&(lim.includes(l.g.a)||lim.includes(l.g.b)))||(aim&&(lim.includes(aim.a)||lim.includes(aim.b)));
+  a.visible=near&&opp.mode!='stand';if(!a.visible)return;const P=opp.P[B];a.position.set(P.x,P.y,P.z);a.setDirection(tv.set(-h.f.x,-h.f.y,-h.f.z).normalize());
+  const lk=opp.lockOK&&opp.lockOK[i];a.setColor(lk?new THREE.Color().setHSL(.15-h.s*.15,1,.55):new THREE.Color(0x8899aa));a.traverse(o=>{if(o.material)o.material.opacity=lk?.95:.5})});
+ {const e=me.P[me.limbs[sel].end];selM.position.set(e.x,e.y,e.z);selM.lookAt(cam.position);selM.material.opacity=.5+.4*Math.sin(performance.now()/180)}
+ // camera
+ const fr=me.frame(),h=me.P[HEAD],oc=opp.P[CHEST];
+ if(camMode==0&&me.mode=='stand'){tv.set(h.x+fr.f.x*.09+fr.u.x*.03,h.y+fr.f.y*.09+fr.u.y*.03,h.z+fr.f.z*.09+fr.u.z*.03);tv2.set((oc.x*2+opp.P[PELV].x)/3,(oc.y*2+opp.P[PELV].y)/3,(oc.z*2+opp.P[PELV].z)/3)}
+ else if(camMode==0){// on the mat: float above your own head, looking down your body at the action
+  const mc=me.P[CHEST],up=fr.u,hx=up.x,hz=up.z,hl=Math.hypot(hx,hz)||1;tv.set(h.x+hx/hl*.75+fr.r.x*.25,1.75,h.z+hz/hl*.75+fr.r.z*.25);
+  tv2.set((mc.x+oc.x*2)/3,Math.min(.5,(mc.y+oc.y*2)/3),(mc.z+oc.z*2)/3)}
+ else{const mc=me.P[CHEST];tv2.set((mc.x+oc.x)/2,Math.max(.4,(mc.y+oc.y)/2),(mc.z+oc.z)/2);const dx=mc.x-oc.x,dz=mc.z-oc.z,dl=Math.hypot(dx,dz)||1;tv.set(mc.x+dx/dl*1.6+dz/dl*.9,1.9,mc.z+dz/dl*1.6-dx/dl*.9)}
+ camPos.lerp(tv,camMode||me.mode!='stand'?.08:.35);camLook.lerp(tv2,.12);cam.position.copy(camPos);cam.lookAt(camLook);
+ R.render(S,cam)}
+function resize(){R.setSize(innerWidth,innerHeight);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()}onresize=resize;resize();
+
+// ================= sound (synthesized, no assets) =================
+let AC=null,MG=null,NB=null;
+function audio(){if(AC)return AC.state=='suspended'&&AC.resume();AC=new (window.AudioContext||window.webkitAudioContext)();MG=AC.createGain();MG.gain.value=.5;MG.connect(AC.destination);
+ NB=AC.createBuffer(1,AC.sampleRate,AC.sampleRate);const d=NB.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1}
+function noise(dur,vol,f0,f1=f0,q=1,dl=0){if(!AC)return;const n=AC.currentTime+dl,s=AC.createBufferSource(),b=AC.createBiquadFilter(),g=AC.createGain();s.buffer=NB;b.type='bandpass';b.Q.value=q;
+ b.frequency.setValueAtTime(f0,n);b.frequency.exponentialRampToValueAtTime(f1,n+dur);g.gain.setValueAtTime(vol,n);g.gain.exponentialRampToValueAtTime(.001,n+dur);s.connect(b).connect(g).connect(MG);s.start(n);s.stop(n+dur)}
+function tone(f0,f1,dur,vol,type='sine',dl=0){if(!AC)return;const n=AC.currentTime+dl,o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f0,n);o.frequency.exponentialRampToValueAtTime(f1,n+dur);
+ g.gain.setValueAtTime(vol,n);g.gain.exponentialRampToValueAtTime(.001,n+dur);o.connect(g).connect(MG);o.start(n);o.stop(n+dur+.02)}
+const SFX={grip:()=>noise(.07,.5,1800,900,2),release:()=>noise(.05,.2,900,500,2),snap:()=>{noise(.09,.6,2500,600,3);tone(300,120,.08,.15,'square')},
+ thud:()=>{tone(90,40,.35,.9);noise(.3,.6,300,80,1)},whistle:()=>{tone(2600,2500,.5,.12,'square');tone(2650,2600,.5,.08,'square')},
+ tap:()=>{for(let i=0;i<3;i++)noise(.06,.7,1400,700,2,i*.18)},score:()=>{tone(523,523,.12,.12,'triangle');tone(784,784,.18,.12,'triangle',.12)},
+ creak:s=>{noise(.12,.05+s*.25,200+s*700,150+s*500,8)}};
+let creakT=0;
+// ================= input =================
+const keys={};let sel=1,mouse=new THREE.Vector2(),mx=innerWidth/2,my=innerHeight/2,aim=null;const ray=new THREE.Raycaster();
+let helpOpen=1;function setHelp(v){helpOpen=v;$('helpb').style.display=v?'block':'none';$('helpx').innerHTML=v?"Controls <span style='color:#889;font-weight:400'>(H to hide)</span>":"<span style='color:#aab;font-weight:400'>H for controls</span>"}
+onkeydown=e=>{audio();const k=e.key.toLowerCase();keys[k]=1;if(k=='h')setHelp(!helpOpen);if(G.state!='match')return;
+ if(k=='escape'&&!G.over){G.paused=!G.paused;if(G.paused){$('banner').textContent='PAUSED';$('sub').textContent='Esc resume · Enter restart · M menu';$('banner').style.opacity=$('sub').style.opacity=1;bT=1e9}else{bT=.01}return}
+ if(G.paused){if(k=='enter'){G.paused=false;bT=.01;startMatch(G.practice,G.drill&&G.drill.id)}if(k=='m'){G.paused=false;bT=.01;menu()}return}
+ if('1234'.includes(k)&&k.length==1)sel=+k-1;
+ if(k=='q')me.limbs[sel].eff=clamp(me.limbs[sel].eff+.25,-1,1);if(k=='e')me.limbs[sel].eff=clamp(me.limbs[sel].eff-.25,-1,1);
+ if(k=='x')me.limbs.forEach(l=>{l.eff=0;l.dir=null});if(k=='c')camMode^=1;
+ if(k=='f'&&me.mode=='stand')fall(me,'sit');if(k=='r'&&me.mode!='stand'){if(canRise(me,opp))rise(me);else flash("can't stand: you're held down")}
+ if(k==' ')e.preventDefault()};
+onkeyup=e=>keys[e.key.toLowerCase()]=0;
+onmousemove=e=>{mx=e.clientX;my=e.clientY;const tt=$('tip');tt.style.left=mx+16+'px';tt.style.top=my+14+'px'};
+onwheel=e=>{if(G.state=='match')me.limbs[sel].eff=clamp(Math.round((me.limbs[sel].eff-Math.sign(e.deltaY)*.25)*4)/4,-1,1)};
+let drag=null;
+R.domElement.onmousedown=e=>{audio();if(G.state!='match')return;const l=me.limbs[sel];
+ if(e.button==2){if(l.st=='grip'){drag={x:e.clientX,y:e.clientY,limb:sel}}else flash('grip something first, then right-drag to pull it');return}
+ if(e.button!=0)return;
+ if(l.st!='idle'){l.st='idle';l.g=null;l.eff=0;l.dir=null;SFX.release();return}
+ if(!aim)return;if((l.end==LANK||l.end==RANK)&&me.mode=='stand'&&!keys.shift){flash('feet are planted (hold Shift to hook a leg)');return}
+ l.st='reach';l.t=0;l.g={body:opp,a:aim.a,b:aim.b,t:aim.t,r:aim.r+.075}};
+R.domElement.oncontextmenu=e=>e.preventDefault();
+onmouseup=e=>{if(e.button==2&&drag){const l=me.limbs[drag.limb];if(l.dir){flash(l.name+' holds that direction. X clears it.')}drag=null;$('drag').style.display='none'}};
+function updateDrag(){if(!drag)return;const l=me.limbs[drag.limb];if(l.st!='grip'){l.dir=null;drag=null;$('drag').style.display='none';return}
+ const dx=mx-drag.x,dy=my-drag.y,mag=Math.min(1,Math.hypot(dx,dy)/140);const el=$('drag');el.style.display='block';
+ const ang=Math.atan2(dy,dx),L=Math.hypot(dx,dy);el.style.left=drag.x+'px';el.style.top=drag.y+'px';el.style.width=L+'px';el.style.transform=`rotate(${ang}rad)`;el.style.opacity=.4+mag*.6;
+ if(L<6){l.dir=null;return}cam.updateMatrixWorld();const rt=new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld,0),up=new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld,1);
+ const v=rt.multiplyScalar(dx).add(up.multiplyScalar(-dy)).normalize().multiplyScalar(mag);l.dir={x:v.x,y:v.y,z:v.z}}
+const PN=['head','neck','chest','hips','L shoulder','L elbow','L wrist','R shoulder','R elbow','R wrist','L hip','L knee','L ankle','R hip','R knee','R ankle'];
+const SEG={[LSHO+'-'+LELB]:'L upper arm',[LELB+'-'+LWRI]:'L forearm',[RSHO+'-'+RELB]:'R upper arm',[RELB+'-'+RWRI]:'R forearm',[LHIP+'-'+LKNE]:'L thigh',[LKNE+'-'+LANK]:'L shin',[RHIP+'-'+RKNE]:'R thigh',[RKNE+'-'+RANK]:'R shin',[NECK+'-'+CHEST]:'collar',[HEAD+'-'+NECK]:'neck',[CHEST+'-'+PELV]:'belt line',[LSHO+'-'+RSHO]:'shoulders',[LHIP+'-'+RHIP]:'hips',[LSHO+'-'+LHIP]:'L side',[RSHO+'-'+RHIP]:'R side'};
+function partName(a,b,t){if(a==b)return PN[a];if(t<.12)return PN[a];if(t>.88)return PN[b];return SEG[a+'-'+b]||PN[a]}
+function updateAim(){mouse.set(mx/innerWidth*2-1,-(my/innerHeight)*2+1);ray.setFromCamera(mouse,cam);const v=vis.find(v=>v.b==opp);aim=null;aimM.visible=false;$('tip').style.display='none';if(!v||drag)return;
+ const hits=ray.intersectObjects([...v.bones.map(b=>b.m),...v.joints],false);if(!hits.length)return;const h=hits[0],u=h.object.userData,A=opp.P[u.a],B=opp.P[u.b];
+ let t=0;if(u.a!=u.b){const ab=sub(B,A);t=clamp(dot(sub({x:h.point.x,y:h.point.y,z:h.point.z},A),ab)/(dot(ab,ab)||1),0,1)}
+ let a=u.a,b=u.b;if(u.joint){const bn=BONES.find(x=>x[0]==a&&x[0]!=x[1])||BONES.find(x=>x[1]==a);a=bn[0];b=bn[1];t=bn[0]==u.a?0:1}
+ const r=(BONES.find(x=>x[0]==a&&x[1]==b)||[0,0,.06])[2];aim={a,b,t,r};$('tip').textContent=partName(a,b,t);$('tip').style.display='block';const q=lerpP(A,B,t);aimM.position.set(q.x,q.y,q.z);aimM.visible=true}
+$('cross').style.display='none';
+function playerInput(){const fr=me.frame();let f=(keys.w?1:0)-(keys.s?1:0),s=(keys.d?1:0)-(keys.a?1:0);
+ if(me.mode=='stand'){const fw={x:Math.sin(me.yaw),z:Math.cos(me.yaw)},rt={x:Math.cos(me.yaw),z:-Math.sin(me.yaw)};me.move={x:fw.x*f+rt.x*s,z:fw.z*f+rt.z*s};me.crouch=keys[' ']?1:0;me.bridge=0;if(me.sprawlT>0)me.sprawlT-=1/60;if(keys[' ']&&keys.s)me.sprawlT=.15}
+ else{const fx=fr.u.x,fz=fr.u.z,fl=Math.hypot(fx,fz)||1,rx=fr.r.x,rz=fr.r.z,rl=Math.hypot(rx,rz)||1;me.move={x:fx/fl*f+rx/rl*s,z:fz/fl*f+rz/rl*s};me.bridge=keys[' ']?1:0;me.crouch=0;me.posture=!!(G.track&&G.track.top==me&&G.track.pos=='guard'&&!keys.shift);if(me.bridge&&!me.hipT&&aim)me.hipT={body:opp,a:aim.a,b:aim.b,t:aim.t};if(!me.bridge)me.hipT=null}}
+
+// ================= HUD =================
+let bT=0;function banner(a,b='',small){$('banner').style.fontSize=small||a.length>16?'30px':'54px';$('banner').textContent=a;$('sub').textContent=b;$('banner').style.opacity=$('sub').style.opacity=1;bT=2.4}
+function flash(s){$('sub').textContent=s;$('sub').style.opacity=1;bT=Math.max(bT,1.2)}
+function hud(){const ST={idle:'free',reach:'reaching',grip:'gripping'};
+ const mx_=Math.max(...opp.H.map(h=>h.s),...opp.S.map(x=>x.s),opp.neck.s);if(mx_>.03&&(creakT-=1/60)<=0){creakT=.25-mx_*.15;SFX.creak(mx_)}
+ (opp.lockOK||[]).forEach((v,i)=>{if(v&&!lockSeen[i]&&opp.mode!='stand'){flash(opp.H[i].n+' controlled on both sides. Lever it past the arrow.');tone(660,990,.15,.08,'triangle')}lockSeen[i]=v});
+ $('limbs').innerHTML=`<div style="margin-bottom:6px;color:#aab">STAMINA</div><div class=bar><i style="width:${me.stam*100}%;background:${me.stam<.3?'#e55':'#5c9'}"></i></div>`+
+  me.limbs.map((l,i)=>{const e=l.eff,w=Math.abs(e)*50;return`<div class="limb ${i==sel?'sel':''}"><b>${i+1}</b><span>${l.name}</span><em>${ST[l.st]}</em><div class=eff><i style="left:${e<0?50-w:50}%;width:${w}%;background:${e<0?'#f90':'#6cf'}"></i></div><small style="width:34px;color:#aab">${e>0?'pull':e<0?'push':''}</small></div>`}).join('')+
+  `<div style="margin-top:6px;color:#889;font-size:12px">${me.mode=='stand'?'standing':'on the mat'} · ${opp.mode=='stand'?opp.name+' standing':opp.name+' down'}</div>`;
+ const rows=[...opp.H.map(h=>[h.n,h.s]),...opp.S.map(x=>[x.n,x.s]),['Neck',opp.neck.s]];
+ $('strain').innerHTML=`<div style="color:#aab;margin-bottom:4px">${opp.name.toUpperCase()} — JOINT STRAIN</div>`+rows.map(([n,s])=>`<div style="display:flex;justify-content:space-between"><span>${n}</span><span>${(s*100|0)}%</span></div><div class=bar><i style="width:${s*100}%;background:hsl(${50-s*50},90%,55%)"></i></div>`).join('')+
+  `<div style="color:#889;font-size:12px">Stamina ${(opp.stam*100|0)}%</div>`+
+  (()=>{const mine=[...me.H.map(h=>[h.n,h.s]),...me.S.map(x=>[x.n,x.s]),['Neck',me.neck.s]].filter(x=>x[1]>.02);return mine.length?`<div style="color:#f88;margin:8px 0 4px">YOUR JOINTS</div>`+mine.map(([n,s])=>`<div style="display:flex;justify-content:space-between"><span>${n}</span><span>${(s*100|0)}%</span></div><div class=bar><i style="width:${s*100}%;background:#e44"></i></div>`).join(''):''})();
+ const c=G.track,coach=!c||c.pos=='standing'?(me.mode=='stand'&&opp.mode=='stand'?'Grip collar + sleeve. Shoot: Space, grip both his thighs, pull, drive W.':'')
+  :c.pos=='guard'?(c.top==me?'Posture up. Pin a knee (grip + E) and walk your hips around it (A/D).':'Break his posture: feet on his upper back, pull (Q). Then attack an arm or the collar.')
+  :c.pos=='side'||c.pos=='mount'?(c.top==me?'Chest pressure (W). Collar choke: both hands on his collar from opposite sides, pull apart.':'Frame (grip his collar, push E), bridge (Space), shrimp (A/D) to recover guard.')
+  :c.pos=='back'?(c.top==me?'Hands to the collar from both sides and pull apart.':'Fight the hands: grip his wrist, push it off (E). Turn in (A/D).'):'';
+ $('pos').innerHTML=(c?posLabel(c):'Standing')+(opp.choking?' · <b style=color:#fc3>choking him</b>':'')+(me.choking?' · <b style=color:#f66>YOU ARE BEING CHOKED</b>':'')+(coach&&!G.drill?`<div style="color:#8a93a8;font-size:12px;margin-top:2px">${coach}</div>`:'');
+ $('ps').textContent=G.ps;$('os').textContent=G.os;const t=Math.max(0,G.time);$('clock').textContent=(t/60|0)+':'+String(t%60|0).padStart(2,'0')}
+function menu(msg){G.state='menu';G.drill=null;$('menu').style.display='flex';$('drill').style.display='none';let done={};try{done=JSON.parse(localStorage.leverDrills||'{}')}catch(e){}
+ const champ=G.round>=OPPS.length;
+ $('card').innerHTML=`<h1>LEVERAGE<small>first-principles jiu-jitsu</small></h1>${msg||`<p>No technique buttons. You control two hands, two feet and your hips. Grip, hook, pull, push. A lock happens when a joint has nowhere left to go and you lever it anyway.</p>`}
+ <div class=sec>TOURNAMENT</div>
+ <div class=br>${OPPS.map((o,i)=>`<div class="${i==G.round?'cur':''} ${G.won[i]?'won':''}"><b>${G.won[i]?'✓ ':''}${o.name}</b>${o.tag}<br><span style=color:#99a>${o.desc}</span></div>`).join('')}</div>
+ <button id=go>${champ?'Run it back':'Fight '+OPPS[G.round].name}</button>
+ <div class=sec>LEARN <span style="color:#778;font-weight:400">guided drills with a passive partner</span></div>
+ <div class=drills>${DRILLS.map(d=>`<button class="alt dr" data-d="${d.id}">${done[d.id]?'✓ ':''}${d.title}<small>${d.blurb}</small></button>`).join('')}</div>
+ <div class=sec>FREE PRACTICE <span style="color:#778;font-weight:400">full AI, no clock</span></div>
+ <button class=alt id=pb>On your back (guard)</button><button class=alt id=pt>On top (in his guard)</button><button class=alt id=ps>Standing</button>
+ <div style="margin-top:14px;color:#778;font-size:12px">Esc pauses · H toggles the controls panel · C switches camera</div>`;
+ const opp_=()=>{if(champ){G.round=0;G.won=[]}};
+ $('go').onclick=()=>{opp_();startMatch(false)};$('pb').onclick=()=>{opp_();startMatch(true)};$('pt').onclick=()=>{opp_();startMatch('top')};$('ps').onclick=()=>{opp_();startMatch('stand')};
+ document.querySelectorAll('.dr').forEach(b=>b.onclick=()=>{opp_();startMatch(false,b.dataset.d)})}
+function endMatch(win,why){if(G.over)return;if(G.drill){G.over=true;banner(win?'NICE':'',why);setTimeout(()=>{G.drill=null;menu(`<p>${why}</p>`)},2200);return}G.over=true;banner(win?'YOU WIN':'YOU LOSE',why);
+ setTimeout(()=>{if(win&&!G.practice){G.won[G.round]=1;G.round++}
+  menu(G.round>=OPPS.length?`<p style="font-size:20px;color:#fff">🏆 Tournament champion.</p>`:`<p>${win?'Win':'Loss'} — ${why}</p>`)},2600)}
+
+let warnT=0;function warn(a,b){if(b&&G.time!=null&&performance.now()-warnT>2500){warnT=performance.now();banner(a,b,1);tone(440,330,.15,.08,'square')}}
+// ================= drills: guided checklists against a passive partner =================
+const gripOn=(b,i,pred)=>{const l=b.limbs[i];return l.st=='grip'&&pred(l.g.a,l.g.b)};
+const isArmSeg=(a,b)=>[LSHO,LELB,LWRI,RSHO,RELB,RWRI].includes(a)&&[LELB,LWRI,RELB,RWRI].includes(b);
+const isForearm=(a,b)=>(a==LELB&&b==LWRI)||(a==RELB&&b==RWRI);
+const isCollar=(a,b)=>(a==NECK&&b==CHEST)||(a==HEAD&&b==NECK);
+const isThigh=(a,b)=>(a==LHIP&&b==LKNE)||(a==RHIP&&b==RKNE);
+const handsOnSameForearm=()=>gripOn(me,0,isForearm)&&gripOn(me,1,isForearm)&&me.limbs[0].g.a==me.limbs[1].g.a;
+const DRILLS=[
+ {id:'grips',title:'Grip fighting',start:'stand',opp:0,blurb:'Collar and sleeve, then snap his head down.',steps:[
+  {t:'Walk in with <kbd>W</kbd> until you can reach him.',ok:()=>dist2()<.7},
+  {t:'Press <kbd>2</kbd> for your right hand, then click his <b>collar</b> (just under his chin).',ok:()=>gripOn(me,1,isCollar)},
+  {t:'Press <kbd>1</kbd> for your left hand and click his <b>sleeve</b> (forearm or elbow).',ok:()=>gripOn(me,0,isArmSeg)},
+  {t:'With a hand selected, scroll up or press <kbd>Q</kbd> to pull. Pull with both hands.',ok:()=>me.limbs[0].eff>0&&me.limbs[1].eff>0&&me.limbs[0].st=='grip'&&me.limbs[1].st=='grip'},
+  {t:'Snap him down: select each hand and <b>right-drag straight down</b> (it keeps pulling when you let go). Bring his head down.',ok:()=>opp.P[HEAD].y<1.45}]},
+ {id:'double',title:'Double-leg takedown',start:'stand',opp:0,blurb:'Change levels, trap both legs, lift and drive.',steps:[
+  {t:'Walk in with <kbd>W</kbd> until you are close, then hold <kbd>Space</kbd> to drop your level.',ok:()=>me.crouch&&dist2()<1},
+  {t:'Keep <kbd>Space</kbd> held. Grip <b>behind both his knees</b>: <kbd>1</kbd> + click one thigh, <kbd>2</kbd> + click the other.',ok:()=>gripOn(me,0,isThigh)&&gripOn(me,1,isThigh)&&me.limbs[0].g.a!=me.limbs[1].g.a},
+  {t:'Pull both hands (<kbd>Q</kbd> on each) and drive through him with <kbd>W</kbd>. Trapped legs can’t step.',ok:()=>opp.mode!='stand'}]},
+ {id:'armbar',title:'Armbar (two-hand lever)',start:true,opp:0,blurb:'Pin the wrist one way, push the elbow the other. A lever.',steps:[
+  {t:'<kbd>1</kbd> + click one of his <b>forearms near the wrist</b>.',ok:()=>gripOn(me,0,isForearm)},
+  {t:'<kbd>2</kbd> + click the <b>same arm just above the elbow</b> (upper arm). The arrow on his elbow turns <b style=color:#fc3>gold</b>: you control both sides.',ok:()=>(opp.lockOK||[]).some(v=>v)},
+  {t:'Keep <kbd>2</kbd> selected. <b>Right-drag</b> the way the gold arrow points and let go. Your hand keeps pushing that way.',ok:()=>{const i=lockArm();return i>=0&&me.limbs[1].dir&&dot(me.limbs[1].dir,neg(opp.H[i].f))>.3}},
+  {t:'Press <kbd>1</kbd> and <b>right-drag the opposite way</b>: wrist against the arrow. The elbow is now the fulcrum.',ok:()=>{const i=lockArm();return i>=0&&me.limbs[0].dir&&dot(me.limbs[0].dir,opp.H[i].f)>.3}},
+  {t:'Hold it. Re-aim if he turns the elbow. Watch the strain bar.',ok:()=>opp.H[0].s>=.99||opp.H[1].s>=.99}]},
+ {id:'collar',title:'Cross-collar choke',start:true,opp:0,blurb:'Two hands deep in the collar, from opposite sides. Scissor.',steps:[
+  {t:'Break his posture first. Feet on his <b>upper back</b>: <kbd>3</kbd> + click high on his back/shoulders, <kbd>4</kbd> + the same. Then pull both feet (<kbd>Q</kbd> on each).',ok:()=>me.limbs[2].st=='grip'&&me.limbs[3].st=='grip'&&me.limbs[2].eff>0&&me.limbs[3].eff>0},
+  {t:'Keep pulling until his chest comes down to you.',ok:()=>opp.P[CHEST].y<.55},
+  {t:'Right hand (<kbd>2</kbd>) grips his <b>collar</b> on one side of his neck.',ok:()=>gripOn(me,1,isCollar)},
+  {t:'Left hand (<kbd>1</kbd>) grips the <b>collar or neck</b> from the <b>other side</b>.',ok:()=>gripOn(me,0,isCollar)&&gripOn(me,1,isCollar)},
+  {t:'Pull both hands (<kbd>Q</kbd> on each, or right-drag each one apart). The HUD says when it’s choking.',ok:()=>opp.choking||opp.neck.s>.2},
+  {t:'Keep the squeeze until he taps.',ok:()=>opp.neck.s>=.99}]},
+ {id:'pass',title:'Guard pass',start:'top',opp:0,blurb:'Pin a knee, walk your hips around it, settle in side control.',steps:[
+  {t:'Grip one of his <b>knees</b> (click his thigh near the knee) and push it down: <kbd>E</kbd> a few times.',ok:()=>[0,1].some(i=>gripOn(me,i,isThigh)&&me.limbs[i].eff<0)},
+  {t:'Shift your hips around that knee with <kbd>A</kbd> or <kbd>D</kbd> (and <kbd>W</kbd> toward his head).',ok:()=>G.track&&G.track.top==me&&G.track.pos!='guard'},
+  {t:'Settle chest to chest (<kbd>W</kbd> toward his head). Hold side control or mount.',ok:()=>G.track&&G.track.top==me&&['side','mount'].includes(G.track.pos)&&G.track.t>1.5}]}];
+const neg=v=>({x:-v.x,y:-v.y,z:-v.z}),lockArm=()=>(opp.lockOK||[]).findIndex((v,i)=>v&&i<2);
+const dist2=()=>Math.hypot(me.P[CHEST].x-opp.P[CHEST].x,me.P[CHEST].z-opp.P[CHEST].z);
+function drillPanel(){const d=G.drill;if(!d){$('drill').style.display='none';return}$('drill').style.display='block';
+ $('drill').innerHTML=`<div style="font-weight:800;margin-bottom:6px">DRILL · ${d.title}</div>`+d.steps.map((s,i)=>`<div class="ds ${i<d.k?'done':i==d.k?'cur':''}">${i<d.k?'✓':i==d.k?'▶':'·'} ${s.t}</div>`).join('')+
+ `<div style="color:#778;margin-top:6px;font-size:11px">Esc → Enter restarts the drill · Esc → M menu</div>`}
+function drillStart(){const d=G.drill;d.k=0;d.hold=0;setHelp(0);banner('DRILL',d.title);drillPanel()}
+function drillTick(dt){const d=G.drill;if(d.k>=d.steps.length)return;if(d.steps[d.k].ok()){d.hold+=dt;if(d.hold>.25){d.k++;d.hold=0;tone(880,1320,.12,.1,'triangle');drillPanel();
+  if(d.k>=d.steps.length){SFX.score();try{const done=JSON.parse(localStorage.leverDrills||'{}');done[d.id]=1;localStorage.leverDrills=JSON.stringify(done)}catch(e){}endMatch(true,'Drill complete: '+d.title)}}}else d.hold=0}
+// ================= game rules tick =================
+const subName=n=>n=='Neck'?'choke':n.includes('elbow')?'armlock ('+n+')':n.includes('shoulder')?'shoulder lock ('+n+')':'leglock ('+n+')';
+function tick(dt){if(!G.practice&&!G.drill)G.time-=dt;
+ if(G.pending&&(G.pending.t+=dt)>1.2){G.pending=null;settleTakedown()}
+ trackPos(dt);if(G.drill)drillTick(dt);
+ const s1=[...opp.H.map(h=>[h.s,h.n]),...opp.S.map(x=>[x.s,x.n]),[opp.neck.s,'Neck']].find(x=>x[0]>=1);if(s1&&!G.over){SFX.tap();endMatch(true,`${opp.name} taps — ${subName(s1[1])}`)}
+ const s2=[...me.H.map(h=>[h.s,h.n]),...me.S.map(x=>[x.s,x.n]),[me.neck.s,'Neck']].find(x=>x[0]>=1);if(s2&&!G.over){SFX.tap();endMatch(false,`You tap — ${subName(s2[1])}`)}
+ if(G.time<=0&&!G.over)endMatch(G.ps>G.os,G.ps==G.os?`Time. ${G.ps}–${G.os}, referee gives it to ${opp.name}.`:`Time. ${G.ps}–${G.os} on points.`)}
+// ================= loop =================
+let last=performance.now(),accT=0;
+function frame(now){requestAnimationFrame(frame);const dt=Math.min(.05,(now-last)/1e3);last=now;
+ if(G.state=='match'){
+  if(G.paused){}
+  else if(!G.over){playerInput();AI(opp,me,dt);accT+=dt;while(accT>=DT){simStep();accT-=DT}tick(dt)}
+  else{accT+=dt;while(accT>=DT){simStep();accT-=DT}}
+  updateAim();updateDrag();hud()}
+ if(bT>0&&(bT-=dt)<=0)$('banner').style.opacity=$('sub').style.opacity=0;
+ if(bodies.length)render();else R.render(S,cam)}
+menu();requestAnimationFrame(frame);
+if(location.search.includes('test')){const s=document.createElement('script');s.src='tests.js?'+Date.now();document.head.append(s)}
+window.__dbg={SHR,twist,updateDrag,render,tick,classify,SELF,simStep,AI,fall,rise,canRise,startMatch,BONES,get me(){return me},get opp(){return opp}};
+</script></body></html>

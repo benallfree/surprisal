@@ -1,0 +1,17 @@
+10:39:59 start mlx-community/Qwen2.5-Coder-0.5B-bf16
+encode mlx-community/Qwen2.5-Coder-0.5B-bf16: 55854 -> 7186 bytes, 24126 tokens, 287s (84.1 tok/s), load 1s
+decode mlx-community/Qwen2.5-Coder-0.5B-bf16: 7186 -> 55854 bytes, 24126 tokens, 281s (85.8 tok/s), load 1s
+round trip OK
+10:49:36 start mlx-community/Qwen2.5-Coder-1.5B-bf16
+encode mlx-community/Qwen2.5-Coder-1.5B-bf16: 55854 -> 5856 bytes, 24126 tokens, 412s (58.6 tok/s), load 82s
+decode mlx-community/Qwen2.5-Coder-1.5B-bf16: 5856 -> 55854 bytes, 24126 tokens, 408s (59.1 tok/s), load 1s
+round trip OK
+11:04:45 start Qwen/Qwen3-4B-Base
+encode Qwen/Qwen3-4B-Base: 55854 -> 5166 bytes, 24126 tokens, 1042s (23.2 tok/s), load 186s
+decode Qwen/Qwen3-4B-Base: 5166 -> 55854 bytes, 24126 tokens, 1053s (22.9 tok/s), load 2s
+round trip OK
+11:42:57 start mlx-community/Qwen2.5-Coder-7B-bf16
+encode mlx-community/Qwen2.5-Coder-7B-bf16: 55854 -> 4928 bytes, 24126 tokens, 1348s (17.9 tok/s), load 532s
+decode mlx-community/Qwen2.5-Coder-7B-bf16: 4928 -> 55854 bytes, 24126 tokens, 1353s (17.8 tok/s), load 3s
+round trip OK
+12:37:02 all done

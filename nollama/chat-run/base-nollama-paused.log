@@ -1,0 +1,2 @@
+09:06:12 start nollama
+model Qwen3-0.6B-Base Q8_0, context 32768, 8 threads

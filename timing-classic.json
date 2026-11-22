@@ -1,0 +1,74 @@
+{
+ "file": "bjj-case/3-fully-minified.html",
+ "raw": 55854,
+ "rows": [
+  {
+   "name": "zip Deflate (7-Zip, 15 passes)",
+   "bytes": 21841,
+   "compress_s": 0.10471141700000001,
+   "decompress_s": 0.008849583999999994
+  },
+  {
+   "name": "zip Zopfli (advzip -4)",
+   "bytes": 21768,
+   "compress_s": 0.25755279100000006,
+   "decompress_s": 0.01097362499999997
+  },
+  {
+   "name": "zip LZMA (7-Zip)",
+   "bytes": 20548,
+   "compress_s": 0.05374350000000004,
+   "decompress_s": 0.03295929100000012
+  },
+  {
+   "name": "zip PPMd order 6 (7-Zip)",
+   "bytes": 19330,
+   "compress_s": 0.09028725000000008,
+   "decompress_s": 0.056871083999999884
+  },
+  {
+   "name": "gzip -9",
+   "bytes": 22392,
+   "compress_s": 0.022494750000000296,
+   "decompress_s": 0.014833834000000025
+  },
+  {
+   "name": "bzip2 -9",
+   "bytes": 21476,
+   "compress_s": 0.02364516700000013,
+   "decompress_s": 0.018012207999999644
+  },
+  {
+   "name": "xz -9e",
+   "bytes": 20448,
+   "compress_s": 0.06897999999999957,
+   "decompress_s": 0.019876582999999753
+  },
+  {
+   "name": "zstd --ultra -22",
+   "bytes": 21278,
+   "compress_s": 0.05195441699999992,
+   "decompress_s": 0.022943249999999808
+  },
+  {
+   "name": "brotli -q11",
+   "bytes": 19723,
+   "compress_s": 0.3024365829999997,
+   "decompress_s": 0.02673299999999972
+  },
+  {
+   "name": "context mixer, untrained",
+   "bytes": 18284,
+   "compress_s": 0.4295938329999999,
+   "decompress_s": 0.4673566659999997,
+   "setup_s": 0
+  },
+  {
+   "name": "context mixer, trained on 2020-24",
+   "bytes": 16545,
+   "compress_s": 0.20910954099999798,
+   "decompress_s": 0.20916662499999802,
+   "setup_s": 106.14341925000001
+  }
+ ]
+}

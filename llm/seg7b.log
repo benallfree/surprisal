@@ -1,0 +1,11 @@
+16:01:22 waiting for download
+16:01:52 waiting for download
+16:02:22 waiting for download
+16:02:52 waiting for download
+16:03:22 waiting for download
+16:03:52 waiting for download
+16:04:22 segments 16
+encode mlx-community/Qwen2.5-Coder-7B-bf16 x16: 55854 -> 7026 bytes, 24126 tokens, 337s (71.6 tok/s), load 1s
+decode mlx-community/Qwen2.5-Coder-7B-bf16 x16: 7026 -> 55854 bytes, 24126 tokens, 388s (62.2 tok/s), load 6s
+round trip OK
+16:16:38 segments 8

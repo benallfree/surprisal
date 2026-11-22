@@ -1,0 +1,25 @@
+00:43:56 0.5b-8bit
+encode llm/models/coder0.5b-8bit: 6000 -> 658 bytes, 2341 tokens, 13.6s (171.9 tok/s), load 0.6s
+fastcodec decode llm/models/coder0.5b-8bit: 658 -> 6000 bytes, 2341 tokens, 115.4s (20.3 tok/s), load 0.5s
+fastcodec2 decode llm/models/coder0.5b-8bit: 658 -> 6000 bytes, 2341 tokens, 10.0s (234.2 tok/s), load 0.5s
+fastcodec decode llm/models/coder0.5b-8bit: 658 -> 6000 bytes, 2341 tokens, 20.8s (112.4 tok/s), load 0.5s
+fastcodec2 decode llm/models/coder0.5b-8bit: 658 -> 6000 bytes, 2341 tokens, 10.5s (223.3 tok/s), load 0.7s
+00:46:56 1.5b-bf16
+encode mlx-community/Qwen2.5-Coder-1.5B-bf16: 6000 -> 585 bytes, 2341 tokens, 168.7s (13.9 tok/s), load 1.1s
+fastcodec decode mlx-community/Qwen2.5-Coder-1.5B-bf16: 585 -> 6000 bytes, 2341 tokens, 38.4s (61.0 tok/s), load 0.7s
+fastcodec2 decode mlx-community/Qwen2.5-Coder-1.5B-bf16: 585 -> 6000 bytes, 2341 tokens, 36.6s (64.0 tok/s), load 0.9s
+fastcodec decode mlx-community/Qwen2.5-Coder-1.5B-bf16: 585 -> 6000 bytes, 2341 tokens, 48.3s (48.4 tok/s), load 0.9s
+fastcodec2 decode mlx-community/Qwen2.5-Coder-1.5B-bf16: 585 -> 6000 bytes, 2341 tokens, 36.1s (64.8 tok/s), load 0.9s
+00:52:40 3b-8bit
+encode llm/models/coder3b-8bit: 6000 -> 554 bytes, 2341 tokens, 39.5s (59.2 tok/s), load 1.1s
+fastcodec decode llm/models/coder3b-8bit: 554 -> 6000 bytes, 2341 tokens, 39.5s (59.2 tok/s), load 0.7s
+fastcodec2 decode llm/models/coder3b-8bit: 554 -> 6000 bytes, 2341 tokens, 36.6s (64.0 tok/s), load 0.7s
+fastcodec decode llm/models/coder3b-8bit: 554 -> 6000 bytes, 2341 tokens, 36.3s (64.5 tok/s), load 0.7s
+fastcodec2 decode llm/models/coder3b-8bit: 554 -> 6000 bytes, 2341 tokens, 33.8s (69.2 tok/s), load 0.7s
+00:55:57 7b-8bit
+encode llm/models/coder7b-8bit: 6000 -> 529 bytes, 2341 tokens, 70.8s (33.1 tok/s), load 2.1s
+fastcodec decode llm/models/coder7b-8bit: 529 -> 6000 bytes, 2341 tokens, 73.5s (31.8 tok/s), load 0.9s
+fastcodec2 decode llm/models/coder7b-8bit: 529 -> 6000 bytes, 2341 tokens, 69.2s (33.9 tok/s), load 0.9s
+fastcodec decode llm/models/coder7b-8bit: 529 -> 6000 bytes, 2341 tokens, 72.7s (32.2 tok/s), load 0.9s
+fastcodec2 decode llm/models/coder7b-8bit: 529 -> 6000 bytes, 2341 tokens, 69.8s (33.6 tok/s), load 0.9s
+01:02:07 all done

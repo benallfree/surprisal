@@ -1,0 +1,32 @@
+23:14:22 params 14.4M, train 24.5 MB, 3000 steps x 24x1024 = 3.0 epochs
+23:14:23 step 1 loss 8.106 bits/byte (0.94s/step)
+23:15:39 step 100 loss 4.007 bits/byte (0.77s/step)
+23:17:00 step 200 loss 3.156 bits/byte (0.79s/step)
+23:18:26 step 300 loss 2.384 bits/byte (0.81s/step)
+23:19:56 step 400 loss 2.643 bits/byte (0.83s/step)
+23:21:31 step 500 loss 2.745 bits/byte (0.86s/step)  val 1.986 bits/byte
+23:23:01 step 600 loss 2.488 bits/byte (0.87s/step)
+23:24:32 step 700 loss 2.699 bits/byte (0.87s/step)
+23:26:01 step 800 loss 1.739 bits/byte (0.87s/step)
+23:27:29 step 900 loss 2.337 bits/byte (0.87s/step)
+23:28:55 step 1000 loss 1.465 bits/byte (0.87s/step)  val 1.753 bits/byte
+23:30:23 step 1100 loss 2.268 bits/byte (0.87s/step)
+23:31:52 step 1200 loss 2.186 bits/byte (0.87s/step)
+23:33:22 step 1300 loss 2.492 bits/byte (0.88s/step)
+23:34:51 step 1400 loss 1.769 bits/byte (0.88s/step)
+23:36:20 step 1500 loss 1.839 bits/byte (0.88s/step)  val 1.645 bits/byte
+23:37:46 step 1600 loss 1.937 bits/byte (0.88s/step)
+23:39:13 step 1700 loss 2.038 bits/byte (0.88s/step)
+23:40:42 step 1800 loss 1.883 bits/byte (0.88s/step)
+23:42:13 step 1900 loss 2.317 bits/byte (0.88s/step)
+23:43:42 step 2000 loss 1.882 bits/byte (0.88s/step)  val 1.581 bits/byte
+23:45:10 step 2100 loss 1.440 bits/byte (0.88s/step)
+23:46:39 step 2200 loss 2.173 bits/byte (0.88s/step)
+23:48:08 step 2300 loss 1.503 bits/byte (0.88s/step)
+23:49:31 step 2400 loss 2.717 bits/byte (0.88s/step)
+23:50:53 step 2500 loss 2.276 bits/byte (0.88s/step)  val 1.546 bits/byte
+23:52:15 step 2600 loss 2.429 bits/byte (0.87s/step)
+23:53:45 step 2700 loss 1.097 bits/byte (0.88s/step)
+23:55:25 step 2800 loss 2.688 bits/byte (0.88s/step)
+23:57:10 step 2900 loss 1.378 bits/byte (0.89s/step)
+23:58:48 step 3000 loss 1.427 bits/byte (0.89s/step)  val 1.530 bits/byte

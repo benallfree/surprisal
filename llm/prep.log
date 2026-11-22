@@ -1,0 +1,23 @@
+16:53:07 download 0.5B
+Fetching 11 files:   0%|          | 0/11 [00:00<?, ?it/s]Fetching 11 files: 100%|██████████| 11/11 [00:00<00:00, 3761.71it/s]
+16:53:08 convert 0.5B to 8-bit
+[INFO] Quantized model with 8.501 bits per weight.
+16:53:11 convert 0.5B to 4-bit
+[INFO] Quantized model with 4.502 bits per weight.
+16:53:13 download 1.5B
+Fetching 11 files:   9%|▉         | 1/11 [00:00<00:02,  3.70it/s]Fetching 11 files:  36%|███▋      | 4/11 [00:00<00:00, 11.75it/s]Fetching 11 files:  55%|█████▍    | 6/11 [00:00<00:00, 12.10it/s]Fetching 11 files:  73%|███████▎  | 8/11 [00:00<00:00, 13.40it/s]Fetching 11 files:  91%|█████████ | 10/11 [00:20<00:00, 13.40it/s]Fetching 11 files: 100%|██████████| 11/11 [01:28<00:00, 13.20s/it]Fetching 11 files: 100%|██████████| 11/11 [01:28<00:00,  8.02s/it]
+16:54:42 convert 1.5B to 8-bit
+[INFO] Quantized model with 8.501 bits per weight.
+16:54:46 convert 1.5B to 4-bit
+[INFO] Quantized model with 4.501 bits per weight.
+16:54:49 download 3B
+Fetching 12 files:   8%|▊         | 1/12 [00:00<00:01,  6.08it/s]Fetching 12 files:  17%|█▋        | 2/12 [00:00<00:02,  4.83it/s]Fetching 12 files:  42%|████▏     | 5/12 [00:00<00:00, 10.95it/s]Fetching 12 files:  75%|███████▌  | 9/12 [00:00<00:00, 17.63it/s]Fetching 12 files:  83%|████████▎ | 10/12 [00:20<00:00, 17.63it/s]Fetching 12 files:  92%|█████████▏| 11/12 [01:31<00:13, 13.30s/it]Fetching 12 files: 100%|██████████| 12/12 [02:44<00:00, 23.61s/it]Fetching 12 files: 100%|██████████| 12/12 [02:44<00:00, 13.72s/it]
+16:57:35 convert 3B to 8-bit
+[INFO] Quantized model with 8.501 bits per weight.
+16:57:40 convert 3B to 4-bit
+[INFO] Quantized model with 4.501 bits per weight.
+16:57:44 download 7B
+Fetching 13 files:   0%|          | 0/13 [00:00<?, ?it/s]Fetching 13 files: 100%|██████████| 13/13 [00:00<00:00, 3625.64it/s]
+16:57:45 convert 7B to 8-bit
+[INFO] Quantized model with 8.500 bits per weight.
+16:57:56 all done

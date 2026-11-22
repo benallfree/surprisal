@@ -1,0 +1,1972 @@
+{
+ "9-lives-an-escape-room": {
+  "textBytes": 49500,
+  "binBytes": 0,
+  "text_m0": 6970,
+  "text_brotli": 7492,
+  "text_brotliDict": 6808,
+  "bin_m0": 0,
+  "text_m5": 5710,
+  "bin_m5": 0
+ },
+ "9-lives": {
+  "textBytes": 6951,
+  "binBytes": 0,
+  "text_m0": 2702,
+  "text_brotli": 2708,
+  "text_brotliDict": 2349,
+  "bin_m0": 0,
+  "text_m5": 2050,
+  "bin_m5": 0
+ },
+ "a-hungry-black": {
+  "textBytes": 41146,
+  "binBytes": 0,
+  "text_m0": 7864,
+  "text_brotli": 8644,
+  "text_brotliDict": 7860,
+  "bin_m0": 0,
+  "text_m5": 6210,
+  "bin_m5": 0
+ },
+ "a-qr-maze": {
+  "textBytes": 13888,
+  "binBytes": 0,
+  "text_m0": 2736,
+  "text_brotli": 2844,
+  "text_brotliDict": 2520,
+  "bin_m0": 0,
+  "text_m5": 1918,
+  "bin_m5": 0
+ },
+ "a-voiding-your-problems": {
+  "textBytes": 31577,
+  "binBytes": 2029,
+  "text_m0": 8527,
+  "text_brotli": 9248,
+  "text_brotliDict": 8646,
+  "bin_m0": 1901,
+  "text_m5": 7388,
+  "bin_m5": 1888
+ },
+ "al13ycat": {
+  "textBytes": 17617,
+  "binBytes": 0,
+  "text_m0": 13315,
+  "text_brotli": 13132,
+  "text_brotliDict": 12803,
+  "bin_m0": 0,
+  "text_m5": 12898,
+  "bin_m5": 0
+ },
+ "all-you-have-to-do-is-dream": {
+  "textBytes": 17973,
+  "binBytes": 723,
+  "text_m0": 11845,
+  "text_brotli": 11672,
+  "text_brotliDict": 10991,
+  "bin_m0": 733,
+  "text_m5": 10972,
+  "bin_m5": 751
+ },
+ "alley-cat-noir": {
+  "textBytes": 12567,
+  "binBytes": 0,
+  "text_m0": 9453,
+  "text_brotli": 9266,
+  "text_brotliDict": 8801,
+  "bin_m0": 0,
+  "text_m5": 8867,
+  "bin_m5": 0
+ },
+ "alley-kitty": {
+  "textBytes": 37196,
+  "binBytes": 0,
+  "text_m0": 10757,
+  "text_brotli": 11774,
+  "text_brotliDict": 11193,
+  "bin_m0": 0,
+  "text_m5": 9963,
+  "bin_m5": 0
+ },
+ "ashes-of-ulthar": {
+  "textBytes": 12691,
+  "binBytes": 3701,
+  "text_m0": 9503,
+  "text_brotli": 9337,
+  "text_brotliDict": 8782,
+  "bin_m0": 3625,
+  "text_m5": 8851,
+  "bin_m5": 3670
+ },
+ "assault-on-city-13": {
+  "textBytes": 42222,
+  "binBytes": 0,
+  "text_m0": 10961,
+  "text_brotli": 11932,
+  "text_brotliDict": 11040,
+  "bin_m0": 0,
+  "text_m5": 9747,
+  "bin_m5": 0
+ },
+ "basement-cat-ascends": {
+  "textBytes": 53027,
+  "binBytes": 0,
+  "text_m0": 11396,
+  "text_brotli": 12130,
+  "text_brotliDict": 10984,
+  "bin_m0": 0,
+  "text_m5": 9923,
+  "bin_m5": 0
+ },
+ "bastet-night": {
+  "textBytes": 9934,
+  "binBytes": 5684,
+  "text_m0": 3563,
+  "text_brotli": 3648,
+  "text_brotliDict": 2538,
+  "bin_m0": 4650,
+  "text_m5": 2151,
+  "bin_m5": 4714
+ },
+ "bichita-the-cat": {
+  "textBytes": 7714,
+  "binBytes": 5305,
+  "text_m0": 5799,
+  "text_brotli": 5687,
+  "text_brotliDict": 5282,
+  "bin_m0": 5277,
+  "text_m5": 5305,
+  "bin_m5": 5314
+ },
+ "bike": {
+  "textBytes": 13504,
+  "binBytes": 0,
+  "text_m0": 4812,
+  "text_brotli": 5039,
+  "text_brotliDict": 4750,
+  "bin_m0": 0,
+  "text_m5": 4301,
+  "bin_m5": 0
+ },
+ "biralo": {
+  "textBytes": 17698,
+  "binBytes": 0,
+  "text_m0": 13276,
+  "text_brotli": 13001,
+  "text_brotliDict": 12492,
+  "bin_m0": 0,
+  "text_m5": 12593,
+  "bin_m5": 0
+ },
+ "black-cat-caffee": {
+  "textBytes": 25199,
+  "binBytes": 0,
+  "text_m0": 6791,
+  "text_brotli": 7109,
+  "text_brotliDict": 6496,
+  "bin_m0": 0,
+  "text_m5": 5875,
+  "bin_m5": 0
+ },
+ "black-cat-chat": {
+  "textBytes": 4886,
+  "binBytes": 0,
+  "text_m0": 3677,
+  "text_brotli": 3640,
+  "text_brotliDict": 3309,
+  "bin_m0": 0,
+  "text_m5": 3310,
+  "bin_m5": 0
+ },
+ "black-cat-detective-agency": {
+  "textBytes": 17493,
+  "binBytes": 0,
+  "text_m0": 13214,
+  "text_brotli": 13055,
+  "text_brotliDict": 12621,
+  "bin_m0": 0,
+  "text_m5": 12731,
+  "bin_m5": 0
+ },
+ "black-cat-in-25d-land": {
+  "textBytes": 22250,
+  "binBytes": 1789,
+  "text_m0": 6717,
+  "text_brotli": 6919,
+  "text_brotliDict": 5389,
+  "bin_m0": 1758,
+  "text_m5": 4849,
+  "bin_m5": 1760
+ },
+ "black-cat-maze": {
+  "textBytes": 59069,
+  "binBytes": 0,
+  "text_m0": 10968,
+  "text_brotli": 11767,
+  "text_brotliDict": 9992,
+  "bin_m0": 0,
+  "text_m5": 8797,
+  "bin_m5": 0
+ },
+ "black-cat-nine-lives-no-mercy": {
+  "textBytes": 17214,
+  "binBytes": 0,
+  "text_m0": 12966,
+  "text_brotli": 12753,
+  "text_brotliDict": 12253,
+  "bin_m0": 0,
+  "text_m5": 12364,
+  "bin_m5": 0
+ },
+ "black-cat-on-a-hot-tin-roof": {
+  "textBytes": 16108,
+  "binBytes": 0,
+  "text_m0": 12033,
+  "text_brotli": 11794,
+  "text_brotliDict": 11180,
+  "bin_m0": 0,
+  "text_m5": 11287,
+  "bin_m5": 0
+ },
+ "black-cat-on-cybertower": {
+  "textBytes": 32139,
+  "binBytes": 0,
+  "text_m0": 7885,
+  "text_brotli": 8086,
+  "text_brotliDict": 7299,
+  "bin_m0": 0,
+  "text_m5": 6819,
+  "bin_m5": 0
+ },
+ "black-cat-potions": {
+  "textBytes": 32319,
+  "binBytes": 0,
+  "text_m0": 8696,
+  "text_brotli": 9418,
+  "text_brotliDict": 8348,
+  "bin_m0": 0,
+  "text_m5": 7242,
+  "bin_m5": 0
+ },
+ "black-cat-shinobi": {
+  "textBytes": 53933,
+  "binBytes": 0,
+  "text_m0": 8784,
+  "text_brotli": 9385,
+  "text_brotliDict": 8501,
+  "bin_m0": 0,
+  "text_m5": 7727,
+  "bin_m5": 0
+ },
+ "black-cat-squadron": {
+  "textBytes": 16256,
+  "binBytes": 913,
+  "text_m0": 12222,
+  "text_brotli": 12060,
+  "text_brotliDict": 11543,
+  "bin_m0": 912,
+  "text_m5": 11667,
+  "bin_m5": 889
+ },
+ "black-cat-survivor": {
+  "textBytes": 40804,
+  "binBytes": 587,
+  "text_m0": 10282,
+  "text_brotli": 11223,
+  "text_brotliDict": 8546,
+  "bin_m0": 581,
+  "text_m5": 7944,
+  "bin_m5": 551
+ },
+ "black-cats-herbs-brews": {
+  "textBytes": 22128,
+  "binBytes": 0,
+  "text_m0": 12587,
+  "text_brotli": 12534,
+  "text_brotliDict": 11848,
+  "bin_m0": 0,
+  "text_m5": 11656,
+  "bin_m5": 0
+ },
+ "black-cats-omen": {
+  "textBytes": 30633,
+  "binBytes": 0,
+  "text_m0": 6032,
+  "text_brotli": 6334,
+  "text_brotliDict": 5781,
+  "bin_m0": 0,
+  "text_m5": 4777,
+  "bin_m5": 0
+ },
+ "black-cats-rise": {
+  "textBytes": 35212,
+  "binBytes": 0,
+  "text_m0": 11077,
+  "text_brotli": 11918,
+  "text_brotliDict": 10036,
+  "bin_m0": 0,
+  "text_m5": 8496,
+  "bin_m5": 0
+ },
+ "black-hat-black-cat": {
+  "textBytes": 36330,
+  "binBytes": 0,
+  "text_m0": 9348,
+  "text_brotli": 9874,
+  "text_brotliDict": 8589,
+  "bin_m0": 0,
+  "text_m5": 7026,
+  "bin_m5": 0
+ },
+ "black-kate": {
+  "textBytes": 11892,
+  "binBytes": 68402,
+  "text_m0": 8945,
+  "text_brotli": 8754,
+  "text_brotliDict": 8346,
+  "bin_m0": 3362,
+  "text_m5": 8403,
+  "bin_m5": 3536
+ },
+ "black-lantern": {
+  "textBytes": 6822,
+  "binBytes": 20908,
+  "text_m0": 2641,
+  "text_brotli": 2620,
+  "text_brotliDict": 1948,
+  "bin_m0": 8760,
+  "text_m5": 1679,
+  "bin_m5": 9204
+ },
+ "blackcathacker": {
+  "textBytes": 17580,
+  "binBytes": 0,
+  "text_m0": 13286,
+  "text_brotli": 13098,
+  "text_brotliDict": 12778,
+  "bin_m0": 0,
+  "text_m5": 12894,
+  "bin_m5": 0
+ },
+ "blackhats-black-cats": {
+  "textBytes": 38112,
+  "binBytes": 0,
+  "text_m0": 10759,
+  "text_brotli": 11660,
+  "text_brotliDict": 10868,
+  "bin_m0": 0,
+  "text_m5": 9071,
+  "bin_m5": 0
+ },
+ "blacky-returns-home": {
+  "textBytes": 32032,
+  "binBytes": 0,
+  "text_m0": 10136,
+  "text_brotli": 10865,
+  "text_brotliDict": 5488,
+  "bin_m0": 0,
+  "text_m5": 5598,
+  "bin_m5": 0
+ },
+ "boing-kat": {
+  "textBytes": 62926,
+  "binBytes": 1969,
+  "text_m0": 7537,
+  "text_brotli": 8200,
+  "text_brotliDict": 3506,
+  "bin_m0": 1898,
+  "text_m5": 3682,
+  "bin_m5": 1786
+ },
+ "boots-and-the-black-cauldron": {
+  "textBytes": 13501,
+  "binBytes": 905,
+  "text_m0": 10205,
+  "text_brotli": 10064,
+  "text_brotliDict": 9660,
+  "bin_m0": 809,
+  "text_m5": 9733,
+  "bin_m5": 795
+ },
+ "byte-armada": {
+  "textBytes": 14916,
+  "binBytes": 0,
+  "text_m0": 5188,
+  "text_brotli": 5497,
+  "text_brotliDict": 4751,
+  "bin_m0": 0,
+  "text_m5": 3921,
+  "bin_m5": 0
+ },
+ "cancel-elon": {
+  "textBytes": 17178,
+  "binBytes": 0,
+  "text_m0": 12918,
+  "text_brotli": 12674,
+  "text_brotliDict": 12111,
+  "bin_m0": 0,
+  "text_m5": 12195,
+  "bin_m5": 0
+ },
+ "carbons-kitty-care": {
+  "textBytes": 74269,
+  "binBytes": 0,
+  "text_m0": 8309,
+  "text_brotli": 9190,
+  "text_brotliDict": 3056,
+  "bin_m0": 0,
+  "text_m5": 3327,
+  "bin_m5": 0
+ },
+ "cash-cats-13": {
+  "textBytes": 45948,
+  "binBytes": 0,
+  "text_m0": 5810,
+  "text_brotli": 6414,
+  "text_brotliDict": 6037,
+  "bin_m0": 0,
+  "text_m5": 4798,
+  "bin_m5": 0
+ },
+ "cat-and-spikes": {
+  "textBytes": 15413,
+  "binBytes": 0,
+  "text_m0": 3266,
+  "text_brotli": 3334,
+  "text_brotliDict": 3134,
+  "bin_m0": 0,
+  "text_m5": 2591,
+  "bin_m5": 0
+ },
+ "cat-apult": {
+  "textBytes": 25226,
+  "binBytes": 1267,
+  "text_m0": 7205,
+  "text_brotli": 7651,
+  "text_brotliDict": 6924,
+  "bin_m0": 791,
+  "text_m5": 5894,
+  "bin_m5": 736
+ },
+ "cat-astrophe": {
+  "textBytes": 39698,
+  "binBytes": 0,
+  "text_m0": 10194,
+  "text_brotli": 11041,
+  "text_brotliDict": 10234,
+  "bin_m0": 0,
+  "text_m5": 8363,
+  "bin_m5": 0
+ },
+ "cat-black-snack": {
+  "textBytes": 8973,
+  "binBytes": 0,
+  "text_m0": 2729,
+  "text_brotli": 2777,
+  "text_brotliDict": 1649,
+  "bin_m0": 0,
+  "text_m5": 1359,
+  "bin_m5": 0
+ },
+ "cat-fight": {
+  "textBytes": 18439,
+  "binBytes": 0,
+  "text_m0": 5102,
+  "text_brotli": 5215,
+  "text_brotliDict": 4737,
+  "bin_m0": 0,
+  "text_m5": 4316,
+  "bin_m5": 0
+ },
+ "cat-hop-cloud": {
+  "textBytes": 2418,
+  "binBytes": 0,
+  "text_m0": 1001,
+  "text_brotli": 940,
+  "text_brotliDict": 760,
+  "bin_m0": 0,
+  "text_m5": 602,
+  "bin_m5": 0
+ },
+ "cat-mouse-hunt": {
+  "textBytes": 12777,
+  "binBytes": 0,
+  "text_m0": 4216,
+  "text_brotli": 4388,
+  "text_brotliDict": 4066,
+  "bin_m0": 0,
+  "text_m5": 3501,
+  "bin_m5": 0
+ },
+ "cat-rooftop-adventure": {
+  "textBytes": 9408,
+  "binBytes": 0,
+  "text_m0": 2774,
+  "text_brotli": 2788,
+  "text_brotliDict": 2329,
+  "bin_m0": 0,
+  "text_m5": 1866,
+  "bin_m5": 0
+ },
+ "cat-shooter-ritual-catacombs": {
+  "textBytes": 40346,
+  "binBytes": 0,
+  "text_m0": 10542,
+  "text_brotli": 11770,
+  "text_brotliDict": 10958,
+  "bin_m0": 0,
+  "text_m5": 9563,
+  "bin_m5": 0
+ },
+ "cat-survivors": {
+  "textBytes": 17496,
+  "binBytes": 0,
+  "text_m0": 13225,
+  "text_brotli": 13089,
+  "text_brotliDict": 12716,
+  "bin_m0": 0,
+  "text_m5": 12830,
+  "bin_m5": 0
+ },
+ "cat-vs-the-world": {
+  "textBytes": 25685,
+  "binBytes": 0,
+  "text_m0": 5603,
+  "text_brotli": 6020,
+  "text_brotliDict": 5574,
+  "bin_m0": 0,
+  "text_m5": 4428,
+  "bin_m5": 0
+ },
+ "catapoolt": {
+  "textBytes": 17757,
+  "binBytes": 0,
+  "text_m0": 13220,
+  "text_brotli": 12923,
+  "text_brotliDict": 12313,
+  "bin_m0": 0,
+  "text_m5": 12390,
+  "bin_m5": 0
+ },
+ "catculus": {
+  "textBytes": 17394,
+  "binBytes": 0,
+  "text_m0": 13141,
+  "text_brotli": 12937,
+  "text_brotliDict": 12507,
+  "bin_m0": 0,
+  "text_m5": 12621,
+  "bin_m5": 0
+ },
+ "catnfish": {
+  "textBytes": 16921,
+  "binBytes": 0,
+  "text_m0": 4139,
+  "text_brotli": 4256,
+  "text_brotliDict": 3610,
+  "bin_m0": 0,
+  "text_m5": 3038,
+  "bin_m5": 0
+ },
+ "catris": {
+  "textBytes": 20840,
+  "binBytes": 0,
+  "text_m0": 7046,
+  "text_brotli": 7166,
+  "text_brotliDict": 6203,
+  "bin_m0": 0,
+  "text_m5": 5469,
+  "bin_m5": 0
+ },
+ "catrooms": {
+  "textBytes": 24714,
+  "binBytes": 0,
+  "text_m0": 4858,
+  "text_brotli": 5366,
+  "text_brotliDict": 5005,
+  "bin_m0": 0,
+  "text_m5": 4113,
+  "bin_m5": 0
+ },
+ "cats-cargo": {
+  "textBytes": 14680,
+  "binBytes": 1539,
+  "text_m0": 11087,
+  "text_brotli": 10934,
+  "text_brotliDict": 10591,
+  "bin_m0": 1058,
+  "text_m5": 10667,
+  "bin_m5": 879
+ },
+ "cats-puzzle": {
+  "textBytes": 9504,
+  "binBytes": 3033,
+  "text_m0": 7184,
+  "text_brotli": 7113,
+  "text_brotliDict": 6714,
+  "bin_m0": 3061,
+  "text_m5": 6772,
+  "bin_m5": 3108
+ },
+ "catslap": {
+  "textBytes": 15220,
+  "binBytes": 3697,
+  "text_m0": 3592,
+  "text_brotli": 3793,
+  "text_brotliDict": 3179,
+  "bin_m0": 2094,
+  "text_m5": 2587,
+  "bin_m5": 2119
+ },
+ "catto": {
+  "textBytes": 23906,
+  "binBytes": 2581,
+  "text_m0": 5599,
+  "text_brotli": 6072,
+  "text_brotliDict": 5414,
+  "bin_m0": 2285,
+  "text_m5": 4293,
+  "bin_m5": 2278
+ },
+ "catway-xr": {
+  "textBytes": 38960,
+  "binBytes": 0,
+  "text_m0": 11004,
+  "text_brotli": 11802,
+  "text_brotliDict": 10523,
+  "bin_m0": 0,
+  "text_m5": 9014,
+  "bin_m5": 0
+ },
+ "celestial-paws": {
+  "textBytes": 16365,
+  "binBytes": 0,
+  "text_m0": 12321,
+  "text_brotli": 12137,
+  "text_brotliDict": 11634,
+  "bin_m0": 0,
+  "text_m5": 11715,
+  "bin_m5": 0
+ },
+ "chickpocalypse-meow": {
+  "textBytes": 43132,
+  "binBytes": 0,
+  "text_m0": 7896,
+  "text_brotli": 8880,
+  "text_brotliDict": 8068,
+  "bin_m0": 0,
+  "text_m5": 6388,
+  "bin_m5": 0
+ },
+ "clawdia": {
+  "textBytes": 37808,
+  "binBytes": 0,
+  "text_m0": 10486,
+  "text_brotli": 11386,
+  "text_brotliDict": 8931,
+  "bin_m0": 0,
+  "text_m5": 7606,
+  "bin_m5": 0
+ },
+ "clawopatra-and-the-gods-of-egypt": {
+  "textBytes": 41739,
+  "binBytes": 0,
+  "text_m0": 9283,
+  "text_brotli": 9948,
+  "text_brotliDict": 8627,
+  "bin_m0": 0,
+  "text_m5": 7252,
+  "bin_m5": 0
+ },
+ "clawstrike": {
+  "textBytes": 17692,
+  "binBytes": 0,
+  "text_m0": 13294,
+  "text_brotli": 13069,
+  "text_brotliDict": 12536,
+  "bin_m0": 0,
+  "text_m5": 12651,
+  "bin_m5": 0
+ },
+ "clawstruck": {
+  "textBytes": 20240,
+  "binBytes": 5630,
+  "text_m0": 3248,
+  "text_brotli": 3394,
+  "text_brotliDict": 2997,
+  "bin_m0": 4947,
+  "text_m5": 2330,
+  "bin_m5": 5115
+ },
+ "clawz": {
+  "textBytes": 24608,
+  "binBytes": 0,
+  "text_m0": 7489,
+  "text_brotli": 7723,
+  "text_brotliDict": 6578,
+  "bin_m0": 0,
+  "text_m5": 5686,
+  "bin_m5": 0
+ },
+ "clicker-pawry": {
+  "textBytes": 29334,
+  "binBytes": 2257,
+  "text_m0": 8190,
+  "text_brotli": 8778,
+  "text_brotliDict": 7921,
+  "bin_m0": 2070,
+  "text_m5": 6568,
+  "bin_m5": 2045
+ },
+ "cod-black-cat": {
+  "textBytes": 33777,
+  "binBytes": 0,
+  "text_m0": 9004,
+  "text_brotli": 9580,
+  "text_brotliDict": 8097,
+  "bin_m0": 0,
+  "text_m5": 7259,
+  "bin_m5": 0
+ },
+ "color-cat": {
+  "textBytes": 38491,
+  "binBytes": 0,
+  "text_m0": 9095,
+  "text_brotli": 9731,
+  "text_brotliDict": 8896,
+  "bin_m0": 0,
+  "text_m5": 7647,
+  "bin_m5": 0
+ },
+ "crafty-cauldron": {
+  "textBytes": 28040,
+  "binBytes": 0,
+  "text_m0": 9596,
+  "text_brotli": 10214,
+  "text_brotliDict": 9131,
+  "bin_m0": 0,
+  "text_m5": 7895,
+  "bin_m5": 0
+ },
+ "crazy-cat-crossing": {
+  "textBytes": 4085,
+  "binBytes": 0,
+  "text_m0": 1476,
+  "text_brotli": 1513,
+  "text_brotliDict": 1305,
+  "bin_m0": 0,
+  "text_m5": 1080,
+  "bin_m5": 0
+ },
+ "darkline-paws": {
+  "textBytes": 33616,
+  "binBytes": 1071,
+  "text_m0": 8017,
+  "text_brotli": 8592,
+  "text_brotliDict": 7535,
+  "bin_m0": 1057,
+  "text_m5": 6111,
+  "bin_m5": 1090
+ },
+ "dinner-for-two": {
+  "textBytes": 28737,
+  "binBytes": 0,
+  "text_m0": 9092,
+  "text_brotli": 9804,
+  "text_brotliDict": 8857,
+  "bin_m0": 0,
+  "text_m5": 7698,
+  "bin_m5": 0
+ },
+ "dont-forget-to-feed-the-cat": {
+  "textBytes": 19581,
+  "binBytes": 0,
+  "text_m0": 5908,
+  "text_brotli": 6249,
+  "text_brotliDict": 4387,
+  "bin_m0": 0,
+  "text_m5": 3896,
+  "bin_m5": 0
+ },
+ "dusk": {
+  "textBytes": 36111,
+  "binBytes": 0,
+  "text_m0": 10205,
+  "text_brotli": 10677,
+  "text_brotliDict": 9414,
+  "bin_m0": 0,
+  "text_m5": 8072,
+  "bin_m5": 0
+ },
+ "echoes-of-nyx": {
+  "textBytes": 17626,
+  "binBytes": 0,
+  "text_m0": 13329,
+  "text_brotli": 13209,
+  "text_brotliDict": 12757,
+  "bin_m0": 0,
+  "text_m5": 12868,
+  "bin_m5": 0
+ },
+ "edgars-mission": {
+  "textBytes": 36231,
+  "binBytes": 0,
+  "text_m0": 9541,
+  "text_brotli": 10293,
+  "text_brotliDict": 8928,
+  "bin_m0": 0,
+  "text_m5": 7837,
+  "bin_m5": 0
+ },
+ "enchiladas-day-off": {
+  "textBytes": 27379,
+  "binBytes": 2402,
+  "text_m0": 7006,
+  "text_brotli": 7706,
+  "text_brotliDict": 7075,
+  "bin_m0": 2380,
+  "text_m5": 5888,
+  "bin_m5": 2386
+ },
+ "encounter": {
+  "textBytes": 14902,
+  "binBytes": 0,
+  "text_m0": 4807,
+  "text_brotli": 5102,
+  "text_brotliDict": 4932,
+  "bin_m0": 0,
+  "text_m5": 4450,
+  "bin_m5": 0
+ },
+ "fateful-encounter": {
+  "textBytes": 5086,
+  "binBytes": 0,
+  "text_m0": 1768,
+  "text_brotli": 1755,
+  "text_brotliDict": 1540,
+  "bin_m0": 0,
+  "text_m5": 1190,
+  "bin_m5": 0
+ },
+ "feline-fury": {
+  "textBytes": 12989,
+  "binBytes": 1328,
+  "text_m0": 9828,
+  "text_brotli": 9726,
+  "text_brotliDict": 9337,
+  "bin_m0": 1263,
+  "text_m5": 9431,
+  "bin_m5": 1234
+ },
+ "fishing": {
+  "textBytes": 27954,
+  "binBytes": 0,
+  "text_m0": 7582,
+  "text_brotli": 8083,
+  "text_brotliDict": 7000,
+  "bin_m0": 0,
+  "text_m5": 6420,
+  "bin_m5": 0
+ },
+ "flykt": {
+  "textBytes": 17269,
+  "binBytes": 0,
+  "text_m0": 13053,
+  "text_brotli": 12879,
+  "text_brotliDict": 12449,
+  "bin_m0": 0,
+  "text_m5": 12565,
+  "bin_m5": 0
+ },
+ "furball": {
+  "textBytes": 5146,
+  "binBytes": 888,
+  "text_m0": 1893,
+  "text_brotli": 1978,
+  "text_brotliDict": 1642,
+  "bin_m0": 874,
+  "text_m5": 1320,
+  "bin_m5": 903
+ },
+ "go-home": {
+  "textBytes": 30215,
+  "binBytes": 909,
+  "text_m0": 10015,
+  "text_brotli": 10769,
+  "text_brotliDict": 9317,
+  "bin_m0": 900,
+  "text_m5": 7901,
+  "bin_m5": 892
+ },
+ "grass-tower-defense": {
+  "textBytes": 27772,
+  "binBytes": 2494,
+  "text_m0": 8007,
+  "text_brotli": 8462,
+  "text_brotliDict": 6891,
+  "bin_m0": 2342,
+  "text_m5": 5773,
+  "bin_m5": 2322
+ },
+ "gravity-cat": {
+  "textBytes": 30558,
+  "binBytes": 1127,
+  "text_m0": 9660,
+  "text_brotli": 10388,
+  "text_brotliDict": 8700,
+  "bin_m0": 1094,
+  "text_m5": 7855,
+  "bin_m5": 1055
+ },
+ "guardian-cat": {
+  "textBytes": 46711,
+  "binBytes": 0,
+  "text_m0": 9356,
+  "text_brotli": 10234,
+  "text_brotliDict": 9756,
+  "bin_m0": 0,
+  "text_m5": 8750,
+  "bin_m5": 0
+ },
+ "happy-birthday-jerry": {
+  "textBytes": 8181,
+  "binBytes": 0,
+  "text_m0": 5927,
+  "text_brotli": 5758,
+  "text_brotliDict": 5154,
+  "bin_m0": 0,
+  "text_m5": 5172,
+  "bin_m5": 0
+ },
+ "heimao": {
+  "textBytes": 44402,
+  "binBytes": 0,
+  "text_m0": 6567,
+  "text_brotli": 7479,
+  "text_brotliDict": 6971,
+  "bin_m0": 0,
+  "text_m5": 5750,
+  "bin_m5": 0
+ },
+ "hungry-cat": {
+  "textBytes": 17999,
+  "binBytes": 3700,
+  "text_m0": 5931,
+  "text_brotli": 6106,
+  "text_brotliDict": 4248,
+  "bin_m0": 3189,
+  "text_m5": 3636,
+  "bin_m5": 3231
+ },
+ "i-am-the-night": {
+  "textBytes": 17035,
+  "binBytes": 0,
+  "text_m0": 12881,
+  "text_brotli": 12713,
+  "text_brotliDict": 12315,
+  "bin_m0": 0,
+  "text_m5": 12456,
+  "bin_m5": 0
+ },
+ "i-got-up-on-the-wrong-foot": {
+  "textBytes": 17558,
+  "binBytes": 0,
+  "text_m0": 13225,
+  "text_brotli": 13063,
+  "text_brotliDict": 12658,
+  "bin_m0": 0,
+  "text_m5": 12781,
+  "bin_m5": 0
+ },
+ "infinite-hunger": {
+  "textBytes": 30439,
+  "binBytes": 1506,
+  "text_m0": 9603,
+  "text_brotli": 10431,
+  "text_brotliDict": 9237,
+  "bin_m0": 1479,
+  "text_m5": 8262,
+  "bin_m5": 1437
+ },
+ "inside-cat": {
+  "textBytes": 18157,
+  "binBytes": 0,
+  "text_m0": 13027,
+  "text_brotli": 12835,
+  "text_brotliDict": 12281,
+  "bin_m0": 0,
+  "text_m5": 12317,
+  "bin_m5": 0
+ },
+ "jazz": {
+  "textBytes": 16376,
+  "binBytes": 0,
+  "text_m0": 5844,
+  "text_brotli": 6162,
+  "text_brotliDict": 5705,
+  "bin_m0": 0,
+  "text_m5": 5254,
+  "bin_m5": 0
+ },
+ "kikis-cafe": {
+  "textBytes": 28489,
+  "binBytes": 1123,
+  "text_m0": 8927,
+  "text_brotli": 9390,
+  "text_brotliDict": 8492,
+  "bin_m0": 999,
+  "text_m5": 7484,
+  "bin_m5": 971
+ },
+ "kittens-crossing": {
+  "textBytes": 17086,
+  "binBytes": 0,
+  "text_m0": 12572,
+  "text_brotli": 12322,
+  "text_brotliDict": 11774,
+  "bin_m0": 0,
+  "text_m5": 11800,
+  "bin_m5": 0
+ },
+ "kittens-united": {
+  "textBytes": 31450,
+  "binBytes": 0,
+  "text_m0": 10819,
+  "text_brotli": 11491,
+  "text_brotliDict": 9709,
+  "bin_m0": 0,
+  "text_m5": 8591,
+  "bin_m5": 0
+ },
+ "kleptokitty": {
+  "textBytes": 16581,
+  "binBytes": 327,
+  "text_m0": 12533,
+  "text_brotli": 12412,
+  "text_brotliDict": 11955,
+  "bin_m0": 303,
+  "text_m5": 12069,
+  "bin_m5": 295
+ },
+ "kuro-neko-market": {
+  "textBytes": 17557,
+  "binBytes": 0,
+  "text_m0": 13284,
+  "text_brotli": 13124,
+  "text_brotliDict": 12668,
+  "bin_m0": 0,
+  "text_m5": 12832,
+  "bin_m5": 0
+ },
+ "kuro-neko": {
+  "textBytes": 17587,
+  "binBytes": 4518,
+  "text_m0": 3390,
+  "text_brotli": 3556,
+  "text_brotliDict": 3043,
+  "bin_m0": 4072,
+  "text_m5": 2354,
+  "bin_m5": 4120
+ },
+ "l1ttl3-paws": {
+  "textBytes": 17622,
+  "binBytes": 0,
+  "text_m0": 13327,
+  "text_brotli": 13195,
+  "text_brotliDict": 12741,
+  "bin_m0": 0,
+  "text_m5": 12873,
+  "bin_m5": 0
+ },
+ "laser-pointer-cat": {
+  "textBytes": 8616,
+  "binBytes": 4566,
+  "text_m0": 6433,
+  "text_brotli": 6266,
+  "text_brotliDict": 5806,
+  "bin_m0": 1042,
+  "text_m5": 5824,
+  "bin_m5": 1249
+ },
+ "laserpointer": {
+  "textBytes": 24712,
+  "binBytes": 1805,
+  "text_m0": 8611,
+  "text_brotli": 8967,
+  "text_brotliDict": 7135,
+  "bin_m0": 1775,
+  "text_m5": 6662,
+  "bin_m5": 1762
+ },
+ "lazy-claws": {
+  "textBytes": 27739,
+  "binBytes": 2013,
+  "text_m0": 8034,
+  "text_brotli": 8671,
+  "text_brotliDict": 7707,
+  "bin_m0": 2017,
+  "text_m5": 6395,
+  "bin_m5": 2028
+ },
+ "learn-to-code-cat": {
+  "textBytes": 29679,
+  "binBytes": 3704,
+  "text_m0": 7823,
+  "text_brotli": 8397,
+  "text_brotliDict": 7814,
+  "bin_m0": 2791,
+  "text_m5": 6523,
+  "bin_m5": 2713
+ },
+ "little-adventure-of-mr-cat": {
+  "textBytes": 15255,
+  "binBytes": 0,
+  "text_m0": 3883,
+  "text_brotli": 4092,
+  "text_brotliDict": 3795,
+  "bin_m0": 0,
+  "text_m5": 3062,
+  "bin_m5": 0
+ },
+ "lucky-charm": {
+  "textBytes": 17921,
+  "binBytes": 0,
+  "text_m0": 13168,
+  "text_brotli": 12933,
+  "text_brotliDict": 12338,
+  "bin_m0": 0,
+  "text_m5": 12442,
+  "bin_m5": 0
+ },
+ "memorygame": {
+  "textBytes": 41696,
+  "binBytes": 0,
+  "text_m0": 8352,
+  "text_brotli": 8660,
+  "text_brotliDict": 8011,
+  "bin_m0": 0,
+  "text_m5": 6564,
+  "bin_m5": 0
+ },
+ "meoq-n-shadow": {
+  "textBytes": 17418,
+  "binBytes": 0,
+  "text_m0": 13101,
+  "text_brotli": 12836,
+  "text_brotliDict": 12403,
+  "bin_m0": 0,
+  "text_m5": 12463,
+  "bin_m5": 0
+ },
+ "meow-mountain": {
+  "textBytes": 18093,
+  "binBytes": 0,
+  "text_m0": 13090,
+  "text_brotli": 12951,
+  "text_brotliDict": 12396,
+  "bin_m0": 0,
+  "text_m5": 12423,
+  "bin_m5": 0
+ },
+ "meow-or-never": {
+  "textBytes": 11481,
+  "binBytes": 0,
+  "text_m0": 4083,
+  "text_brotli": 4235,
+  "text_brotliDict": 3442,
+  "bin_m0": 0,
+  "text_m5": 2992,
+  "bin_m5": 0
+ },
+ "mewnbeams-adventure": {
+  "textBytes": 26573,
+  "binBytes": 2768,
+  "text_m0": 8963,
+  "text_brotli": 9469,
+  "text_brotliDict": 8885,
+  "bin_m0": 2805,
+  "text_m5": 7742,
+  "bin_m5": 2843
+ },
+ "mewsterpiece": {
+  "textBytes": 38420,
+  "binBytes": 0,
+  "text_m0": 10328,
+  "text_brotli": 11063,
+  "text_brotliDict": 9989,
+  "bin_m0": 0,
+  "text_m5": 8455,
+  "bin_m5": 0
+ },
+ "miami-mice": {
+  "textBytes": 19925,
+  "binBytes": 0,
+  "text_m0": 11993,
+  "text_brotli": 11808,
+  "text_brotliDict": 11118,
+  "bin_m0": 0,
+  "text_m5": 10998,
+  "bin_m5": 0
+ },
+ "midnight-heist": {
+  "textBytes": 22506,
+  "binBytes": 0,
+  "text_m0": 4817,
+  "text_brotli": 5210,
+  "text_brotliDict": 4460,
+  "bin_m0": 0,
+  "text_m5": 3471,
+  "bin_m5": 0
+ },
+ "midnight-paws": {
+  "textBytes": 17324,
+  "binBytes": 0,
+  "text_m0": 13014,
+  "text_brotli": 12767,
+  "text_brotliDict": 12272,
+  "bin_m0": 0,
+  "text_m5": 12377,
+  "bin_m5": 0
+ },
+ "midnight-prowler": {
+  "textBytes": 16595,
+  "binBytes": 0,
+  "text_m0": 12410,
+  "text_brotli": 12173,
+  "text_brotliDict": 11723,
+  "bin_m0": 0,
+  "text_m5": 11770,
+  "bin_m5": 0
+ },
+ "midnights-journey": {
+  "textBytes": 38314,
+  "binBytes": 0,
+  "text_m0": 11034,
+  "text_brotli": 11674,
+  "text_brotliDict": 10596,
+  "bin_m0": 0,
+  "text_m5": 9284,
+  "bin_m5": 0
+ },
+ "miss-fortune": {
+  "textBytes": 16537,
+  "binBytes": 353,
+  "text_m0": 12511,
+  "text_brotli": 12488,
+  "text_brotliDict": 11991,
+  "bin_m0": 340,
+  "text_m5": 12091,
+  "bin_m5": 308
+ },
+ "mochi-and-the-midnight-escape": {
+  "textBytes": 41692,
+  "binBytes": 0,
+  "text_m0": 11725,
+  "text_brotli": 12272,
+  "text_brotliDict": 10461,
+  "bin_m0": 0,
+  "text_m5": 10342,
+  "bin_m5": 0
+ },
+ "mor-chess-2": {
+  "textBytes": 13605,
+  "binBytes": 0,
+  "text_m0": 10098,
+  "text_brotli": 9843,
+  "text_brotliDict": 9260,
+  "bin_m0": 0,
+  "text_m5": 9318,
+  "bin_m5": 0
+ },
+ "mor-chess": {
+  "textBytes": 29654,
+  "binBytes": 2111,
+  "text_m0": 9224,
+  "text_brotli": 9708,
+  "text_brotliDict": 8651,
+  "bin_m0": 2100,
+  "text_m5": 7641,
+  "bin_m5": 2091
+ },
+ "mr13lackie": {
+  "textBytes": 7272,
+  "binBytes": 0,
+  "text_m0": 2768,
+  "text_brotli": 2846,
+  "text_brotliDict": 2401,
+  "bin_m0": 0,
+  "text_m5": 1953,
+  "bin_m5": 0
+ },
+ "night-dealer": {
+  "textBytes": 38062,
+  "binBytes": 0,
+  "text_m0": 9540,
+  "text_brotli": 10417,
+  "text_brotliDict": 9782,
+  "bin_m0": 0,
+  "text_m5": 8182,
+  "bin_m5": 0
+ },
+ "nine-lives-later-deja-meow": {
+  "textBytes": 27512,
+  "binBytes": 0,
+  "text_m0": 8510,
+  "text_brotli": 8957,
+  "text_brotliDict": 7157,
+  "bin_m0": 0,
+  "text_m5": 6499,
+  "bin_m5": 0
+ },
+ "nine-lives": {
+  "textBytes": 6256,
+  "binBytes": 22428,
+  "text_m0": 2420,
+  "text_brotli": 2438,
+  "text_brotliDict": 2098,
+  "bin_m0": 8223,
+  "text_m5": 1861,
+  "bin_m5": 9068
+ },
+ "non-mewtonian-cat": {
+  "textBytes": 12176,
+  "binBytes": 0,
+  "text_m0": 9034,
+  "text_brotli": 8817,
+  "text_brotliDict": 8202,
+  "bin_m0": 0,
+  "text_m5": 8264,
+  "bin_m5": 0
+ },
+ "nyx-felis-and-lampyris": {
+  "textBytes": 16425,
+  "binBytes": 0,
+  "text_m0": 12351,
+  "text_brotli": 12127,
+  "text_brotliDict": 11601,
+  "bin_m0": 0,
+  "text_m5": 11675,
+  "bin_m5": 0
+ },
+ "oggys-curse": {
+  "textBytes": 11623,
+  "binBytes": 4530,
+  "text_m0": 8778,
+  "text_brotli": 8688,
+  "text_brotliDict": 8247,
+  "bin_m0": 4326,
+  "text_m5": 8334,
+  "bin_m5": 4368
+ },
+ "onamazu": {
+  "textBytes": 17627,
+  "binBytes": 0,
+  "text_m0": 13339,
+  "text_brotli": 13187,
+  "text_brotliDict": 12786,
+  "bin_m0": 0,
+  "text_m5": 12908,
+  "bin_m5": 0
+ },
+ "open-the-door": {
+  "textBytes": 3424,
+  "binBytes": 0,
+  "text_m0": 1218,
+  "text_brotli": 1219,
+  "text_brotliDict": 989,
+  "bin_m0": 0,
+  "text_m5": 835,
+  "bin_m5": 0
+ },
+ "order-of-the-crimson-dot": {
+  "textBytes": 12430,
+  "binBytes": 2799,
+  "text_m0": 8870,
+  "text_brotli": 8664,
+  "text_brotliDict": 8154,
+  "bin_m0": 2664,
+  "text_m5": 8135,
+  "bin_m5": 2710
+ },
+ "pacific-black-cats": {
+  "textBytes": 25879,
+  "binBytes": 1285,
+  "text_m0": 9715,
+  "text_brotli": 10544,
+  "text_brotliDict": 7189,
+  "bin_m0": 1046,
+  "text_m5": 6933,
+  "bin_m5": 1088
+ },
+ "paw-of-fate": {
+  "textBytes": 8582,
+  "binBytes": 1398,
+  "text_m0": 6395,
+  "text_brotli": 6263,
+  "text_brotliDict": 5792,
+  "bin_m0": 1386,
+  "text_m5": 5813,
+  "bin_m5": 1358
+ },
+ "pawfect-stack-oracle-of-chaos": {
+  "textBytes": 15584,
+  "binBytes": 1459,
+  "text_m0": 11778,
+  "text_brotli": 11671,
+  "text_brotliDict": 11269,
+  "bin_m0": 1457,
+  "text_m5": 11392,
+  "bin_m5": 1447
+ },
+ "pawfect-stack-oracle-of-order": {
+  "textBytes": 15573,
+  "binBytes": 1459,
+  "text_m0": 11775,
+  "text_brotli": 11756,
+  "text_brotliDict": 11273,
+  "bin_m0": 1457,
+  "text_m5": 11407,
+  "bin_m5": 1447
+ },
+ "pawker": {
+  "textBytes": 19944,
+  "binBytes": 0,
+  "text_m0": 5824,
+  "text_brotli": 6033,
+  "text_brotliDict": 4404,
+  "bin_m0": 0,
+  "text_m5": 3767,
+  "bin_m5": 0
+ },
+ "pawspaint": {
+  "textBytes": 24587,
+  "binBytes": 3541,
+  "text_m0": 6261,
+  "text_brotli": 6615,
+  "text_brotliDict": 5669,
+  "bin_m0": 2732,
+  "text_m5": 4617,
+  "bin_m5": 2762
+ },
+ "pet-a-cat": {
+  "textBytes": 13739,
+  "binBytes": 0,
+  "text_m0": 10377,
+  "text_brotli": 10378,
+  "text_brotliDict": 9835,
+  "bin_m0": 0,
+  "text_m5": 9916,
+  "bin_m5": 0
+ },
+ "please-do-not-the-cat": {
+  "textBytes": 33395,
+  "binBytes": 1675,
+  "text_m0": 8203,
+  "text_brotli": 8585,
+  "text_brotliDict": 8128,
+  "bin_m0": 1515,
+  "text_m5": 6787,
+  "bin_m5": 1564
+ },
+ "poker-mysterio": {
+  "textBytes": 32411,
+  "binBytes": 0,
+  "text_m0": 10920,
+  "text_brotli": 11500,
+  "text_brotliDict": 9108,
+  "bin_m0": 0,
+  "text_m5": 8411,
+  "bin_m5": 0
+ },
+ "project-panther": {
+  "textBytes": 14307,
+  "binBytes": 0,
+  "text_m0": 10823,
+  "text_brotli": 10705,
+  "text_brotliDict": 10293,
+  "bin_m0": 0,
+  "text_m5": 10368,
+  "bin_m5": 0
+ },
+ "puzzle-black-cat-combat": {
+  "textBytes": 20300,
+  "binBytes": 0,
+  "text_m0": 5883,
+  "text_brotli": 6085,
+  "text_brotliDict": 5114,
+  "bin_m0": 0,
+  "text_m5": 4457,
+  "bin_m5": 0
+ },
+ "puzzle": {
+  "textBytes": 5002,
+  "binBytes": 6976,
+  "text_m0": 1644,
+  "text_brotli": 1498,
+  "text_brotliDict": 1297,
+  "bin_m0": 6885,
+  "text_m5": 957,
+  "bin_m5": 7012
+ },
+ "rin-the-cat-sorceresses": {
+  "textBytes": 27327,
+  "binBytes": 2938,
+  "text_m0": 6933,
+  "text_brotli": 7489,
+  "text_brotliDict": 6921,
+  "bin_m0": 1612,
+  "text_m5": 5923,
+  "bin_m5": 1562
+ },
+ "rll": {
+  "textBytes": 16344,
+  "binBytes": 7858,
+  "text_m0": 3095,
+  "text_brotli": 3267,
+  "text_brotliDict": 3037,
+  "bin_m0": 7114,
+  "text_m5": 2498,
+  "bin_m5": 7301
+ },
+ "roll-for-mischief": {
+  "textBytes": 17342,
+  "binBytes": 0,
+  "text_m0": 12533,
+  "text_brotli": 12246,
+  "text_brotliDict": 11702,
+  "bin_m0": 0,
+  "text_m5": 11724,
+  "bin_m5": 0
+ },
+ "roni-and-kira": {
+  "textBytes": 27976,
+  "binBytes": 139,
+  "text_m0": 8815,
+  "text_brotli": 9283,
+  "text_brotliDict": 6644,
+  "bin_m0": 91,
+  "text_m5": 6069,
+  "bin_m5": 28
+ },
+ "run-from-the-black-cat": {
+  "textBytes": 7365,
+  "binBytes": 0,
+  "text_m0": 5478,
+  "text_brotli": 5380,
+  "text_brotliDict": 4871,
+  "bin_m0": 0,
+  "text_m5": 4864,
+  "bin_m5": 0
+ },
+ "schrodingers-cat-walk": {
+  "textBytes": 29003,
+  "binBytes": 0,
+  "text_m0": 7394,
+  "text_brotli": 8026,
+  "text_brotliDict": 7509,
+  "bin_m0": 0,
+  "text_m5": 6156,
+  "bin_m5": 0
+ },
+ "semi-charmed-kind-of-dice": {
+  "textBytes": 33511,
+  "binBytes": 0,
+  "text_m0": 10025,
+  "text_brotli": 10573,
+  "text_brotliDict": 9110,
+  "bin_m0": 0,
+  "text_m5": 7978,
+  "bin_m5": 0
+ },
+ "shadow-alley": {
+  "textBytes": 33597,
+  "binBytes": 0,
+  "text_m0": 8238,
+  "text_brotli": 8721,
+  "text_brotliDict": 8002,
+  "bin_m0": 0,
+  "text_m5": 6925,
+  "bin_m5": 0
+ },
+ "shadow-network": {
+  "textBytes": 39061,
+  "binBytes": 0,
+  "text_m0": 7182,
+  "text_brotli": 7720,
+  "text_brotliDict": 7280,
+  "bin_m0": 0,
+  "text_m5": 5911,
+  "bin_m5": 0
+ },
+ "shadow-prowler": {
+  "textBytes": 11542,
+  "binBytes": 0,
+  "text_m0": 3105,
+  "text_brotli": 3067,
+  "text_brotliDict": 2794,
+  "bin_m0": 0,
+  "text_m5": 2179,
+  "bin_m5": 0
+ },
+ "shadowflame": {
+  "textBytes": 22058,
+  "binBytes": 6654,
+  "text_m0": 3150,
+  "text_brotli": 3406,
+  "text_brotliDict": 3075,
+  "bin_m0": 5818,
+  "text_m5": 2443,
+  "bin_m5": 5834
+ },
+ "shadows-escape": {
+  "textBytes": 47299,
+  "binBytes": 0,
+  "text_m0": 8217,
+  "text_brotli": 8889,
+  "text_brotliDict": 8616,
+  "bin_m0": 0,
+  "text_m5": 7120,
+  "bin_m5": 0
+ },
+ "snapcat": {
+  "textBytes": 16780,
+  "binBytes": 278,
+  "text_m0": 12692,
+  "text_brotli": 12685,
+  "text_brotliDict": 12189,
+  "bin_m0": 168,
+  "text_m5": 12296,
+  "bin_m5": 176
+ },
+ "snowball": {
+  "textBytes": 12188,
+  "binBytes": 0,
+  "text_m0": 3349,
+  "text_brotli": 3345,
+  "text_brotliDict": 2626,
+  "bin_m0": 0,
+  "text_m5": 2169,
+  "bin_m5": 0
+ },
+ "stray-cat": {
+  "textBytes": 10385,
+  "binBytes": 5856,
+  "text_m0": 3821,
+  "text_brotli": 3816,
+  "text_brotliDict": 3128,
+  "bin_m0": 2010,
+  "text_m5": 2585,
+  "bin_m5": 2123
+ },
+ "super-benji": {
+  "textBytes": 17594,
+  "binBytes": 0,
+  "text_m0": 13310,
+  "text_brotli": 13199,
+  "text_brotliDict": 12764,
+  "bin_m0": 0,
+  "text_m5": 12898,
+  "bin_m5": 0
+ },
+ "superstition-the-black-cat-game": {
+  "textBytes": 28776,
+  "binBytes": 0,
+  "text_m0": 7063,
+  "text_brotli": 7353,
+  "text_brotliDict": 6580,
+  "bin_m0": 0,
+  "text_m5": 5824,
+  "bin_m5": 0
+ },
+ "swing-a-cat": {
+  "textBytes": 35063,
+  "binBytes": 0,
+  "text_m0": 11054,
+  "text_brotli": 11779,
+  "text_brotliDict": 10612,
+  "bin_m0": 0,
+  "text_m5": 10103,
+  "bin_m5": 0
+ },
+ "tangled": {
+  "textBytes": 31441,
+  "binBytes": 0,
+  "text_m0": 7160,
+  "text_brotli": 8084,
+  "text_brotliDict": 7895,
+  "bin_m0": 0,
+  "text_m5": 6868,
+  "bin_m5": 0
+ },
+ "the-black-cat": {
+  "textBytes": 18232,
+  "binBytes": 1437,
+  "text_m0": 3261,
+  "text_brotli": 3289,
+  "text_brotliDict": 2956,
+  "bin_m0": 1326,
+  "text_m5": 2713,
+  "bin_m5": 1309
+ },
+ "the-black-cats-escape": {
+  "textBytes": 37056,
+  "binBytes": 0,
+  "text_m0": 8639,
+  "text_brotli": 9294,
+  "text_brotliDict": 8620,
+  "bin_m0": 0,
+  "text_m5": 7293,
+  "bin_m5": 0
+ },
+ "the-black-cross-cat": {
+  "textBytes": 30775,
+  "binBytes": 0,
+  "text_m0": 9693,
+  "text_brotli": 10069,
+  "text_brotliDict": 8822,
+  "bin_m0": 0,
+  "text_m5": 7846,
+  "bin_m5": 0
+ },
+ "the-familiar": {
+  "textBytes": 14110,
+  "binBytes": 1293,
+  "text_m0": 10422,
+  "text_brotli": 10137,
+  "text_brotliDict": 9568,
+  "bin_m0": 1279,
+  "text_m5": 9616,
+  "bin_m5": 1286
+ },
+ "the-giver": {
+  "textBytes": 12422,
+  "binBytes": 7913,
+  "text_m0": 3684,
+  "text_brotli": 3643,
+  "text_brotliDict": 3142,
+  "bin_m0": 7918,
+  "text_m5": 2573,
+  "bin_m5": 8044
+ },
+ "the-laser-cat": {
+  "textBytes": 10101,
+  "binBytes": 3238,
+  "text_m0": 2509,
+  "text_brotli": 2433,
+  "text_brotliDict": 2116,
+  "bin_m0": 2933,
+  "text_m5": 1666,
+  "bin_m5": 2916
+ },
+ "the-ninefold-gambit": {
+  "textBytes": 14494,
+  "binBytes": 1730,
+  "text_m0": 10968,
+  "text_brotli": 10870,
+  "text_brotliDict": 10433,
+  "bin_m0": 1256,
+  "text_m5": 10530,
+  "bin_m5": 1229
+ },
+ "the-soldier": {
+  "textBytes": 23835,
+  "binBytes": 0,
+  "text_m0": 7613,
+  "text_brotli": 8102,
+  "text_brotliDict": 7548,
+  "bin_m0": 0,
+  "text_m5": 6463,
+  "bin_m5": 0
+ },
+ "they-took-my-cat": {
+  "textBytes": 17586,
+  "binBytes": 0,
+  "text_m0": 13276,
+  "text_brotli": 13108,
+  "text_brotliDict": 12695,
+  "bin_m0": 0,
+  "text_m5": 12803,
+  "bin_m5": 0
+ },
+ "tom-black-cat": {
+  "textBytes": 13040,
+  "binBytes": 0,
+  "text_m0": 4928,
+  "text_brotli": 5109,
+  "text_brotliDict": 4438,
+  "bin_m0": 0,
+  "text_m5": 3807,
+  "bin_m5": 0
+ },
+ "tower-of-terror": {
+  "textBytes": 42534,
+  "binBytes": 0,
+  "text_m0": 7081,
+  "text_brotli": 7730,
+  "text_brotliDict": 7205,
+  "bin_m0": 0,
+  "text_m5": 6055,
+  "bin_m5": 0
+ },
+ "trampofelines": {
+  "textBytes": 17405,
+  "binBytes": 0,
+  "text_m0": 12952,
+  "text_brotli": 12697,
+  "text_brotliDict": 12171,
+  "bin_m0": 0,
+  "text_m5": 12231,
+  "bin_m5": 0
+ },
+ "triska-the-ninja-cat": {
+  "textBytes": 17406,
+  "binBytes": 0,
+  "text_m0": 13077,
+  "text_brotli": 12837,
+  "text_brotliDict": 12324,
+  "bin_m0": 0,
+  "text_m5": 12428,
+  "bin_m5": 0
+ },
+ "triskball": {
+  "textBytes": 42863,
+  "binBytes": 408,
+  "text_m0": 10090,
+  "text_brotli": 10849,
+  "text_brotliDict": 9179,
+  "bin_m0": 400,
+  "text_m5": 8254,
+  "bin_m5": 385
+ },
+ "typing-test": {
+  "textBytes": 29005,
+  "binBytes": 0,
+  "text_m0": 8805,
+  "text_brotli": 9357,
+  "text_brotliDict": 8150,
+  "bin_m0": 0,
+  "text_m5": 6682,
+  "bin_m5": 0
+ },
+ "unlucky-street": {
+  "textBytes": 14118,
+  "binBytes": 3014,
+  "text_m0": 4682,
+  "text_brotli": 4777,
+  "text_brotliDict": 4089,
+  "bin_m0": 1745,
+  "text_m5": 3315,
+  "bin_m5": 1695
+ },
+ "void-cat": {
+  "textBytes": 20186,
+  "binBytes": 0,
+  "text_m0": 10952,
+  "text_brotli": 10913,
+  "text_brotliDict": 10060,
+  "bin_m0": 0,
+  "text_m5": 9868,
+  "bin_m5": 0
+ },
+ "wake-the-cat": {
+  "textBytes": 36105,
+  "binBytes": 0,
+  "text_m0": 8682,
+  "text_brotli": 9640,
+  "text_brotliDict": 8691,
+  "bin_m0": 0,
+  "text_m5": 7359,
+  "bin_m5": 0
+ },
+ "wash-the-cat": {
+  "textBytes": 49492,
+  "binBytes": 0,
+  "text_m0": 9158,
+  "text_brotli": 10074,
+  "text_brotliDict": 8766,
+  "bin_m0": 0,
+  "text_m5": 7973,
+  "bin_m5": 0
+ },
+ "whiskers-witch-adventure": {
+  "textBytes": 17318,
+  "binBytes": 0,
+  "text_m0": 13095,
+  "text_brotli": 12952,
+  "text_brotliDict": 12587,
+  "bin_m0": 0,
+  "text_m5": 12710,
+  "bin_m5": 0
+ },
+ "wild-catch": {
+  "textBytes": 42896,
+  "binBytes": 0,
+  "text_m0": 12631,
+  "text_brotli": 13177,
+  "text_brotliDict": 11906,
+  "bin_m0": 0,
+  "text_m5": 10867,
+  "bin_m5": 0
+ },
+ "witch-potion": {
+  "textBytes": 17377,
+  "binBytes": 0,
+  "text_m0": 13144,
+  "text_brotli": 12999,
+  "text_brotliDict": 12595,
+  "bin_m0": 0,
+  "text_m5": 12709,
+  "bin_m5": 0
+ },
+ "witchcat": {
+  "textBytes": 17489,
+  "binBytes": 0,
+  "text_m0": 13109,
+  "text_brotli": 12859,
+  "text_brotliDict": 12294,
+  "bin_m0": 0,
+  "text_m5": 12418,
+  "bin_m5": 0
+ },
+ "witches-cauldron": {
+  "textBytes": 15461,
+  "binBytes": 1516,
+  "text_m0": 11694,
+  "text_brotli": 11575,
+  "text_brotliDict": 11133,
+  "bin_m0": 1518,
+  "text_m5": 11226,
+  "bin_m5": 1515
+ },
+ "worms-13k": {
+  "textBytes": 17618,
+  "binBytes": 0,
+  "text_m0": 13324,
+  "text_brotli": 13159,
+  "text_brotliDict": 12760,
+  "bin_m0": 0,
+  "text_m5": 12867,
+  "bin_m5": 0
+ },
+ "yarn-run": {
+  "textBytes": 18836,
+  "binBytes": 0,
+  "text_m0": 12889,
+  "text_brotli": 12589,
+  "text_brotliDict": 12121,
+  "bin_m0": 0,
+  "text_m5": 12062,
+  "bin_m5": 0
+ },
+ "zabobon": {
+  "textBytes": 17566,
+  "binBytes": 0,
+  "text_m0": 13281,
+  "text_brotli": 13166,
+  "text_brotliDict": 12816,
+  "bin_m0": 0,
+  "text_m5": 12934,
+  "bin_m5": 0
+ }
+}

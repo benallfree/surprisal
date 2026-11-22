@@ -1,0 +1,22 @@
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]Fetching 9 files: 100%|██████████| 9/9 [00:00<00:00, 4843.93it/s]
+07:21:52 1/197 9-lives-an-escape-room: {'bytes': 1875, 'tokens': 19186}  (6s)
+07:22:28 11/197 assault-on-city-13: {'bytes': 4014, 'tokens': 19499}  (42s)
+07:23:02 21/197 black-cat-maze: {'bytes': 4605, 'tokens': 21726}  (76s)
+07:23:48 31/197 black-cats-rise: {'bytes': 3886, 'tokens': 13208}  (121s)
+07:24:33 41/197 cancel-elon: {'bytes': 12865, 'tokens': 12181}  (166s)
+07:24:57 51/197 cat-rooftop-adventure: {'bytes': 644, 'tokens': 3434}  (191s)
+07:25:28 61/197 cats-puzzle: {'bytes': 7217, 'tokens': 6775}  (221s)
+07:26:03 71/197 clawz: {'bytes': 2137, 'tokens': 8078}  (257s)
+07:26:48 81/197 echoes-of-nyx: {'bytes': 13606, 'tokens': 12637}  (302s)
+07:27:23 91/197 grass-tower-defense: {'bytes': 2669, 'tokens': 10459}  (337s)
+07:28:20 101/197 jazz: {'bytes': 2543, 'tokens': 6775}  (393s)
+07:29:03 111/197 lazy-claws: {'bytes': 2755, 'tokens': 11214}  (437s)
+07:29:39 121/197 miami-mice: {'bytes': 10869, 'tokens': 12088}  (473s)
+07:30:23 131/197 night-dealer: {'bytes': 2874, 'tokens': 12179}  (516s)
+07:30:52 141/197 paw-of-fate: {'bytes': 6234, 'tokens': 5957}  (546s)
+07:31:26 151/197 puzzle: {'bytes': 208, 'tokens': 1418}  (580s)
+07:32:03 161/197 shadow-prowler: {'bytes': 474, 'tokens': 3362}  (616s)
+07:32:42 171/197 the-black-cat: {'bytes': 1022, 'tokens': 8138}  (656s)
+07:33:17 181/197 tower-of-terror: {'bytes': 1720, 'tokens': 13765}  (691s)
+07:34:25 191/197 wild-catch: {'bytes': 4393, 'tokens': 18338}  (759s)
+07:34:54 done qwen05-32k: 197 scored, 0 errors, total 1112530 bytes, 2195934 tokens

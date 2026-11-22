@@ -1,0 +1,2 @@
+FROM ./models/Qwen3-0.6B-Base-Q8_0.gguf
+TEMPLATE "{{ .Prompt }}"

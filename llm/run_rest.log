@@ -1,0 +1,4 @@
+23:14:15 start qwen05 rescore (2 games after normalizer fix)
+23:14:22 start scratch train 3000
+23:58:48 start scratch score
+00:00:05 start qwen LoRA 600 iters

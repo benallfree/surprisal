@@ -1,0 +1,3 @@
+22:54:55 split 197 games: text 4.63 MB, binary 0.26 MB
+22:56:30 untrained costs done; pretraining on 2020-2024
+22:58:49 text part totals (bytes): m0 1702895, m5 1480836, brotli 1749338, brotli+dict 1587029

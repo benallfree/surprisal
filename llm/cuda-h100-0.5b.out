@@ -1,0 +1,51 @@
+✓ Initialized. View run at 
+https://modal.com/apps/benallfree/main/ap-ongC72ZLASpPXFOYhYns2I
+✓ Created objects.
+├── ✓ Uploaded 
+│   /Volumes/Code/repos/spikes/model-assisted-compression/llm/cudacodec.py
+├── ✓ Created Function run_b200.
+├── ✓ Created Function run_l4.
+├── ✓ Created Function run_h200.
+└── ✓ Created Function run_h100.
+18:52:04 GPU: NVIDIA H100 80GB HBM3, CUDA_LAUNCH_BLOCKING=None
+`torch_dtype` is deprecated! Use `dtype` instead!
+18:52:10 Qwen/Qwen2.5-Coder-0.5B: loaded in 2.2s, 55854 bytes, 24126 tokens
+/usr/local/lib/python3.12/site-packages/torch/_inductor/lowering.py:7095: UserWarning: 
+Online softmax is disabled on the fly since Inductor decides to
+split the reduction. Cut an issue to PyTorch if this is an
+important use case and you want to speed it up with online
+softmax.
+
+  warnings.warn(
+18:52:38 captured 49 graphs in 24.4s
+18:52:38 forward graph at context 1024: 1.108 ms/step
+18:52:38 forward graph at context 13312: 1.159 ms/step
+18:52:38 forward graph at context 24576: 1.205 ms/step
+----------------------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                                                                  Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg    # of Calls  
+----------------------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                                                                 chunk         0.00%       0.000us         0.00%       0.000us       0.000us       2.044ms        17.08%       2.044ms       8.516us           240  
+                                    nvjet_tst_128x8_64x12_4x1_v_bz_TNT         0.00%       0.000us         0.00%       0.000us       0.000us       2.002ms        16.73%       2.002ms       8.343us           240  
+                              nvjet_tst_64x8_64x16_4x1_v_bx_splitK_TNT         0.00%       0.000us         0.00%       0.000us       0.000us       1.435ms        11.99%       1.435ms       5.979us           240  
+                                nvjet_tst_64x8_64x16_4x1_v_bz_bias_TNT         0.00%       0.000us         0.00%       0.000us       0.000us       1.069ms         8.94%       1.069ms       4.456us           240  
+                                     nvjet_tst_384x8_64x4_2x1_v_bz_TNT         0.00%       0.000us         0.00%       0.000us       0.000us     966.366us         8.07%     966.366us      96.637us            10  
+                                   nvjet_tst_64x8_64x16_4x1_v_badd_TNT         0.00%       0.000us         0.00%       0.000us       0.000us     927.128us         7.75%     927.128us       3.863us           240  
+                    triton_per_fused__to_copy_add_mean_mul_pow_rsqrt_0         0.00%       0.000us         0.00%       0.000us       0.000us     741.461us         6.20%     741.461us       1.513us           490  
+                                        Memcpy DtoD (Device -> Device)         0.00%       0.000us         0.00%       0.000us       0.000us     524.494us         4.38%     524.494us       1.070us           490  
+                                                                 merge         0.00%       0.000us         0.00%       0.000us       0.000us     459.907us         3.84%     459.907us       1.916us           240  
+void cublasLt::splitKreduce_kernel<32, 16, int, float, __nv_bfloat1...         0.00%       0.000us         0.00%       0.000us       0.000us     416.607us         3.48%     416.607us       1.736us           240  
+                                           triton_poi_fused_mul_silu_1         0.00%       0.000us         0.00%       0.000us       0.000us     290.107us         2.42%     290.107us       1.209us           240  
+                                                                 store         0.00%       0.000us         0.00%       0.000us       0.000us     284.212us         2.37%     284.212us       1.184us           240  
+                                                triton_poi_fused_cat_2         0.00%       0.000us         0.00%       0.000us       0.000us     270.145us         2.26%     270.145us       1.126us           240  
+                                        triton_poi_fused_add_cat_mul_1         0.00%       0.000us         0.00%       0.000us       0.000us     268.254us         2.24%     268.254us       1.118us           240  
+----------------------------------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+Self CPU time total: 32.934ms
+Self CUDA time total: 11.968ms
+
+18:53:07 encode: 24126 tokens -> 7183 bytes, 28.24s (854 tok/s; GPU part 28.20s, 856 tok/s)
+18:53:36 decode: 28.99s (832 tok/s), round trip OK
+H100, 2026-11-22 10:53, wall 98s including container start
+Qwen/Qwen2.5-Coder-0.5B: 55854 -> 7183 bytes, 24126 tokens | load 2.2s, capture 24.4s | encode 28.24s (854 tok/s) | decode 28.99s (832 tok/s) | round trip OK
+Stopping app - local entrypoint completed.
+✓ App completed. View run at 
+https://modal.com/apps/benallfree/main/ap-ongC72ZLASpPXFOYhYns2I

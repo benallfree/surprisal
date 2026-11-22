@@ -161,3 +161,42 @@ the existing archive byte for byte, and re-encoding gave a byte-identical archiv
   regression. Archives are identical either way, so the size column is unaffected.
 - The tok/s needed doesn't change: **804 tok/s** to decompress this file in 30 s, at any model size.
 
+
+## Measured on NVIDIA GPUs: `llm/cudacodec.py` on Modal (2026-11-22)
+
+The same coder (Witten-Neal-Cleary, frequency total 2^28) driven from PyTorch on rented GPUs, billed per second
+(`.venv/bin/modal run llm/cudacodec.py --gpu H200 --models 0.5B,1.5B,3B,7B`). Qwen2.5-Coder base models in bf16, the
+full BJJ game (55,854 bytes, 24,126 tokens). Every row decoded back to the input byte for byte. Logs:
+`llm/cuda-H200.log`, `llm/cuda-H100.log`, `llm/cuda-h200.out`, `llm/cuda-h100-0.5b.out` (profile).
+
+**The 0.5B decompresses the file in under 30 s: 27.0 s on an H200 and 29.0 s on an H100.**
+
+| model (bf16) | archive bytes | MLX bf16 bytes | GPU | compress | decompress | decompress tok/s | still needed for 30 s |
+|---|---:|---:|---|---:|---:|---:|---:|
+| 0.5B | 7,183 | 7,186 | H200 | 26.3 s | **27.0 s** | **893** | done |
+| 0.5B | 7,183 | 7,186 | H100 | 28.2 s | **29.0 s** | **832** | done |
+| 1.5B | 5,855 | 5,856 | H200 | 46.1 s | 46.8 s | 516 | 1.6× |
+| 3B | 5,276 | 5,256 (scored) | H200 | 69.0 s | 69.5 s | 347 | 2.3× |
+| 7B | 4,991 | 4,928 | H200 | 113.5 s | 114.2 s | 211 | 3.8× |
+
+- The times are the codec loop only. A cold run also pays for the container (a few seconds once the image is
+  cached), loading weights (1.5 s for the 0.5B, 11 s for the 7B from Modal's volume) and capturing the CUDA graphs
+  (13–17 s, mostly `torch.compile`; it could be cached). So a cold 0.5B decompress is about 50 s end to end today.
+- Archive sizes differ from MLX by a few bytes (the 7B by 1.3%): the kernels differ, so the probabilities differ
+  slightly. Each archive only decodes with the same code on the same kind of GPU.
+- The 7B runs at 211 tok/s × 15.2 GB of weights = 3.2 TB/s, 67% of the H200's 4.8 TB/s, which matches the
+  70% assumed in the bandwidth column above. The 0.5B is limited by kernel count, not bandwidth.
+- What it took (H100, 0.5B, full file):
+  1. Plain PyTorch in a CUDA graph: 231 tok/s. About 700 tiny kernels per token.
+  2. `torch.compile` to fuse norms, rope and the MLP: 510.
+  3. Chunked "flash-decoding" attention: 577. A [2 heads × 7 queries] × 24K matmul left most of the GPU idle.
+  4. One cache write per layer instead of two: 644.
+  5. A custom Triton attention kernel (one program per head and 256-token chunk, then a merge): 714.
+  6. A Triton cache store instead of `index_put_`, which hid 2 memory copies per layer: **832**.
+- How it's built: the whole step (forward pass, frequency table, the decoder's search) is replayed as CUDA graphs,
+  one per 1,024-token bucket. Compression is graph replays only, with no CPU round trip. Decompression queues the next
+  forward pass before reading the found token, so the CPU's coder update overlaps the GPU.
+- Bigger models need more bandwidth per token. Guesses, not measured: the 1.5B needs 1.6× and should get it from a
+  B200 (8 TB/s) or from 8-bit weights. The 7B needs 3.8×, which would take both a B200 and FP8 weights.
+- Cost: Modal bills the H200 at $4.54/h and the H100 at $3.95/h, by the second. The final four-model H200 run took
+  10 min (about $0.76). A 0.5B decompress on an H100 is about 3¢ of GPU time plus the cold start.

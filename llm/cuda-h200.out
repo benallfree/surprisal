@@ -1,0 +1,75 @@
+✓ Initialized. View run at 
+https://modal.com/apps/benallfree/main/ap-tMutrgeMzdu8YPba8a8rGR
+✓ Created objects.
+├── ✓ Uploaded 
+│   /Volumes/Code/repos/spikes/model-assisted-compression/llm/cudacodec.py
+├── ✓ Created Function run_l4.
+├── ✓ Created Function run_h100.
+├── ✓ Created Function run_h200.
+└── ✓ Created Function run_b200.
+18:54:04 GPU: NVIDIA H200, CUDA_LAUNCH_BLOCKING=None
+`torch_dtype` is deprecated! Use `dtype` instead!
+18:54:08 Qwen/Qwen2.5-Coder-0.5B: loaded in 1.5s, 55854 bytes, 24126 tokens
+/usr/local/lib/python3.12/site-packages/torch/_inductor/lowering.py:7095: UserWarning: 
+Online softmax is disabled on the fly since Inductor decides to
+split the reduction. Cut an issue to PyTorch if this is an
+important use case and you want to speed it up with online
+softmax.
+
+  warnings.warn(
+18:54:26 captured 49 graphs in 16.5s
+18:54:53 encode: 24126 tokens -> 7183 bytes, 26.29s (918 tok/s; GPU part 26.25s, 919 tok/s)
+18:55:20 decode: 27.01s (893 tok/s), round trip OK
+18:55:23 Qwen/Qwen2.5-Coder-1.5B: loaded in 2.6s, 55854 bytes, 24126 tokens
+/usr/local/lib/python3.12/site-packages/torch/_inductor/lowering.py:7095: UserWarning: 
+Online softmax is disabled on the fly since Inductor decides to
+split the reduction. Cut an issue to PyTorch if this is an
+important use case and you want to speed it up with online
+softmax.
+
+  warnings.warn(
+18:55:36 captured 49 graphs in 13.5s
+18:56:22 encode: 24126 tokens -> 5855 bytes, 46.06s (524 tok/s; GPU part 46.03s, 524 tok/s)
+18:57:09 decode: 46.77s (516 tok/s), round trip OK
+
+[1ALoading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]
+[1ALoading checkpoint shards:  50%|█████     | 1/2 [00:02<00:02,  2.54s/it]
+[1ALoading checkpoint shards: 100%|██████████| 2/2 [00:03<00:00,  1.47s/it]
+[1ALoading checkpoint shards: 100%|██████████| 2/2 [00:03<00:00,  1.63s/it]
+18:57:13 Qwen/Qwen2.5-Coder-3B: loaded in 3.7s, 55854 bytes, 24126 tokens
+/usr/local/lib/python3.12/site-packages/torch/_inductor/lowering.py:7095: UserWarning: 
+Online softmax is disabled on the fly since Inductor decides to
+split the reduction. Cut an issue to PyTorch if this is an
+important use case and you want to speed it up with online
+softmax.
+
+  warnings.warn(
+18:57:27 captured 49 graphs in 13.9s
+18:58:36 encode: 24126 tokens -> 5276 bytes, 68.97s (350 tok/s; GPU part 68.94s, 350 tok/s)
+18:59:45 decode: 69.48s (347 tok/s), round trip OK
+
+[1ALoading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]
+[1ALoading checkpoint shards:  25%|██▌       | 1/4 [00:02<00:06,  2.01s/it]
+[1ALoading checkpoint shards:  50%|█████     | 2/4 [00:07<00:08,  4.09s/it]
+[1ALoading checkpoint shards:  75%|███████▌  | 3/4 [00:10<00:03,  3.46s/it]
+[1ALoading checkpoint shards: 100%|██████████| 4/4 [00:10<00:00,  2.28s/it]
+[1ALoading checkpoint shards: 100%|██████████| 4/4 [00:10<00:00,  2.68s/it]
+18:59:57 Qwen/Qwen2.5-Coder-7B: loaded in 11.3s, 55854 bytes, 24126 tokens
+/usr/local/lib/python3.12/site-packages/torch/_inductor/lowering.py:7095: UserWarning: 
+Online softmax is disabled on the fly since Inductor decides to
+split the reduction. Cut an issue to PyTorch if this is an
+important use case and you want to speed it up with online
+softmax.
+
+  warnings.warn(
+19:00:12 captured 49 graphs in 15.0s
+19:02:05 encode: 24126 tokens -> 4991 bytes, 113.52s (213 tok/s; GPU part 113.49s, 213 tok/s)
+19:03:59 decode: 114.16s (211 tok/s), round trip OK
+H200, 2026-11-22 11:04, wall 602s including container start
+Qwen/Qwen2.5-Coder-0.5B: 55854 -> 7183 bytes, 24126 tokens | load 1.5s, capture 16.5s | encode 26.29s (918 tok/s) | decode 27.01s (893 tok/s) | round trip OK
+Qwen/Qwen2.5-Coder-1.5B: 55854 -> 5855 bytes, 24126 tokens | load 2.6s, capture 13.5s | encode 46.06s (524 tok/s) | decode 46.77s (516 tok/s) | round trip OK
+Qwen/Qwen2.5-Coder-3B: 55854 -> 5276 bytes, 24126 tokens | load 3.7s, capture 13.9s | encode 68.97s (350 tok/s) | decode 69.48s (347 tok/s) | round trip OK
+Qwen/Qwen2.5-Coder-7B: 55854 -> 4991 bytes, 24126 tokens | load 11.3s, capture 15.0s | encode 113.52s (213 tok/s) | decode 114.16s (211 tok/s) | round trip OK
+Stopping app - local entrypoint completed.
+✓ App completed. View run at 
+https://modal.com/apps/benallfree/main/ap-tMutrgeMzdu8YPba8a8rGR

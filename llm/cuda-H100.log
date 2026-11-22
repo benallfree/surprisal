@@ -1,0 +1,33 @@
+H100, 2026-11-22 10:01, wall 35s including container start
+Qwen/Qwen2.5-Coder-0.5B: 6011 -> 657 bytes, 2346 tokens | load 1.7s, capture 2.8s | encode 10.12s (232 tok/s) | decode 10.34s (227 tok/s) | round trip OK
+
+H100, 2026-11-22 10:01, wall 34s including container start
+Qwen/Qwen2.5-Coder-0.5B: 6011 -> 657 bytes, 2346 tokens | load 2.1s, capture 1.7s | encode 10.08s (233 tok/s) | decode 10.17s (231 tok/s) | round trip OK
+
+H100, 2026-11-22 10:02, wall 17s including container start
+Qwen/Qwen2.5-Coder-0.5B: 2000 -> 197 bytes, 731 tokens | load 1.9s, capture 0.7s | encode 2.46s (297 tok/s) | decode 2.48s (294 tok/s) | round trip OK
+
+H100, 2026-11-22 10:05, wall 29s including container start
+Qwen/Qwen2.5-Coder-0.5B: 6011 -> 656 bytes, 2346 tokens | load 2.0s, capture 7.9s | encode 3.29s (713 tok/s) | decode 3.36s (698 tok/s) | round trip OK
+
+H100, 2026-11-22 10:24, wall 133s including container start
+Qwen/Qwen2.5-Coder-0.5B: 55854 -> 7184 bytes, 24126 tokens | load 8.3s, capture 18.7s | encode 46.62s (517 tok/s) | decode 47.29s (510 tok/s) | round trip OK
+
+H100, 2026-11-22 10:27, wall 152s including container start
+Qwen/Qwen2.5-Coder-0.5B: 55854 -> 7191 bytes, 24126 tokens | load 1.7s, capture 18.4s | encode 59.11s (408 tok/s) | decode 59.81s (403 tok/s) | round trip OK
+
+H100, 2026-11-22 10:40, wall 114s including container start
+Qwen/Qwen2.5-Coder-0.5B: 55854 -> 7187 bytes, 24126 tokens | load 1.4s, capture 18.3s | encode 41.00s (588 tok/s) | decode 41.79s (577 tok/s) | round trip OK
+
+H100, 2026-11-22 10:43, wall 121s including container start
+Qwen/Qwen2.5-Coder-0.5B: 55854 -> 7187 bytes, 24126 tokens | load 1.8s, capture 30.2s | encode 36.71s (657 tok/s) | decode 37.46s (644 tok/s) | round trip OK
+
+H100, 2026-11-22 10:47, wall 33s including container start
+Qwen/Qwen2.5-Coder-0.5B: 6011 -> 656 bytes, 2346 tokens | load 2.6s, capture 9.9s | encode 2.73s (858 tok/s) | decode 2.81s (835 tok/s) | round trip OK
+
+H100, 2026-11-22 10:49, wall 98s including container start
+Qwen/Qwen2.5-Coder-0.5B: 55854 -> 7183 bytes, 24126 tokens | load 2.3s, capture 17.2s | encode 33.11s (729 tok/s) | decode 33.78s (714 tok/s) | round trip OK
+
+H100, 2026-11-22 10:53, wall 98s including container start
+Qwen/Qwen2.5-Coder-0.5B: 55854 -> 7183 bytes, 24126 tokens | load 2.2s, capture 24.4s | encode 28.24s (854 tok/s) | decode 28.99s (832 tok/s) | round trip OK
+

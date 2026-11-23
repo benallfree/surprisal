@@ -888,6 +888,73 @@ def fast_class():
         tl.store(out_ptr + r[:, None] * (NQ * HD) + h * HD + d[None, :], o, mask=rm[:, None])
 
     @triton.jit
+    def k_rattn5(Q_ptr, sh_ptr, QS, K_ptr, V_ptr, E_ptr, out_ptr, pos0, R, maxlen, NQ: tl.constexpr, NKV: tl.constexpr,
+                 GRP: tl.constexpr, GP: tl.constexpr, HD: tl.constexpr, BR: tl.constexpr, CH: tl.constexpr,
+                 NA: tl.constexpr, ZTH: tl.constexpr):
+        """k_rattn3 with the K/V tiles shared by every q head of a kv head: one program covers BR query rows x all
+        GRP q heads of kv head j, so each K/V tile is loaded once per BR rows instead of once per q head. The M rows
+        of the tiles are (row, q head) pairs; the arithmetic per pair is exactly k_rattn3's."""
+        MR: tl.constexpr = BR * GP
+        rb, j = tl.program_id(0), tl.program_id(1)
+        mi = tl.arange(0, MR)
+        g = mi % GP
+        r = rb * BR + mi // GP
+        rm = (r < R) & (g < GRP)
+        h = j * GRP + g
+        pr = pos0 + r
+        d = tl.arange(0, HD)
+        qa = Q_ptr + (r[:, None] * NQ + h[:, None]) * HD + d[None, :]
+        q0 = tl.load(qa, mask=rm[:, None], other=0)
+        q1 = tl.load(qa + QS, mask=rm[:, None], other=0)
+        q2 = tl.load(qa + 2 * QS, mask=rm[:, None], other=0)
+        n = 42 - tl.load(sh_ptr + r * NQ + h, mask=rm, other=0)
+        inv = tl.exp2(-n.to(tl.float64))[:, None]
+        last = pos0 + tl.minimum(rb * BR + BR, R) - 1
+        PS = NKV * maxlen * HD
+        kb = j * maxlen * HD
+        Mf = tl.full([MR], -1e300, tl.float64)
+        for c in range(0, last // CH + 1):
+            t = c * CH + tl.arange(0, CH)
+            ka = K_ptr + kb + t[:, None] * HD + d[None, :]
+            km = (t <= last)[:, None]
+            k0 = tl.trans(tl.load(ka, mask=km, other=0))
+            k1 = tl.trans(tl.load(ka + PS, mask=km, other=0))
+            k2 = tl.trans(tl.load(ka + 2 * PS, mask=km, other=0))
+            accf = _dot9f(q0, q1, q2, k0, k1, k2)
+            Mf = tl.maximum(Mf, tl.max(tl.where(t[None, :] <= pr[:, None], accf, -1e300), axis=1))
+        M = tl.floor(Mf[:, None] * inv + 0.5)
+        Of = tl.zeros([MR, HD], dtype=tl.float64)
+        Zf = tl.zeros([MR], dtype=tl.float64)
+        for c in range(0, last // CH + 1):
+            t = c * CH + tl.arange(0, CH)
+            ka = K_ptr + kb + t[:, None] * HD + d[None, :]
+            km = (t <= last)[:, None]
+            k0 = tl.trans(tl.load(ka, mask=km, other=0))
+            k1 = tl.trans(tl.load(ka + PS, mask=km, other=0))
+            k2 = tl.trans(tl.load(ka + 2 * PS, mask=km, other=0))
+            sc_ = tl.floor(_dot9f(q0, q1, q2, k0, k1, k2) * inv + 0.5)
+            dd = tl.where((t[None, :] <= pr[:, None]) & rm[:, None], M - sc_, NA - 1.0)
+            if tl.min(tl.min(dd, axis=1), axis=0) < ZTH:
+                w = tl.load(E_ptr + tl.minimum(dd, NA - 1.0).to(tl.int32))
+                Zf += tl.sum(w.to(tl.float64), axis=1)
+                w0 = (((w + 128) & 255) - 128)
+                w1r = (w - w0) >> 8
+                w1 = ((w1r + 128) & 255) - 128
+                w2 = (w1r - w1) >> 8
+                va = V_ptr + kb + t[:, None] * HD + d[None, :]
+                v0 = tl.load(va, mask=km, other=0)
+                v1 = tl.load(va + PS, mask=km, other=0)
+                v2 = tl.load(va + 2 * PS, mask=km, other=0)
+                Of += _dot9f(w0.to(tl.int8), w1.to(tl.int8), w2.to(tl.int8), v0, v1, v2)
+        Oa = Of.to(tl.int64)
+        Zb = tl.maximum(Zf.to(tl.int64), 1)[:, None]  # padded heads/rows have Z = 0 and are not stored
+        a = tl.abs(Oa)
+        hi = a // Zb
+        o = (hi << 12) + ((a - hi * Zb) << 12) // Zb
+        o = tl.where(Oa < 0, -o, o)
+        tl.store(out_ptr + r[:, None] * (NQ * HD) + h[:, None] * HD + d[None, :], o, mask=rm[:, None])
+
+    @triton.jit
     def k_rblock(x_ptr, M_ptr, e_ptr, PS, ein, N: tl.constexpr, BLOCK: tl.constexpr):
         """per row: blockf -> digit planes and exponent ein + sh."""
         row = tl.program_id(0)
@@ -1329,7 +1396,7 @@ def fast_class():
                     wsums[k] = q.view(O_, K_ // 64, 64).to(torch.int32).sum(-1, dtype=torch.int32).contiguous()
                 return wsums[k]
 
-            def encode_batched(ids, P=2048, say=None, BM=16, CHa=64, NWa=4, GBO=256, GBR=64, GNW=8, GST=3, HBO=256, HBR=64):
+            def encode_batched(ids, P=2048, say=None, BM=16, CHa=64, NWa=4, BRg=4 if hd >= 128 and 8 * grp >= 7 * (1 << (grp - 1).bit_length()) else 0, GBO=256, GBR=64, GNW=8, GST=3, HBO=256, HBR=64):
                 """Compress with every position as matrix-matrix work: rows of P positions run through all layers,
                 attention reads the digit-plane cache. Same spec, so the same counts as the step-by-step path."""
                 n = len(ids)
@@ -1368,8 +1435,13 @@ def fast_class():
                         E = gemm(Ly["qkv"], Md, PSd, R, A_qkv)
                         k_rqkv[(R,)](A_qkv, E, e1, Ly["b"], C, S, r0, KV8[l, 0], KV8[l, 1], maxlen, Qd, shq, QS,
                                      NQ=nq, NKV=nkv, HD=hd, QP=QP_, SCQ=SC)
-                        k_rattn3[(triton.cdiv(R, BM), nq)](Qd, shq, QS, KV8[l, 0], KV8[l, 1], EXPA32, Ob, r0, R, maxlen, NQ=nq,
-                                                           NKV=nkv, GRP=grp, HD=hd, BM=BM, CH=CHa, NA=NA, ZTH=ZTH, num_warps=NWa)
+                        if BRg:  # K/V tiles shared across the q heads of a kv head
+                            k_rattn5[(triton.cdiv(R, BRg), nkv)](Qd, shq, QS, KV8[l, 0], KV8[l, 1], EXPA32, Ob, r0, R, maxlen,
+                                                                 NQ=nq, NKV=nkv, GRP=grp, GP=1 << (grp - 1).bit_length(), HD=hd,
+                                                                 BR=BRg, CH=CHa, NA=NA, ZTH=ZTH, num_warps=NWa)
+                        else:
+                            k_rattn3[(triton.cdiv(R, BM), nq)](Qd, shq, QS, KV8[l, 0], KV8[l, 1], EXPA32, Ob, r0, R, maxlen, NQ=nq,
+                                                               NKV=nkv, GRP=grp, HD=hd, BM=BM, CH=CHa, NA=NA, ZTH=ZTH, num_warps=NWa)
                         k_rblock[(R,)](Ob, Mo, e2, P * nq * hd, -24, N=nq * hd, BLOCK=1 << (nq * hd - 1).bit_length())
                         E = gemm(Ly["o"], Mo, P * nq * hd, R, A_d)
                         k_rnorm[(R,)](H, A_d, E, e2, Ly["g2"], EPS, Md, e1, PSd, D=D, BLOCK=NB_, ADD=True, num_warps=8)
@@ -1504,7 +1576,7 @@ if modal is not None:
                 opts = dict(kv.split("=") for kv in targ.split(",") if "=" in kv)
                 targ2 = "prof" if "prof" in targ.split(",") else ""
                 Pr = int(opts.get("P", 2048))
-                ak = dict(BM=int(opts.get("BM", 16)), CHa=int(opts.get("CH", 64)), NWa=int(opts.get("NW", 4)),
+                ak = dict(BM=int(opts.get("BM", 16)), CHa=int(opts.get("CH", 64)), NWa=int(opts.get("NW", 4)), **({"BRg": int(opts["BR"])} if "BR" in opts else {}),
                           **{k: int(v) for k, v in opts.items() if k in ("GBO", "GBR", "GNW", "GST", "HBO", "HBR")})
                 t0 = time.time()
                 m.encode_batched(ids_, P=Pr, **ak)  # first run compiles the kernels (Triton caches them)

@@ -388,3 +388,18 @@ mostly NUL padding), compressed as one document in 14 windows of 32K tokens (fre
 **48,999 bytes**, 12.6% smaller than one file at a time. It also restores the exact tar, names and metadata included.
 That is 6.3× smaller than zip -9 and 4.2× smaller than tar + xz -9e (208,100). 211 s of H100 time, including about
 20 s of kernel compilation.
+
+### Tried: sharing K/V tiles across q heads, and transposed V (2026-11-22, late)
+
+- **Shared K/V tiles (`k_rattn5`).** One program covers several query rows × all q heads of a kv head, so each K/V
+  tile is loaded once per row block instead of once per q head. Every archive stayed byte-identical.
+  - The 7B (7 q heads per kv head, head_dim 128): 9.85 → **9.23 s** (attention 6.49 → 5.88 s), with 4 rows × 8 head
+    slots per program.
+  - The 0.5B: 2.04 → 2.37 s. The 1.5B: 3.82 → 3.96 s; its 6 heads pad to 8, wasting a quarter of each tile.
+  - So it's used only for head_dim 128 with at most 12.5% padding, which today means the 7B.
+- **V digit planes stored transposed**, so that the weights × V product gets the key position contiguous for the int8
+  tensor cores. Slower (0.5B: 2.04 → 3.17 s); reverted.
+- **Takeaway:** neither memory traffic nor operand layout is the main cost of exact batched attention. Its time goes
+  into the per-element integer and float64 bookkeeping around the int8 dot products (digit recombination, the exact
+  score rounding, weight lookup and digit split), done twice per score (two passes).
+- **Current batched compress times (H100, full BJJ file):** 0.5B 2.0 s, 1.5B 3.8 s, 7B 9.2 s.

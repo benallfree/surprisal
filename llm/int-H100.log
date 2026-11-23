@@ -4117,3 +4117,171 @@ void at::native::elementwise_kernel<1...         0.00%       0.000us         0.0
 Self CPU time total: 9.296s
 Self CUDA time total: 9.464s
 
+--- H100 roundtrip fast 2026-11-22 20:03:04
+04:02:46 GPU: NVIDIA H200
+04:02:59 captured 7 graphs in 8.7s
+04:02:59 loaded in 11.9s
+04:03:01 encode: 2341 tokens -> 655 bytes, 2.5s (953 tok/s)
+04:03:04 decode: 2341 tokens, 2.5s (925 tok/s), round trip OK
+--- H100 bencode:BR=8,CH=32,NW=8 fast 2026-11-22 20:39:58
+04:39:26 GPU: NVIDIA H100 80GB HBM3
+04:39:31 captured 49 graphs in 0.0s
+04:39:31 loaded in 4.4s
+04:39:52 first (compiling) batched run: 21.1s
+04:39:57 batched encode: 24126 tokens -> 7185 bytes, 5.29s (4562 tok/s), P=2048 {'BM': 16, 'CHa': 32, 'NWa': 8, 'BRg': 8}
+--- H100 bencode:BR=4,CH=64,NW=4 fast 2026-11-22 20:39:58
+04:39:38 GPU: NVIDIA H100 80GB HBM3
+04:39:41 captured 49 graphs in 0.0s
+04:39:41 loaded in 2.2s
+04:39:56 first (compiling) batched run: 14.9s
+04:39:58 batched encode: 24126 tokens -> 7185 bytes, 2.37s (10171 tok/s), P=2048 {'BM': 16, 'CHa': 64, 'NWa': 4, 'BRg': 4}
+--- H100 bencode:BR=8,CH=64,NW=8 fast 2026-11-22 20:40:08
+04:39:37 GPU: NVIDIA H100 80GB HBM3
+04:39:42 captured 49 graphs in 0.0s
+04:39:42 loaded in 3.6s
+04:40:03 first (compiling) batched run: 21.1s
+04:40:07 batched encode: 24126 tokens -> 7185 bytes, 3.96s (6097 tok/s), P=2048 {'BM': 16, 'CHa': 64, 'NWa': 8, 'BRg': 8}
+--- H100 bencode:BR=16,CH=32,NW=8 fast 2026-11-22 20:40:27
+04:40:01 GPU: NVIDIA H100 80GB HBM3
+04:40:07 captured 49 graphs in 0.0s
+04:40:07 loaded in 4.3s
+04:40:25 first (compiling) batched run: 18.3s
+04:40:27 batched encode: 24126 tokens -> 7185 bytes, 2.40s (10046 tok/s), P=2048 {'BM': 16, 'CHa': 32, 'NWa': 8, 'BRg': 16}
+--- H100 bencode:prof,BR=0 fast 2026-11-22 20:42:11
+04:41:03 GPU: NVIDIA H100 80GB HBM3
+04:41:24 captured 49 graphs in 0.0s
+04:41:24 loaded in 20.8s
+04:41:51 first (compiling) batched run: 26.4s
+04:42:01 batched encode: 24126 tokens -> 4969 bytes, 9.85s (2449 tok/s), P=2048 {'BM': 16, 'CHa': 64, 'NWa': 4, 'BRg': 0}
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                                    Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg    # of Calls  
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                                k_rattn3         0.00%       0.000us         0.00%       0.000us       0.000us        6.488s        66.19%        6.488s      19.310ms           336  
+                                  k_gemm         0.00%       0.000us         0.00%       0.000us       0.000us        2.296s        23.42%        2.296s       1.708ms          1344  
+                                 k_rhead         0.00%       0.000us         0.00%       0.000us       0.000us     742.643ms         7.58%     742.643ms      20.629ms            36  
+                                  k_rmlp         0.00%       0.000us         0.00%       0.000us       0.000us     161.216ms         1.64%     161.216ms     479.810us           336  
+                                 k_rnorm         0.00%       0.000us         0.00%       0.000us       0.000us      80.458ms         0.82%      80.458ms     117.629us           684  
+                                  k_rqkv         0.00%       0.000us         0.00%       0.000us       0.000us      19.004ms         0.19%      19.004ms      56.561us           336  
+                                k_rblock         0.00%       0.000us         0.00%       0.000us       0.000us      10.874ms         0.11%      10.874ms      32.364us           336  
+void at::native::vectorized_elementwi...         0.00%       0.000us         0.00%       0.000us       0.000us     721.221us         0.01%     721.221us      60.102us            12  
+void at::native::elementwise_kernel<1...         0.00%       0.000us         0.00%       0.000us       0.000us     708.647us         0.01%     708.647us      59.054us            12  
+void at::native::vectorized_elementwi...         0.00%       0.000us         0.00%       0.000us       0.000us     638.692us         0.01%     638.692us     638.692us             1  
+          Memcpy DtoD (Device -> Device)         0.00%       0.000us         0.00%       0.000us       0.000us     490.434us         0.01%     490.434us      20.435us            24  
+void at::native::elementwise_kernel<1...         0.00%       0.000us         0.00%       0.000us       0.000us     485.666us         0.00%     485.666us      40.472us            12  
+void at::native::elementwise_kernel<1...         0.00%       0.000us         0.00%       0.000us       0.000us     484.769us         0.00%     484.769us      40.397us            12  
+void at::native::elementwise_kernel<1...         0.00%       0.000us         0.00%       0.000us       0.000us     484.450us         0.00%     484.450us      40.371us            12  
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+Self CPU time total: 9.531s
+Self CUDA time total: 9.803s
+
+--- H100 bencode:prof,BR=4,CH=64,NW=4 fast 2026-11-22 20:42:14
+04:41:12 GPU: NVIDIA H100 80GB HBM3
+04:41:28 captured 49 graphs in 0.0s
+04:41:28 loaded in 15.5s
+04:41:55 first (compiling) batched run: 26.6s
+04:42:04 batched encode: 24126 tokens -> 4969 bytes, 9.23s (2615 tok/s), P=2048 {'BM': 16, 'CHa': 64, 'NWa': 4, 'BRg': 4}
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                                    Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg    # of Calls  
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                                k_rattn5         0.00%       0.000us         0.00%       0.000us       0.000us        5.877s        63.98%        5.877s      17.492ms           336  
+                                  k_gemm         0.00%       0.000us         0.00%       0.000us       0.000us        2.292s        24.95%        2.292s       1.706ms          1344  
+                                 k_rhead         0.00%       0.000us         0.00%       0.000us       0.000us     741.218ms         8.07%     741.218ms      20.589ms            36  
+                                  k_rmlp         0.00%       0.000us         0.00%       0.000us       0.000us     160.989ms         1.75%     160.989ms     479.135us           336  
+                                 k_rnorm         0.00%       0.000us         0.00%       0.000us       0.000us      80.151ms         0.87%      80.151ms     117.180us           684  
+                                  k_rqkv         0.00%       0.000us         0.00%       0.000us       0.000us      18.952ms         0.21%      18.952ms      56.405us           336  
+                                k_rblock         0.00%       0.000us         0.00%       0.000us       0.000us      11.005ms         0.12%      11.005ms      32.753us           336  
+void at::native::vectorized_elementwi...         0.00%       0.000us         0.00%       0.000us       0.000us     719.904us         0.01%     719.904us      59.992us            12  
+void at::native::elementwise_kernel<1...         0.00%       0.000us         0.00%       0.000us       0.000us     714.146us         0.01%     714.146us      59.512us            12  
+void at::native::vectorized_elementwi...         0.00%       0.000us         0.00%       0.000us       0.000us     640.001us         0.01%     640.001us     640.001us             1  
+void at::native::elementwise_kernel<1...         0.00%       0.000us         0.00%       0.000us       0.000us     488.387us         0.01%     488.387us      40.699us            12  
+void at::native::elementwise_kernel<1...         0.00%       0.000us         0.00%       0.000us       0.000us     480.896us         0.01%     480.896us      40.075us            12  
+void at::native::elementwise_kernel<1...         0.00%       0.000us         0.00%       0.000us       0.000us     480.001us         0.01%     480.001us      40.000us            12  
+          Memcpy DtoD (Device -> Device)         0.00%       0.000us         0.00%       0.000us       0.000us     473.921us         0.01%     473.921us      19.747us            24  
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+Self CPU time total: 9.017s
+Self CUDA time total: 9.187s
+
+--- H100 bencode:prof,BR=2,CH=64,NW=4 fast 2026-11-22 20:42:18
+04:41:20 GPU: NVIDIA H100 80GB HBM3
+04:41:32 captured 49 graphs in 0.0s
+04:41:32 loaded in 10.4s
+04:41:55 first (compiling) batched run: 23.5s
+04:42:06 batched encode: 24126 tokens -> 4969 bytes, 10.88s (2218 tok/s), P=2048 {'BM': 16, 'CHa': 64, 'NWa': 4, 'BRg': 2}
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                                    Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg    # of Calls  
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                                k_rattn5         0.00%       0.000us         0.00%       0.000us       0.000us        7.531s        69.39%        7.531s      22.415ms           336  
+                                  k_gemm         0.00%       0.000us         0.00%       0.000us       0.000us        2.300s        21.19%        2.300s       1.711ms          1344  
+                                 k_rhead         0.00%       0.000us         0.00%       0.000us       0.000us     745.186ms         6.87%     745.186ms      20.700ms            36  
+                                  k_rmlp         0.00%       0.000us         0.00%       0.000us       0.000us     161.306ms         1.49%     161.306ms     480.077us           336  
+                                 k_rnorm         0.00%       0.000us         0.00%       0.000us       0.000us      80.722ms         0.74%      80.722ms     118.015us           684  
+                                  k_rqkv         0.00%       0.000us         0.00%       0.000us       0.000us      19.056ms         0.18%      19.056ms      56.716us           336  
+                                k_rblock         0.00%       0.000us         0.00%       0.000us       0.000us      10.982ms         0.10%      10.982ms      32.685us           336  
+void at::native::vectorized_elementwi...         0.00%       0.000us         0.00%       0.000us       0.000us     722.076us         0.01%     722.076us      60.173us            12  
+void at::native::elementwise_kernel<1...         0.00%       0.000us         0.00%       0.000us       0.000us     709.597us         0.01%     709.597us      59.133us            12  
+void at::native::vectorized_elementwi...         0.00%       0.000us         0.00%       0.000us       0.000us     642.749us         0.01%     642.749us     642.749us             1  
+          Memcpy DtoD (Device -> Device)         0.00%       0.000us         0.00%       0.000us       0.000us     491.133us         0.00%     491.133us      20.464us            24  
+void at::native::elementwise_kernel<1...         0.00%       0.000us         0.00%       0.000us       0.000us     486.879us         0.00%     486.879us      40.573us            12  
+void at::native::elementwise_kernel<1...         0.00%       0.000us         0.00%       0.000us       0.000us     485.146us         0.00%     485.146us      40.429us            12  
+void at::native::elementwise_kernel<1...         0.00%       0.000us         0.00%       0.000us       0.000us     484.352us         0.00%     484.352us      40.363us            12  
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+Self CPU time total: 10.700s
+Self CUDA time total: 10.853s
+
+--- H100 bencode:prof,BR=8,CH=32,NW=8 fast 2026-11-22 20:43:10
+04:41:34 GPU: NVIDIA H100 80GB HBM3
+04:41:48 captured 49 graphs in 0.0s
+04:41:48 loaded in 13.0s
+04:42:27 first (compiling) batched run: 38.6s
+04:42:48 batched encode: 24126 tokens -> 4969 bytes, 21.50s (1122 tok/s), P=2048 {'BM': 16, 'CHa': 32, 'NWa': 8, 'BRg': 8}
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                                    Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg    # of Calls  
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                                k_rattn5         0.00%       0.000us         0.00%       0.000us       0.000us       18.151s        84.62%       18.151s      54.020ms           336  
+                                  k_gemm         0.00%       0.000us         0.00%       0.000us       0.000us        2.288s        10.67%        2.288s       1.702ms          1344  
+                                 k_rhead         0.00%       0.000us         0.00%       0.000us       0.000us     740.017ms         3.45%     740.017ms      20.556ms            36  
+                                  k_rmlp         0.00%       0.000us         0.00%       0.000us       0.000us     157.471ms         0.73%     157.471ms     468.664us           336  
+                                 k_rnorm         0.00%       0.000us         0.00%       0.000us       0.000us      79.525ms         0.37%      79.525ms     116.265us           684  
+                                  k_rqkv         0.00%       0.000us         0.00%       0.000us       0.000us      18.782ms         0.09%      18.782ms      55.897us           336  
+                                k_rblock         0.00%       0.000us         0.00%       0.000us       0.000us      11.250ms         0.05%      11.250ms      33.482us           336  
+void at::native::vectorized_elementwi...         0.00%       0.000us         0.00%       0.000us       0.000us     711.968us         0.00%     711.968us      59.331us            12  
+void at::native::elementwise_kernel<1...         0.00%       0.000us         0.00%       0.000us       0.000us     705.827us         0.00%     705.827us      58.819us            12  
+void at::native::vectorized_elementwi...         0.00%       0.000us         0.00%       0.000us       0.000us     639.234us         0.00%     639.234us     639.234us             1  
+          Memcpy DtoD (Device -> Device)         0.00%       0.000us         0.00%       0.000us       0.000us     484.515us         0.00%     484.515us      20.188us            24  
+void at::native::elementwise_kernel<1...         0.00%       0.000us         0.00%       0.000us       0.000us     483.009us         0.00%     483.009us      40.251us            12  
+void at::native::elementwise_kernel<1...         0.00%       0.000us         0.00%       0.000us       0.000us     481.827us         0.00%     481.827us      40.152us            12  
+void at::native::elementwise_kernel<1...         0.00%       0.000us         0.00%       0.000us       0.000us     481.184us         0.00%     481.184us      40.099us            12  
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+Self CPU time total: 21.194s
+Self CUDA time total: 21.451s
+
+--- H100 roundtrip fast 2026-11-22 20:44:26
+04:44:07 GPU: NVIDIA H100 80GB HBM3
+04:44:21 captured 7 graphs in 9.7s
+04:44:21 loaded in 13.3s
+04:44:23 encode: 2341 tokens -> 655 bytes, 2.4s (962 tok/s)
+04:44:26 decode: 2341 tokens, 2.5s (936 tok/s), round trip OK
+--- H100 bencode:BR=0 fast 2026-11-22 20:44:36
+04:44:14 GPU: NVIDIA H100 80GB HBM3
+04:44:18 captured 49 graphs in 0.0s
+04:44:18 loaded in 2.7s
+04:44:33 first (compiling) batched run: 15.4s
+04:44:36 batched encode: 24126 tokens -> 7185 bytes, 3.17s (7616 tok/s), P=2048 {'BM': 16, 'CHa': 64, 'NWa': 4, 'BRg': 0}
+--- H100 bencode:BR=4,CH=64,NW=4 fast 2026-11-22 20:45:16
+04:44:53 GPU: NVIDIA H100 80GB HBM3
+04:44:56 captured 49 graphs in 0.0s
+04:44:56 loaded in 3.0s
+04:45:13 first (compiling) batched run: 16.5s
+04:45:16 batched encode: 24126 tokens -> 7185 bytes, 2.89s (8361 tok/s), P=2048 {'BM': 16, 'CHa': 64, 'NWa': 4, 'BRg': 4}
+--- H100 bencode fast 2026-11-22 20:46:09
+04:45:50 GPU: NVIDIA H100 80GB HBM3
+04:45:53 captured 49 graphs in 0.0s
+04:45:53 loaded in 2.4s
+04:46:07 first (compiling) batched run: 14.1s
+04:46:09 batched encode: 24126 tokens -> 7185 bytes, 2.03s (11892 tok/s), P=2048 {'BM': 16, 'CHa': 64, 'NWa': 4}
+--- H100 bencode fast 2026-11-22 20:46:33
+04:45:59 GPU: NVIDIA H100 80GB HBM3
+04:46:09 captured 49 graphs in 0.0s
+04:46:09 loaded in 8.5s
+04:46:29 first (compiling) batched run: 20.5s
+04:46:33 batched encode: 24126 tokens -> 5855 bytes, 3.96s (6088 tok/s), P=2048 {'BM': 16, 'CHa': 64, 'NWa': 4}

@@ -1,0 +1,67 @@
+{
+  "format": 1,
+  "spec": "SPEC.md, version 1",
+  "note": "Ids are permanent: never reuse or delete one, so old archives keep decoding. urls: where the bundle can be downloaded (filled in once hosted); anyone can also rebuild it from the source revision with `intref.py build` and check the sha256.",
+  "models": [
+    {
+      "id": 1,
+      "name": "qwen2.5-coder-0.5b-int-v1",
+      "profile": "good",
+      "source": {
+        "repo": "Qwen/Qwen2.5-Coder-0.5B",
+        "revision": "8123ea2e9354afb7ffcc6c8641d1b2f5ecf18301",
+        "files": [
+          "config.json",
+          "model.safetensors"
+        ]
+      },
+      "bundle": {
+        "file": "coder0.5b-v1.i13k",
+        "sha256": "2dc17ac59e3860e9d17e2fc3b13f52cad550e1794e277dbff5c3fcfafef2892e",
+        "bytes": 514465395
+      },
+      "urls": []
+    },
+    {
+      "id": 2,
+      "name": "qwen2.5-coder-1.5b-int-v1",
+      "profile": "better",
+      "source": {
+        "repo": "Qwen/Qwen2.5-Coder-1.5B",
+        "revision": "df3ce67c0e24480f20468b6ef2894622d69eb73b",
+        "files": [
+          "config.json",
+          "model.safetensors"
+        ]
+      },
+      "bundle": {
+        "file": "coder1.5b-v1.i13k",
+        "sha256": "56e043757ea9fe0f8cf038097e64e41d142552a786f1f31fa9ba396c480385d5",
+        "bytes": 1601655900
+      },
+      "urls": []
+    },
+    {
+      "id": 3,
+      "name": "qwen2.5-coder-7b-int-v1",
+      "profile": "best",
+      "source": {
+        "repo": "Qwen/Qwen2.5-Coder-7B",
+        "revision": "0396a76181e127dfc13e5c5ec48a8cee09938b02",
+        "files": [
+          "config.json",
+          "model-00001-of-00004.safetensors",
+          "model-00002-of-00004.safetensors",
+          "model-00003-of-00004.safetensors",
+          "model-00004-of-00004.safetensors"
+        ]
+      },
+      "bundle": {
+        "file": "coder7b-v1.i13k",
+        "sha256": "a36ac4e2943e67f787c780060c739991a1c54e547586fed4def8f7c659494648",
+        "bytes": 7864618128
+      },
+      "urls": []
+    }
+  ]
+}

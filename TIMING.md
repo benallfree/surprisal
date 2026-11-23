@@ -403,3 +403,23 @@ That is 6.3× smaller than zip -9 and 4.2× smaller than tar + xz -9e (208,100).
   into the per-element integer and float64 bookkeeping around the int8 dot products (digit recombination, the exact
   score rounding, weight lookup and digit split), done twice per score (two passes).
 - **Current batched compress times (H100, full BJJ file):** 0.5B 2.0 s, 1.5B 3.8 s, 7B 9.2 s.
+
+## Spec v1 frozen (2026-11-22, night)
+
+`SPEC.md` freezes the integer codec as version 1. It covers the rules, a model manifest (ids 1/2/3 = 0.5B/1.5B/7B,
+"good/better/best"), the bundle file format (`.i13k`), a 2-byte archive header plus a varint token count, segments
+of 32,768 tokens for long inputs, and test vectors in `llm/spec/vectors/`.
+
+- **Conversion is deterministic:** the exponent comes from frexp instead of `log2`, and the lookup tables are frozen
+  in `llm/spec/tables-v1.i13k`.
+  - Bundles built on the Mac (arm64, from the mlx-community bf16 copies) and on Modal (x86 Linux, from the official
+    Qwen repos at pinned revisions) have identical SHA-256s for all three models.
+  - Every tensor equals the bundles used for all earlier measurements, so no earlier result changes.
+- **Archive bodies are unchanged;** only the header changed:
+  - BJJ: 7,186 bytes (0.5B), 5,856 (1.5B), 4,970 (7B);
+  - the 6 KB slice: 655 (0.5B).
+- **Checked:**
+  - a v1 archive made by the numpy spec on the Mac decodes on an H100;
+  - the 0.5B numpy and GPU tables agree over 300 positions;
+  - the repacked full archives decode;
+  - a 72,378-token input (three segments) round-trips (0.5B: batched compress 7.2 s, decode 95.8 s).

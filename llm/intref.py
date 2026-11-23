@@ -1,9 +1,11 @@
 """Integer-only Qwen2.5 inference: the reference (the spec) for a codec whose archives depend on the model alone.
+The full v1 definition (bundle format, archive container, coder, conformance vectors) is SPEC.md.
 
-    .venv/bin/python llm/intref.py build  <hf-model-dir> <bundle.npz>        # quantize once; the bundle IS the model
-    .venv/bin/python llm/intref.py score  <hf-model-dir> <bundle.npz> <text> [variants]   # ideal sizes: float,f8,int
-    .venv/bin/python llm/intref.py encode <hf-model-dir> <bundle.npz> <text> <archive>
-    .venv/bin/python llm/intref.py decode <hf-model-dir> <bundle.npz> <archive> <text>
+    .venv/bin/python llm/intref.py tables spec/tables-v1.i13k                 # once: freeze the lookup tables
+    .venv/bin/python llm/intref.py build  <hf-model-dir> <bundle.i13k>       # convert once; the bundle IS the model
+    .venv/bin/python llm/intref.py score  <hf-model-dir> <bundle.i13k> <text> [variants]   # ideal sizes: float,f8,int
+    .venv/bin/python llm/intref.py encode <hf-model-dir> <bundle.i13k> <text> <archive>
+    .venv/bin/python llm/intref.py decode <hf-model-dir> <bundle.i13k> <archive> <text>
 
 Why: floating-point sums depend on the order of additions, and every GPU, library and kernel orders them differently,
 so float probabilities differ in the last bits from machine to machine and an arithmetic-coded archive only decodes on
@@ -52,6 +54,9 @@ import json, math, struct, sys, time
 from pathlib import Path
 import numpy as np
 
+sys.path.insert(0, str(Path(__file__).parent))
+import bundle as bndl
+
 G = 64
 TOTAL = 1 << 28
 NA, NF, NS = 16 * 1024, 24 * 1024, 16 * 1024  # table lengths: exp for attention, exp for output, sigmoid half-range
@@ -82,47 +87,64 @@ def quant(w):
     wg = w.reshape(o, i // G, G)
     sr = np.abs(wg).max(axis=2) / 127
     sr[sr == 0] = 1e-30
-    E = int(math.floor(math.log2(sr.max()))) - 14
+    # floor(log2(max scale)) taken exactly from the float's exponent (no libm call), so every platform agrees;
+    # the rest is IEEE division, power-of-two scaling and round-to-nearest-even, also identical everywhere
+    E = int(np.frexp(sr.max())[1]) - 1 - 14
     s = np.clip(np.rint(sr / 2.0**E), 1, 32767)
     q = np.clip(np.rint(wg / (s[:, :, None] * 2.0**E)), -127, 127)
     return q.reshape(o, i).astype(np.int8), s.astype(np.int16), E
 
 
+TABLES = Path(__file__).parent / "spec" / "tables-v1.i13k"
+
+
+def make_tables(dst):
+    """The lookup tables, computed once with float math and then frozen in a file (so no platform's libm matters)."""
+    i = np.arange(max(NA, NF), dtype=np.float64)
+    x = (np.arange(2 * NS + 1, dtype=np.float64) - NS) / 1024
+    t = [("EXPA", np.rint(2.0**15 * np.exp(-i[:NA] / 1024)).astype(np.int32)),
+         ("EXPF", np.rint(2.0**30 * np.exp(-i[:NF] / 1024)).astype(np.int32)),
+         ("SIG", np.rint(2.0**16 / (1 + np.exp(-x))).astype(np.int32))]
+    for hd in (64, 128):  # Qwen2.5: rope_theta 1e6, 32,768 positions
+        inv = 1e6 ** (-np.arange(0, hd, 2, dtype=np.float64) / hd)
+        ang = np.arange(32768, dtype=np.float64)[:, None] * inv[None]
+        t += [(f"ROPE_C_{hd}", np.rint(np.cos(ang) * 2**14).astype(np.int16)),
+              (f"ROPE_S_{hd}", np.rint(np.sin(ang) * 2**14).astype(np.int16))]
+    bndl.write(dst, b"{}", t)
+
+
 def build(src, dst):
+    """bf16 safetensors -> v1 bundle. Deterministic: exact int8 rounding (see quant) and frozen tables."""
     cfg = json.loads((Path(src) / "config.json").read_text())
+    assert cfg["rope_theta"] == 1e6 and cfg["max_position_embeddings"] == 32768, "tables cover Qwen2.5 rope only"
     W = load_st(src)
-    L, I = cfg["num_hidden_layers"], cfg["intermediate_size"]
-    out = {"cfg": np.frombuffer(json.dumps(cfg).encode(), dtype=np.uint8)}
+    L = cfg["num_hidden_layers"]
+    _, tab = bndl.read(TABLES)
+    out = []
 
     def put(name, w):
-        q, s, E = quant(w)
-        out[name + ".q"], out[name + ".s"], out[name + ".E"] = q, s, np.array(E)
+        q, s_, E = quant(w)
+        out.extend([(name + ".q", q), (name + ".s", s_), (name + ".E", np.array(E, dtype=np.int32))])
 
+    fx = lambda a, k: np.rint(a.astype(np.float64) * 2**k).astype(I64)  # exact power-of-two scaling, then round
     put("emb", W["model.embed_tokens.weight"])
     if not cfg.get("tie_word_embeddings", True):  # separate output head (e.g. the 7B)
         put("head", W["lm_head.weight"])
-    out["gf"] = np.rint(W["model.norm.weight"].astype(np.float64) * 2**16).astype(I64)
+    out.append(("gf", fx(W["model.norm.weight"], 16)))
     for l in range(L):
         p = f"model.layers.{l}."
         a = p + "self_attn."
         put(f"{l}.qkv", np.concatenate([W[a + x + "_proj.weight"] for x in "qkv"]))
-        out[f"{l}.bqkv"] = np.rint(np.concatenate([W[a + x + "_proj.bias"] for x in "qkv"]).astype(np.float64) * 2**24).astype(I64)
+        out.append((f"{l}.bqkv", fx(np.concatenate([W[a + x + "_proj.bias"] for x in "qkv"]), 24)))
         put(f"{l}.o", W[a + "o_proj.weight"])
         put(f"{l}.gu", np.concatenate([W[p + "mlp.gate_proj.weight"], W[p + "mlp.up_proj.weight"]]))
         put(f"{l}.d", W[p + "mlp.down_proj.weight"])
-        out[f"{l}.g1"] = np.rint(W[p + "input_layernorm.weight"].astype(np.float64) * 2**16).astype(I64)
-        out[f"{l}.g2"] = np.rint(W[p + "post_attention_layernorm.weight"].astype(np.float64) * 2**16).astype(I64)
+        out.append((f"{l}.g1", fx(W[p + "input_layernorm.weight"], 16)))
+        out.append((f"{l}.g2", fx(W[p + "post_attention_layernorm.weight"], 16)))
     hd = cfg["hidden_size"] // cfg["num_attention_heads"]
-    inv = cfg["rope_theta"] ** (-np.arange(0, hd, 2, dtype=np.float64) / hd)
-    ang = np.arange(cfg["max_position_embeddings"], dtype=np.float64)[:, None] * inv[None]
-    out["ROPE_C"] = np.rint(np.cos(ang) * 2**14).astype(np.int16)
-    out["ROPE_S"] = np.rint(np.sin(ang) * 2**14).astype(np.int16)
-    i = np.arange(max(NA, NF), dtype=np.float64)
-    out["EXPA"] = np.rint(2.0**15 * np.exp(-i[:NA] / 1024)).astype(I64)
-    out["EXPF"] = np.rint(2.0**30 * np.exp(-i[:NF] / 1024)).astype(I64)
-    x = (np.arange(2 * NS + 1, dtype=np.float64) - NS) / 1024
-    out["SIG"] = np.rint(2.0**16 / (1 + np.exp(-x))).astype(I64)
-    np.savez(dst, **out)
+    out += [("ROPE_C", tab[f"ROPE_C_{hd}"]), ("ROPE_S", tab[f"ROPE_S_{hd}"]),
+            ("EXPA", tab["EXPA"]), ("EXPF", tab["EXPF"]), ("SIG", tab["SIG"])]
+    bndl.write(dst, bndl.canonical_config(cfg), out)
 
 
 # ---------------------------------------------------------------- integer helpers
@@ -166,7 +188,7 @@ def exact_mm(a, b, bound):
 
 class IntModel:
     def __init__(self, bundle, maxlen):
-        z = np.load(bundle)
+        z = bndl.load(bundle)
         cfg = json.loads(bytes(z["cfg"]).decode())
         self.D, self.I, self.L = cfg["hidden_size"], cfg["intermediate_size"], cfg["num_hidden_layers"]
         self.nq, self.nkv = cfg["num_attention_heads"], cfg["num_key_value_heads"]
@@ -189,7 +211,7 @@ class IntModel:
                                     b=z[f"{l}.bqkv"], g1=z[f"{l}.g1"], g2=z[f"{l}.g2"]))
         self.gf = z["gf"]
         self.C, self.S = z["ROPE_C"].astype(I64), z["ROPE_S"].astype(I64)
-        self.EXPA, self.EXPF, self.SIG = z["EXPA"], z["EXPF"], z["SIG"]
+        self.EXPA, self.EXPF, self.SIG = (z[k].astype(I64) for k in ("EXPA", "EXPF", "SIG"))
         self.K = np.zeros((self.L, self.nkv, maxlen, self.hd), np.int64)
         self.Vc = np.zeros((self.L, self.nkv, maxlen, self.hd), np.int64)
         self.pos = 0
@@ -274,7 +296,7 @@ class FloatModel:
         f64 = lambda a: a.astype(np.float64)
         W = load_st(src)
         if bundle is not None:  # same float math, but with the bundle's int8 weights
-            z = np.load(bundle)
+            z = bndl.load(bundle)
 
             def deq(n):
                 q, s = z[n + ".q"], z[n + ".s"]
@@ -361,10 +383,13 @@ def bits(cum, t):
 
 if __name__ == "__main__":
     mode = sys.argv[1]
-    if mode == "build":
+    if mode == "tables":
+        make_tables(sys.argv[2])
+        print(f"wrote {sys.argv[2]}", flush=True)
+    elif mode == "build":
         t0 = time.time()
         build(sys.argv[2], sys.argv[3])
-        print(f"built {sys.argv[3]} in {time.time() - t0:.0f}s", flush=True)
+        print(f"built {sys.argv[3]} in {time.time() - t0:.0f}s, sha256 {bndl.sha256(sys.argv[3])}", flush=True)
     elif mode == "score":
         src, bundle, path = sys.argv[2:5]
         variants = (sys.argv[5] if len(sys.argv) > 5 else "float,f8,int").split(",")
@@ -402,23 +427,30 @@ if __name__ == "__main__":
         src, bundle, a, b = sys.argv[2:6]
         hf, start, encode_text = tokenizer(src)
         t0 = time.time()
+        import archive
         if mode == "encode":
             text = Path(a).read_bytes().decode("utf-8")
             ids = encode_text(hf, text)
-            m, enc, prev = IntModel(bundle, len(ids) + 1), Encoder(), start
-            for t in ids:
-                enc.code(m.step(prev), t)
-                prev = t
-            body = enc.finish()
-            Path(b).write_bytes(struct.pack("<I", len(ids)) + body)
-            print(f"encode: {len(text.encode())} -> {4 + len(body)} bytes, {len(ids)} tokens, {time.time() - t0:.0f}s", flush=True)
+            enc = Encoder()
+            m = IntModel(bundle, min(len(ids), archive.SEG) + 1)
+            for s0, s1 in archive.segments(len(ids)):  # each segment: a fresh context from the start token
+                m.pos, prev = 0, start
+                for t in ids[s0:s1]:
+                    enc.code(m.step(prev), t)
+                    prev = t
+            data = archive.pack(archive.model_id_for(bundle), len(ids), enc.finish())
+            Path(b).write_bytes(data)
+            print(f"encode: {len(text.encode())} -> {len(data)} bytes, {len(ids)} tokens, {time.time() - t0:.0f}s", flush=True)
         else:
             data = Path(a).read_bytes()
-            (n,) = struct.unpack("<I", data[:4])
-            m, dec, prev, ids = IntModel(bundle, n + 1), Decoder(data[4:]), start, []
-            for _ in range(n):
-                prev = dec.code(m.step(prev))
-                ids.append(prev)
+            mid, n, body = archive.unpack(data)
+            assert mid == archive.model_id_for(bundle), f"archive needs model id {mid}"
+            m, dec, ids = IntModel(bundle, min(n, archive.SEG) + 1), Decoder(body), []
+            for s0, s1 in archive.segments(n):
+                m.pos, prev = 0, start
+                for _ in range(s1 - s0):
+                    prev = dec.code(m.step(prev))
+                    ids.append(prev)
             text = hf.decode(ids, clean_up_tokenization_spaces=False)
             Path(b).write_bytes(text.encode("utf-8"))
             print(f"decode: {len(data)} -> {len(text.encode())} bytes, {n} tokens, {time.time() - t0:.0f}s", flush=True)

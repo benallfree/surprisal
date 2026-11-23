@@ -26,6 +26,12 @@ PREC = 32
 TOP, HALF, QTR = (1 << PREC) - 1, 1 << (PREC - 1), 1 << (PREC - 2)
 
 
+def load_bundle(path):
+    sys.path.insert(0, str(Path(__file__).parent))
+    import bundle as bndl
+    return bndl.load(path)
+
+
 def model_class():
     import numpy as np
     import torch
@@ -34,7 +40,7 @@ def model_class():
 
     class TorchInt:
         def __init__(self, bundle, maxlen, dev):
-            z = np.load(bundle)
+            z = load_bundle(bundle)
             cfg = json.loads(bytes(z["cfg"]).decode())
             self.dev = dev
             self.D, self.I, self.L = cfg["hidden_size"], cfg["intermediate_size"], cfg["num_hidden_layers"]
@@ -265,29 +271,50 @@ def run_hashes(m, start, ids, out=print):
         prev = t
 
 
-def run_encode(m, start, ids):
+def archive_mod():
+    sys.path.insert(0, str(Path(__file__).parent))
+    import archive
+    return archive
+
+
+def pack_counts(mid, n, counts):
+    """Arithmetic-code the (total, cum[t], cum[t-1]) counts of every token and wrap them in a v1 archive."""
+    bad = [k for k, (tot, hi, lo) in enumerate(counts) if not 0 <= lo < hi <= tot]
+    if bad:
+        raise ValueError(f"bad counts at token {bad[0]}: {counts[bad[0]]}")
+    enc = Encoder()
+    for tot, hi, lo in counts:
+        enc.code_counts(tot, hi, lo)
+    return archive_mod().pack(mid, n, enc.finish())
+
+
+def run_encode(m, start, ids, mid):
     import torch
-    enc, prev = Encoder(), start
-    for t in ids:
-        cum = m.step(torch.tensor(prev, device=m.dev))
-        c = torch.stack([cum[-1], cum[t], cum[t - 1] if t else torch.zeros((), dtype=cum.dtype, device=cum.device)]).tolist()
-        enc.code_counts(*c)
-        prev = t
-    return struct.pack("<I", len(ids)) + enc.finish()
+    counts = []
+    for s0, s1 in archive_mod().segments(len(ids)):  # each segment: a fresh context from the start token
+        m.pos, prev = 0, start
+        for t in ids[s0:s1]:
+            cum = m.step(torch.tensor(prev, device=m.dev))
+            counts.append(torch.stack([cum[-1], cum[t], cum[t - 1] if t else torch.zeros((), dtype=cum.dtype, device=cum.device)]).tolist())
+            prev = t
+    return pack_counts(mid, len(ids), counts)
 
 
 def run_decode(m, start, data):
     import torch
-    (n,) = struct.unpack("<I", data[:4])
-    dec, prev, ids = Decoder(data[4:]), start, []
-    for _ in range(n):
-        cum = m.step(torch.tensor(prev, device=m.dev))
-        total = int(cum[-1])
-        t = int((cum <= dec.target(total)).sum())
-        hi, lo = int(cum[t]), int(cum[t - 1]) if t else 0
-        dec.update(total, hi, lo)
-        ids.append(t)
-        prev = t
+    ar = archive_mod()
+    _, n, body = ar.unpack(data)
+    dec, ids = Decoder(body), []
+    for s0, s1 in ar.segments(n):
+        m.pos, prev = 0, start
+        for _ in range(s1 - s0):
+            cum = m.step(torch.tensor(prev, device=m.dev))
+            total = int(cum[-1])
+            t = int((cum <= dec.target(total)).sum())
+            hi, lo = int(cum[t]), int(cum[t - 1]) if t else 0
+            dec.update(total, hi, lo)
+            ids.append(t)
+            prev = t
     return ids
 
 
@@ -1033,7 +1060,7 @@ def fast_class():
     class FastInt:
         def __init__(self, bundle, n, log, BUCKET=1024, CH=32, fused=True, APG=192, graphs=True):
             self.tr = None
-            z = np.load(bundle)
+            z = load_bundle(bundle)
             cfg = json.loads(bytes(z["cfg"]).decode())
             dev = self.dev = "cuda"
             D, I, Lr = cfg["hidden_size"], cfg["intermediate_size"], cfg["num_hidden_layers"]
@@ -1462,16 +1489,15 @@ def fast_class():
                     if say:
                         torch.cuda.synchronize()
                         say(f"{time.strftime('%T')}   rows {r0 + R}/{n}")
-                cnt = counts.tolist()
-                bad = [k for k, (tt, hi, lo) in enumerate(cnt) if not 0 <= lo < hi <= tt]
-                if bad:
-                    raise ValueError(f"bad counts at token {bad[0]}: {cnt[bad[0]]}")
-                enc = Encoder()
-                for tt, hi, lo in cnt:
-                    enc.code_counts(tt, hi, lo)
-                return struct.pack("<I", n) + enc.finish()
+                return counts.tolist()
 
-            self.encode_batched = encode_batched
+            def encode_batched_v1(ids, mid, **kw):
+                counts = []
+                for s0, s1 in archive_mod().segments(len(ids)):  # each segment: a fresh context
+                    counts += encode_batched(ids[s0:s1], **kw)
+                return pack_counts(mid, len(ids), counts)
+
+            self.encode_batched = encode_batched_v1
             self.bench = bench
             self.forward_eager = forward
             self.__dict__.update(reset=reset, tok=tok, pos=pos, cum=cum, ids_gpu=ids_gpu, counts=counts, st=st, res=res)
@@ -1483,31 +1509,32 @@ def fast_class():
             self.fwd[k // self.BUCKET].replay()
             return self.cum
 
-        def encode(self, ids):
+        def encode(self, ids, mid):
             import torch
-            n = len(ids)
-            self.reset()
-            self.ids_gpu[:n].copy_(torch.tensor(ids))
-            torch.cuda.synchronize()
-            t0 = time.time()
-            for k in range(n):
-                self.encg[k // self.BUCKET].replay()
-            cnt = self.counts[:n].tolist()
-            self.t_gpu = time.time() - t0
-            bad = [k for k, (tot, hi, lo) in enumerate(cnt) if not 0 <= lo < hi <= tot]
-            if bad:
-                raise ValueError(f"bad counts at token {bad[0]}: {cnt[bad[0]]}")
-            enc = Encoder()
-            for tot, hi, lo in cnt:
-                enc.code_counts(tot, hi, lo)
-            return struct.pack("<I", n) + enc.finish()
+            cnt = []
+            for s0, s1 in archive_mod().segments(len(ids)):  # each segment: a fresh context
+                n = s1 - s0
+                self.reset()
+                self.ids_gpu[:n].copy_(torch.tensor(ids[s0:s1]))
+                torch.cuda.synchronize()
+                for k in range(n):
+                    self.encg[k // self.BUCKET].replay()
+                cnt += self.counts[:n].tolist()
+            return pack_counts(mid, len(ids), cnt)
 
         def decode(self, data):
+            ar = archive_mod()
+            _, n, body = ar.unpack(data)
+            dec, out = Decoder(body), []
+            for s0, s1 in ar.segments(n):
+                out += self.decode_segment(dec, s1 - s0)
+            return out
+
+        def decode_segment(self, dec, n):
             import torch
-            (n,) = struct.unpack("<I", data[:4])
             self.reset()
             torch.cuda.synchronize()
-            dec, out = Decoder(data[4:]), []
+            out = []
             st_h = torch.zeros(3, dtype=torch.long).pin_memory()
             res_h = torch.zeros(4, dtype=torch.long).pin_memory()
             ev = torch.cuda.Event()
@@ -1539,7 +1566,10 @@ except ImportError:
 if modal is not None:
     image = (modal.Image.debian_slim(python_version="3.12")
              .pip_install("torch==2.8.0", "transformers==4.56.2", "numpy")
-             .env({"HF_HOME": "/cache"}))
+             .env({"HF_HOME": "/cache"})
+             .add_local_file(str(Path(__file__).parent / "bundle.py"), "/root/bundle.py")
+             .add_local_file(str(Path(__file__).parent / "archive.py"), "/root/archive.py")
+             .add_local_file(str(Path(__file__).parent / "spec" / "models-v1.json"), "/root/spec/models-v1.json"))
     app = modal.App("compress13k-int", image=image)
     hfvol = modal.Volume.from_name("compress13k-hf", create_if_missing=True)
     intvol = modal.Volume.from_name("compress13k-int", create_if_missing=True)
@@ -1558,7 +1588,8 @@ if modal is not None:
             torch.backends.cuda.matmul.allow_tf32 = False
             t0 = time.time()
             ids = encode_text(hf, text) if text is not None else None
-            maxlen = (len(ids) if ids else struct.unpack("<I", archive[:4])[0]) + 1
+            ntok = len(ids) if ids else archive_mod().unpack(archive)[1]
+            maxlen = min(ntok, archive_mod().SEG) + 1  # contexts never exceed one segment
             if fast:
                 kw_ = {"graphs": task != "bencode"}
                 if targ and task.startswith("prof"):
@@ -1569,6 +1600,7 @@ if modal is not None:
             start = m.start
             say(f"{time.strftime('%T')} loaded in {time.time() - t0:.1f}s")
             res = {"log": log}
+            mid = archive_mod().model_id_for(bundle)
             if task == "hashes":
                 run_hashes(m, start, ids[:n], say)
             if task in ("bencode", "bcheck", "bround"):  # batched compression (bcheck: also step-by-step, compare archives)
@@ -1579,12 +1611,12 @@ if modal is not None:
                 ak = dict(BM=int(opts.get("BM", 16)), CHa=int(opts.get("CH", 64)), NWa=int(opts.get("NW", 4)), **({"BRg": int(opts["BR"])} if "BR" in opts else {}),
                           **{k: int(v) for k, v in opts.items() if k in ("GBO", "GBR", "GNW", "GST", "HBO", "HBR")})
                 t0 = time.time()
-                m.encode_batched(ids_, P=Pr, **ak)  # first run compiles the kernels (Triton caches them)
+                m.encode_batched(ids_, mid, P=Pr, **ak)  # first run compiles the kernels (Triton caches them)
                 torch.cuda.synchronize()
                 say(f"{time.strftime('%T')} first (compiling) batched run: {time.time() - t0:.1f}s")
                 torch.cuda.synchronize()
                 t0 = time.time()
-                arch = m.encode_batched(ids_, P=Pr, **ak)
+                arch = m.encode_batched(ids_, mid, P=Pr, **ak)
                 torch.cuda.synchronize()
                 dt = time.time() - t0
                 res["archive"] = arch
@@ -1592,7 +1624,7 @@ if modal is not None:
                 if targ2 == "prof":
                     from torch.profiler import profile, ProfilerActivity
                     with profile(activities=[ProfilerActivity.CUDA]) as pr:
-                        m.encode_batched(ids_, P=Pr, **ak)
+                        m.encode_batched(ids_, mid, P=Pr, **ak)
                         torch.cuda.synchronize()
                     tbl = pr.key_averages().table(sort_by="cuda_time_total", row_limit=14, max_name_column_width=40)
                     print(tbl, flush=True); log.append(tbl)
@@ -1604,7 +1636,7 @@ if modal is not None:
                         f"round trip {'OK' if out_ == list(ids_) else 'FAILED'}")
                 if task == "bcheck":
                     t0 = time.time()
-                    a2 = m.encode(ids_)
+                    a2 = m.encode(ids_, mid)
                     say(f"{time.strftime('%T')} step-by-step encode: {len(a2)} bytes, {time.time() - t0:.1f}s; "
                         f"archives {'IDENTICAL' if a2 == arch else 'DIFFER'}")
             if task == "bench":
@@ -1666,7 +1698,7 @@ if modal is not None:
             if task in ("encode", "roundtrip"):
                 ids = ids[:n] if n else ids
                 t0 = time.time()
-                res["archive"] = m.encode(ids) if fast else run_encode(m, start, ids)
+                res["archive"] = m.encode(ids, mid) if fast else run_encode(m, start, ids, mid)
                 dt = time.time() - t0
                 say(f"{time.strftime('%T')} encode: {len(ids)} tokens -> {len(res['archive'])} bytes, {dt:.1f}s ({len(ids) / dt:.0f} tok/s)")
                 archive = res["archive"]
@@ -1693,7 +1725,7 @@ if modal is not None:
         return body(*a)
 
     @app.local_entrypoint()
-    def main(gpu: str = "H100", task: str = "roundtrip", bundle: str = "coder0.5b.npz", repo: str = "Qwen/Qwen2.5-Coder-0.5B",
+    def main(gpu: str = "H100", task: str = "roundtrip", bundle: str = "coder0.5b-v1.i13k", repo: str = "Qwen/Qwen2.5-Coder-0.5B",
              file: str = "bjj-case/3-fully-minified.html", n: int = 0, archive: str = "", out: str = "", fast: bool = False):
         fn = {"H100": run_h100, "H200": run_h200}[gpu]
         text = Path(file).read_bytes().decode("utf-8") if task != "decode" else None

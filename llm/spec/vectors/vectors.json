@@ -1,0 +1,96 @@
+{
+  "format": 1,
+  "inputs": [
+    {
+      "file": "tiny.html",
+      "bytes": 400,
+      "sha256": "1349692481928b4dd093b6458842b62f1423c5018a962daf26956e33f1bc544f",
+      "what": "first 400 bytes of the BJJ game"
+    },
+    {
+      "file": "slice.html",
+      "bytes": 6000,
+      "sha256": "4d83118c9e145aa448201b538a6b3b9e573266fb7d89c5590546896fc3e05cce",
+      "what": "first 6,000 bytes of the BJJ game"
+    },
+    {
+      "file": "bjj.html",
+      "bytes": 55854,
+      "sha256": "61d34e0889e6a20f0441ebf5fec2f887e54ffe5ce790266a6e54f6381a2b5f93",
+      "what": "the full BJJ js13k entry, minified (55,854 bytes)"
+    }
+  ],
+  "archives": [
+    {
+      "file": "m1-tiny.13k",
+      "model": 1,
+      "input": "tiny.html",
+      "bytes": 39,
+      "tokens": 124,
+      "sha256": "cab8ea5362ca461929dc6a483816ab5ec19812ab68953578b8a620d73a81fe05",
+      "how": "encoded by the numpy spec (intref.py) on the Mac; decoded on an H100"
+    },
+    {
+      "file": "m1-slice.13k",
+      "model": 1,
+      "input": "slice.html",
+      "bytes": 655,
+      "tokens": 2341,
+      "sha256": "ff8534eb9248f55109b7cc5bd7e94d99417e7aa9529af157bf97d00dce092f1a",
+      "how": "encoded on an H100 (step by step); byte-identical to the numpy spec encode"
+    },
+    {
+      "file": "m1-bjj.13k",
+      "model": 1,
+      "input": "bjj.html",
+      "bytes": 7186,
+      "tokens": 24126,
+      "sha256": "e80e6ce1eccea8a904627281e8989a827b038fca4092f362ee17c5aed4781419",
+      "how": "H100 step by step and batched agree; round-trips"
+    },
+    {
+      "file": "m2-bjj.13k",
+      "model": 2,
+      "input": "bjj.html",
+      "bytes": 5856,
+      "tokens": 24126,
+      "sha256": "60fab9e1e1db0692d371758676beafee6978c741e199f4da8a5ad94586e46496",
+      "how": "H100 batched and step by step agree; round-trips"
+    },
+    {
+      "file": "m3-bjj.13k",
+      "model": 3,
+      "input": "bjj.html",
+      "bytes": 4970,
+      "tokens": 24126,
+      "sha256": "13b6063cc7cc9a77a9e4bdc3ac72c0579cfaeb908981980e096668174f9aabb2",
+      "how": "H100 batched encode, step-by-step decode round-trips; bundle built from the official Qwen weights"
+    },
+    {
+      "file": "m1-bjj3.13k",
+      "model": 1,
+      "input": "bjj.html three times, concatenated (167,562 bytes)",
+      "bytes": 16945,
+      "tokens": 72378,
+      "sha256": "6eda153358ef7fc9b6f3699740f0f321d5e12ac155fcb737b392bc1be62afd44",
+      "how": "H100 batched encode, step-by-step decode round-trips; 3 segments (long-input rule)"
+    }
+  ],
+  "tables": [
+    {
+      "file": "m1-slice-tables.txt",
+      "model": 1,
+      "input": "slice.html",
+      "tokens": 300,
+      "how": "numpy spec; the H100 step-by-step path gives the same 300 lines"
+    },
+    {
+      "file": "m2-tiny-tables.txt",
+      "model": 2,
+      "input": "tiny.html",
+      "tokens": 30,
+      "how": "numpy spec; the H100 step-by-step path gives the same 30 lines"
+    }
+  ],
+  "table_hash": "line \"k h\": h = first 16 hex digits of sha256 of the int64 little-endian cumulative frequency table produced after feeding the token at position k (position 0 = the start token)"
+}

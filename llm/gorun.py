@@ -31,7 +31,7 @@ def body(cmd):
 kw = dict(image=image, volumes={"/int": intvol}, timeout=3600)
 
 
-@app.function(gpu="H100", **kw)
+@app.function(gpu="H100!", **kw)  # "!": no upgrade to an H200
 def run_h100(cmd: str):
     body(cmd)
 

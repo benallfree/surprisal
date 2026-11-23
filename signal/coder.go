@@ -104,14 +104,26 @@ func (d *decoder) bit() uint64 {
 
 // next decodes one token from a cumulative count table.
 func (d *decoder) next(cum []int64) int {
-	total := uint64(cum[len(cum)-1])
-	rng := d.high - d.low + 1
-	target := int64(((d.value-d.low+1)*total - 1) / rng)
-	t := sort.Search(len(cum), func(i int) bool { return cum[i] > target })
-	hi, lo := uint64(cum[t]), uint64(0)
+	c := d.target(cum[len(cum)-1])
+	t := sort.Search(len(cum), func(i int) bool { return cum[i] > c })
+	lo := int64(0)
 	if t > 0 {
-		lo = uint64(cum[t-1])
+		lo = cum[t-1]
 	}
+	d.update(uint64(cum[len(cum)-1]), uint64(cum[t]), uint64(lo))
+	return t
+}
+
+// target is the count the next token's interval holds, for a table with this total: the token is the first t with
+// cum[t] > target.
+func (d *decoder) target(total int64) int64 {
+	rng := d.high - d.low + 1
+	return int64(((d.value-d.low+1)*uint64(total) - 1) / rng)
+}
+
+// update consumes the decoded token's interval [lo, hi) of total.
+func (d *decoder) update(total, hi, lo uint64) {
+	rng := d.high - d.low + 1
 	d.high = d.low + rng*hi/total - 1
 	d.low = d.low + rng*lo/total
 	for {
@@ -126,8 +138,9 @@ func (d *decoder) next(cum []int64) int {
 			d.low -= qtr
 			d.high -= qtr
 		default:
-			return t
+			return
 		}
-		d.low, d.high, d.value = 2*d.low, 2*d.high+1, 2*d.value+d.bit()
+		d.low, d.high = 2*d.low, 2*d.high+1
+		d.value = 2*d.value + d.bit()
 	}
 }

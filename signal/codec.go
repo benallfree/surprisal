@@ -147,11 +147,13 @@ func (c *Codec) Decompress(a []byte, progress Progress) (Header, []byte, error) 
 		ses.Reset()
 		prev := c.Model.BOS()
 		for k := s0; k < min(s0+Seg, h.Tokens); k++ {
-			cum, err := ses.Feed(prev)
+			// the search runs where the table is (on a GPU, only the result comes back)
+			t, ct, err := ses.FeedFind(prev, dec.target)
 			if err != nil {
 				return h, nil, err
 			}
-			prev = dec.next(cum)
+			dec.update(uint64(ct.Total), uint64(ct.High), uint64(ct.Low))
+			prev = t
 			ids = append(ids, prev)
 			if progress != nil {
 				progress(k+1, h.Tokens)

@@ -1,8 +1,8 @@
 """Run nollama / signal Go test binaries on a Modal GPU (cross-compiled on the Mac; no Go needed remotely).
 
-    modal run llm/gorun.py --stage <dir> --gpu H100 --cmd "cd engine && ./engine.test -test.run TestIntTables -test.v"
+    GORUN_STAGE=<dir> modal run llm/gorun.py --gpu H100 --cmd "cd engine && ./engine.test -test.run TestIntTables -test.v"
 
-<dir> holds engine/engine.test, engine/testdata/..., signal/signal.test, llm/spec/vectors/... (see llm/gostage.sh).
+<dir> (staged by llm/gostage.sh, which wipes it: write run.sh after) holds engine/engine.test, engine/testdata/..., signal/signal.test, llm/spec/vectors/... (see llm/gostage.sh).
 The converted models are in the Volume compress13k-int at /int (NOLLAMA_INTMODEL_DIR and SIGNAL_MODELS point there).
 """
 import os

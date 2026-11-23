@@ -121,3 +121,12 @@ func checkCompress(t *testing.T, id int, input, archive string) {
 func TestCompressBJJ05B(t *testing.T) { checkCompress(t, 1, "bjj.html", "m1-bjj.13k") }
 func TestCompressBJJ15B(t *testing.T) { checkCompress(t, 2, "bjj.html", "m2-bjj.13k") }
 func TestCompressBJJ7B(t *testing.T)  { checkCompress(t, 3, "bjj.html", "m3-bjj.13k") }
+
+// TestTokenizeBJJTime: how long compression's tokenizing (with its round-trip check) takes on bjj.html.
+func TestTokenizeBJJTime(t *testing.T) {
+	c := openTest(t, 1)
+	b := vec(t, "bjj.html")
+	t0 := time.Now()
+	ids := c.tokenize(b)
+	t.Logf("bjj.html: %d tokens in %v", len(ids), time.Since(t0).Round(time.Millisecond))
+}

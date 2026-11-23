@@ -78,7 +78,7 @@ position at once (batched); decompression has to go one token at a time.
 <table>
 <tr><th></th><th>compress</th><th>decompress</th></tr>
 <tr><td>Python</td><td align="right">2.0 s</td><td align="right">30.0 s</td></tr>
-<tr><td>signal</td><td align="right">3.6 s</td><td align="right">1 min 4 s</td></tr>
+<tr><td>signal</td><td align="right">2.6 s</td><td align="right">1 min 6 s</td></tr>
 </table>
 
 </td></tr>
@@ -95,7 +95,7 @@ position at once (batched); decompression has to go one token at a time.
 <table>
 <tr><th></th><th>compress</th><th>decompress</th></tr>
 <tr><td>Python</td><td align="right">3.8 s</td><td align="right">54.4 s</td></tr>
-<tr><td>signal</td><td align="right">6.0 s</td><td align="right">1 min 48 s</td></tr>
+<tr><td>signal</td><td align="right">4.5 s</td><td align="right">1 min 54 s</td></tr>
 </table>
 
 </td></tr>
@@ -112,7 +112,7 @@ position at once (batched); decompression has to go one token at a time.
 <table>
 <tr><th></th><th>compress</th><th>decompress</th></tr>
 <tr><td>Python</td><td align="right">9.3 s</td><td align="right">2 min 3 s</td></tr>
-<tr><td>signal</td><td align="right">18.6 s</td><td align="right">3 min 13 s</td></tr>
+<tr><td>signal</td><td align="right">12.9 s</td><td align="right">3 min 16 s</td></tr>
 </table>
 
 </td></tr>

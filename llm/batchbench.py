@@ -1,4 +1,4 @@
-"""How many tokens per second can a model decode when N streams step together? (feasibility for a 30 s decoder)
+"""How many tokens per second can a model decode when N streams step together?
 
     .venv/bin/python llm/batchbench.py <model> <N>...   -> one JSON line per N in llm/out/batchbench.jsonl
 

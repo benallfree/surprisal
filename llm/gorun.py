@@ -1,0 +1,41 @@
+"""Run nollama / signal Go test binaries on a Modal GPU (cross-compiled on the Mac; no Go needed remotely).
+
+    modal run llm/gorun.py --stage <dir> --gpu H100 --cmd "cd engine && ./engine.test -test.run TestIntTables -test.v"
+
+<dir> holds engine/engine.test, engine/testdata/..., signal/signal.test, llm/spec/vectors/... (see llm/gostage.sh).
+The converted models are in the Volume compress13k-int at /int (NOLLAMA_INTMODEL_DIR and SIGNAL_MODELS point there).
+"""
+import os
+import subprocess
+import sys
+import time
+
+import modal
+
+app = modal.App("compress13k-go")
+intvol = modal.Volume.from_name("compress13k-int", create_if_missing=True)
+STAGE = os.environ.get("GORUN_STAGE", "")
+image = modal.Image.debian_slim(python_version="3.12")
+if STAGE:
+    image = image.add_local_dir(STAGE, "/work")
+
+
+def body(cmd):
+    env = dict(os.environ, NOLLAMA_INTMODEL_DIR="/int", SIGNAL_MODELS="/int")
+    print(f"{time.strftime('%T')} $ {cmd}", flush=True)
+    subprocess.run(["bash", "-c", "nvidia-smi -L; chmod +x /work/*/*.test; " + cmd], cwd="/work", env=env, check=False,
+                   stdout=sys.stdout, stderr=subprocess.STDOUT)
+    print(f"{time.strftime('%T')} done", flush=True)
+
+
+kw = dict(image=image, volumes={"/int": intvol}, timeout=3600)
+
+
+@app.function(gpu="H100", **kw)
+def run_h100(cmd: str):
+    body(cmd)
+
+
+@app.local_entrypoint()
+def main(cmd: str, gpu: str = "H100"):
+    {"H100": run_h100}[gpu].remote(cmd)

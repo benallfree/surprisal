@@ -59,7 +59,7 @@ Their sizes are the sum of −log2 p over tokens, assuming bit-identical inferen
 
 Wall time on the BJJ file (55,854 bytes, 24,126 tokens) with each model of spec v1. Every archive and every decode is
 byte-identical across both implementations and both machines. Python is `llm/intref.py` (numpy) on the Mac and
-`llm/intgpu.py` (Triton) on the H100; signal is `cmd/signal` with nollama (Metal on the Mac). Compression runs every
+`llm/intgpu.py` (Triton) on the H100; signal is `cmd/signal` with nollama (Metal on the Mac, CUDA on the H100, both from the same kernel source). Compression runs every
 position at once (batched); decompression has to go one token at a time.
 
 <!-- speed-table: keep updated when either implementation gets faster -->
@@ -78,7 +78,7 @@ position at once (batched); decompression has to go one token at a time.
 <table>
 <tr><th></th><th>compress</th><th>decompress</th></tr>
 <tr><td>Python</td><td align="right">2.0 s</td><td align="right">30.0 s</td></tr>
-<tr><td>signal</td><td align="right">no CUDA yet</td><td align="right">no CUDA yet</td></tr>
+<tr><td>signal</td><td align="right">4.7 s</td><td align="right">1 min 20 s</td></tr>
 </table>
 
 </td></tr>
@@ -87,7 +87,7 @@ position at once (batched); decompression has to go one token at a time.
 <table>
 <tr><th></th><th>compress</th><th>decompress</th></tr>
 <tr><td>Python</td><td align="right">~2.9 h*</td><td align="right">~2.9 h*</td></tr>
-<tr><td>signal</td><td align="right">2 min 10 s</td><td align="right">measuring</td></tr>
+<tr><td>signal</td><td align="right">2 min 10 s</td><td align="right">7 min 31 s</td></tr>
 </table>
 
 </td><td>
@@ -95,7 +95,7 @@ position at once (batched); decompression has to go one token at a time.
 <table>
 <tr><th></th><th>compress</th><th>decompress</th></tr>
 <tr><td>Python</td><td align="right">3.8 s</td><td align="right">54.4 s</td></tr>
-<tr><td>signal</td><td align="right">no CUDA yet</td><td align="right">no CUDA yet</td></tr>
+<tr><td>signal</td><td align="right">9.3 s</td><td align="right">2 min 10 s</td></tr>
 </table>
 
 </td></tr>
@@ -104,23 +104,23 @@ position at once (batched); decompression has to go one token at a time.
 <table>
 <tr><th></th><th>compress</th><th>decompress</th></tr>
 <tr><td>Python</td><td align="right">~3.5 days*</td><td align="right">~3.5 days*</td></tr>
-<tr><td>signal</td><td align="right">7 min 30 s</td><td align="right">measuring</td></tr>
+<tr><td>signal</td><td align="right">7 min 30 s</td><td align="right">22 min 37 s</td></tr>
 </table>
 
 </td><td>
 
 <table>
 <tr><th></th><th>compress</th><th>decompress</th></tr>
-<tr><td>Python</td><td align="right">9.3 s</td><td align="right">123.4 s</td></tr>
-<tr><td>signal</td><td align="right">no CUDA yet</td><td align="right">no CUDA yet</td></tr>
+<tr><td>Python</td><td align="right">9.3 s</td><td align="right">2 min 3 s</td></tr>
+<tr><td>signal</td><td align="right">26.1 s</td><td align="right">3 min 47 s</td></tr>
 </table>
 
 </td></tr>
 </table>
 
 \* Estimated from the numpy reference's speed over the first 300, 120 and 30 tokens (6.9, 2.3 and 0.08 tok/s); later
-tokens are slower, and the 7B doesn't fit in memory and swaps. signal on the H100 needs nollama's CUDA backend for
-integer models, in progress.
+tokens are slower, and the 7B doesn't fit in memory and swaps. signal's H100 runs: `llm/gostage.sh` cross-compiles the
+tests and the CLI, `llm/gorun.py` runs them on Modal.
 
 ## Reproduce
 

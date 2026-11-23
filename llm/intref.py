@@ -31,15 +31,17 @@ Ops (D = hidden, per token):
 - layer: (m,e) = rmsnorm(h, g1); qkv = rshift(matvec, to e=-24) + b; rope on q, k:
   (x1*c - x2*s, x2*c + x1*s) >> 14 (rshift); cache K, V = clip(rshift(k or v, 12), +-(2^22-1)) (e = -12; keeps sums below 2^53 and lets a fast
   implementation split K, V into three signed bytes).
-  attention per q head: (mq, eq) = blockf(q_head); score_t = rshift((mq . K_t) * SC, 42 - sh) (e = -10), where
-  SC = round(2^16 / sqrt(head_dim)) (2^13 for head_dim 64) and sh is the q head's blockf shift;
+  attention per q head: (mq, eq) = blockf(q_head * SC); score_t = rshift(mq . K_t, 42 - sh) (e = -10), where
+  SC = round(2^16 / sqrt(head_dim)) (2^13 for head_dim 64, where this equals blockf(q) with shift 29 - sh) and sh is
+  the head's blockf shift. (Scaling before the rounding keeps every score a power-of-two rounding of an exact
+  integer below 2^44, which float64 computes exactly.)
   M = max score; w_t = EXPA[min(M - score_t, len-1)]; Z = sum w; O = sum w_t V_t;
   o = sign(O) * (|O| * 2^12 // Z)  (computed as hi/remainder so nothing overflows; e = -24).
   h += rshift(matvec(Wo, blockf(o)), to -24).
   (m,e) = rmsnorm(h, g2); g, u = rshift(matvec(Wgu), to -16); a = rshift(g * SIG[clip(rshift(g, 6), +-16384) + 16384], 16);
   p = rshift(a * u, 16); h += rshift(matvec(Wd, blockf(p)), to -24).
 - start token: config bos_token_id (151643 for Qwen2.5), fed at position 0.
-- output: (m,e) = rmsnorm(h, gf); l = rshift(matvec(Wemb), to e=-10); M = max l; f_i = EXPF[min(M - l_i, len-1)];
+- output: (m,e) = rmsnorm(h, gf); l = rshift(matvec(Whead), to e=-10) (Whead = the embedding matrix when tied); M = max l; f_i = EXPF[min(M - l_i, len-1)];
   Z = sum f; freq_i = f_i * (2^28 - V) // Z + 1; the coder uses cumsum(freq) exactly like segcodec.py.
 - embedding: h = rshift(q[tok] * s[tok], to -24 from E).
 
@@ -97,6 +99,8 @@ def build(src, dst):
         out[name + ".q"], out[name + ".s"], out[name + ".E"] = q, s, np.array(E)
 
     put("emb", W["model.embed_tokens.weight"])
+    if not cfg.get("tie_word_embeddings", True):  # separate output head (e.g. the 7B)
+        put("head", W["lm_head.weight"])
     out["gf"] = np.rint(W["model.norm.weight"].astype(np.float64) * 2**16).astype(I64)
     for l in range(L):
         p = f"model.layers.{l}."
@@ -178,6 +182,7 @@ class IntModel:
 
         self.emb_q, self.emb_s = z["emb.q"], z["emb.s"].astype(I64)
         self.emb = mat("emb")
+        self.head = mat("head") if "head.q" in z else self.emb
         self.layers = []
         for l in range(self.L):
             self.layers.append(dict(qkv=mat(f"{l}.qkv"), o=mat(f"{l}.o"), gu=mat(f"{l}.gu"), d=mat(f"{l}.d"),
@@ -214,12 +219,12 @@ class IntModel:
         out = np.empty((self.nq, hd), I64)
         for j in range(self.nkv):
             K, Vv = self.K[l, j, :T], self.Vc[l, j, :T]
-            qs = q[j * grp : (j + 1) * grp]
+            qs = q[j * grp : (j + 1) * grp] * self.SC  # the score scale folded into q before its blockf
             sh = np.array([max(0, bitlen(np.abs(r).max()) - 15) for r in qs], dtype=I64)
             mq = np.clip(rshift_arr(qs, sh[:, None]), -32767, 32767)
             acc = exact_mm(K, mq.T, int(np.abs(K).max()) * 32767 * hd)  # [T, grp]
             # q e = -24 + sh, K e = -12, times 2^-3 -> e = -39 + sh; to e = -10
-            s = rshift_arr(acc * self.SC, (42 - sh)[None, :])
+            s = rshift_arr(acc, (42 - sh)[None, :])
             d = s.max(axis=0)[None, :] - s
             w = self.EXPA[np.minimum(d, NA - 1)]
             Z = w.sum(axis=0)  # [grp]
@@ -252,7 +257,7 @@ class IntModel:
             a = rshift(g * self.SIG[np.clip(rshift(g, 6), -NS, NS) + NS], 16)
             p = rshift(a * u, 16)
             h = h + self.matvec(Ly["d"], blockf(p, -16), -24)
-        lg = self.matvec(self.emb, self.norm(h, self.gf), -10)
+        lg = self.matvec(self.head, self.norm(h, self.gf), -10)
         f = self.EXPF[np.minimum(lg.max() - lg, NF - 1)]
         Z = int(f.sum())
         self.pos += 1

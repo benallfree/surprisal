@@ -54,6 +54,7 @@ def model_class():
 
             self.emb_q, self.emb_s = T(z["emb.q"]), T(z["emb.s"])
             self.emb = mat("emb")
+            self.head = mat("head") if "head.q" in z else self.emb
             self.layers = []
             for l in range(self.L):
                 self.layers.append(dict(qkv=mat(f"{l}.qkv"), o=mat(f"{l}.o"), gu=mat(f"{l}.gu"), d=mat(f"{l}.d"),
@@ -112,12 +113,12 @@ def model_class():
 
         def attn(self, l, q, T):
             grp, hd = self.nq // self.nkv, self.hd
-            qs = q.view(self.nkv, grp, hd)
+            qs = q.view(self.nkv, grp, hd) * self.SC  # score scale folded into q (see intref)
             sh = (self.bitlen(qs.abs().amax(-1)) - 15).clamp(min=0)  # [nkv, grp]
             mq = self.rshift(qs, sh[..., None]).clamp(-32767, 32767)
             K, Vv = self.K[l, :, :T], self.Vc[l, :, :T]  # [nkv, T, hd] float64 holding ints
             acc = torch.matmul(K, mq.to(torch.float64).transpose(1, 2)).to(L64)  # [nkv, T, grp]
-            s = self.rshift(acc * self.SC, (42 - sh)[:, None, :])
+            s = self.rshift(acc, (42 - sh)[:, None, :])
             d = s.amax(1, keepdim=True) - s
             w = self.EXPA[d.clamp(max=NA - 1)]
             Z = w.sum(1)  # [nkv, grp]
@@ -161,7 +162,7 @@ def model_class():
                 h = h + self.matvec(Ly["d"], bp, -24)
                 if l == 0: rec("h_l0", h)
             rec("h_final", h)
-            lg = self.matvec(self.emb, self.norm(h, self.gf), -10)
+            lg = self.matvec(self.head, self.norm(h, self.gf), -10)
             f = self.EXPF[(lg.max() - lg).clamp(max=NF - 1)]
             Z = f.sum()
             self.pos += 1
@@ -405,7 +406,7 @@ def fast_class():
     @triton.jit
     def k_qkv(acc_ptr, SK: tl.constexpr, E_ptr, ein_ptr, b_ptr, C_ptr, S_ptr, pos_ptr, K_ptr, V_ptr, maxlen, mq_ptr, sh_ptr,
               Mg_ptr, NQ: tl.constexpr, NKV: tl.constexpr, HD: tl.constexpr, QP: tl.constexpr, ZERO: tl.constexpr = False,
-              DIG: tl.constexpr = False, ZB: tl.constexpr = 2048):
+              DIG: tl.constexpr = False, ZB: tl.constexpr = 2048, SCQ: tl.constexpr = 1):
         """sum partials, rshift to -24, + bias, rope q and k, blockf each q head, store clipped k, v at pos."""
         hz = tl.arange(0, QP)
         tl.store(Mg_ptr + hz, tl.full([QP], -(2**62), tl.int64), mask=hz < NQ)
@@ -422,8 +423,8 @@ def fast_class():
         i1 = hq[:, None] * HD + d2[None, :]
         x1 = _rsh(_sumsk(acc_ptr, SK, O, i1, mq), n) + tl.load(b_ptr + i1, mask=mq, other=0)
         x2 = _rsh(_sumsk(acc_ptr, SK, O, i1 + HH, mq), n) + tl.load(b_ptr + i1 + HH, mask=mq, other=0)
-        q1 = _rshc(x1 * c - x2 * s, 14)
-        q2 = _rshc(x2 * c + x1 * s, 14)
+        q1 = _rshc(x1 * c - x2 * s, 14) * SCQ  # score scale folded into q before its blockf
+        q2 = _rshc(x2 * c + x1 * s, 14) * SCQ
         mx = tl.maximum(tl.max(tl.abs(q1), axis=1), tl.max(tl.abs(q2), axis=1))
         sh = tl.maximum(_bitlen(mx) - 15, 0)
         tl.store(mq_ptr + i1, tl.minimum(tl.maximum(_rsh(q1, sh[:, None]), -32767), 32767), mask=mq)
@@ -641,7 +642,7 @@ def fast_class():
             k0 = tl.load(ka, mask=mk, other=0)
             k1 = tl.load(ka + PS, mask=mk, other=0)
             k2 = tl.load(ka + 2 * PS, mask=mk, other=0)
-            acc = _dot9(k0, k1, k2, q0, q1, q2) * SC  # [CH, GP]; |q.K| < 2^44, times SC < 2^16
+            acc = _dot9(k0, k1, k2, q0, q1, q2)  # [CH, GP]; |q.K| < 2^44 (the scale is folded into q)
             r = (acc + ((acc * 0 + 1) << tl.maximum(n - 1, 0))) >> tl.maximum(n, 0)
             r = tl.where(n > 0, r, acc << tl.maximum(-n, 0))
             r = tl.where(mk, r, -(2**60))
@@ -685,8 +686,284 @@ def fast_class():
         tl.atomic_add(Oacc_ptr + (j * GRP + g[:, None]) * HD + d[None, :], oa.to(tl.uint64, bitcast=True), mask=gm[:, None],
                       sem="relaxed")
 
+    # ---- batched prefill (compression knows every token, so all positions run as matrix-matrix work)
+    @triton.jit
+    def _store_dig(ptr, PS, idx, x, mask):
+        a0, a1, a2 = _dig(x)
+        tl.store(ptr + idx, a0, mask=mask)
+        tl.store(ptr + PS + idx, a1, mask=mask)
+        tl.store(ptr + 2 * PS + idx, a2, mask=mask)
+
+    @triton.jit
+    def _store_dig2(ptr, PS, idx, x, mask):  # |x| <= 32767 -> two offset bytes h, l with x = 256 h + l + 128
+        xs = x + 32768
+        tl.store(ptr + idx, ((xs >> 8) - 128).to(tl.int8), mask=mask)
+        tl.store(ptr + PS + idx, ((xs & 255) - 128).to(tl.int8), mask=mask)
+
+    @triton.jit
+    def k_gemm(W_ptr, S_ptr, WS_ptr, M_ptr, out_ptr, R, O, PS, K: tl.constexpr, BO: tl.constexpr, BR: tl.constexpr):
+        """out[r, o] = sum_g s[o,g] * sum_{k in g} q[o,k] m[r,k]; m given as three int8 digit planes (plane stride PS).
+        int8 dots with int32 sums (< 2^20), digits recombined and scaled in int64: exact."""
+        NG: tl.constexpr = K // 64
+        o = tl.program_id(0) * BO + tl.arange(0, BO)
+        r = tl.program_id(1) * BR + tl.arange(0, BR)
+        om, rm = o < O, r < R
+        kk = tl.arange(0, 64)
+        # float64 accumulation is exact: each group term |d * s| < 2^43 and at most 296 groups, so sums < 2^52
+        acc = tl.zeros([BO, BR], dtype=tl.float64)
+        for g in range(NG):
+            w = tl.load(W_ptr + o[:, None] * K + g * 64 + kk[None, :], mask=om[:, None], other=0)
+            ma = M_ptr + r[:, None] * K + g * 64 + kk[None, :]
+            bh = tl.trans(tl.load(ma, mask=rm[:, None], other=0))
+            bl = tl.trans(tl.load(ma + PS, mask=rm[:, None], other=0))
+            ws = tl.load(WS_ptr + o * NG + g, mask=om, other=0)  # sum of the group's int8 weights
+            d = (tl.dot(w, bh) << 8) + tl.dot(w, bl) + 128 * ws[:, None]  # int32, exact: |d| < 2^29
+            sc = tl.load(S_ptr + o * NG + g, mask=om, other=0).to(tl.float64)
+            acc += d.to(tl.float64) * sc[:, None]
+        tl.store(out_ptr + r[None, :] * O + o[:, None], acc.to(tl.int64), mask=om[:, None] & rm[None, :])
+
+    @triton.jit
+    def k_rnorm(h_ptr, acc_ptr, E_ptr, ein_ptr, g_ptr, EPS_ptr, M_ptr, e_ptr, PS, D: tl.constexpr, BLOCK: tl.constexpr,
+                ADD: tl.constexpr):
+        """per row: optionally h += rshift(acc, to -24); rmsnorm(h, g) -> blockf -> digit planes, exponent."""
+        row = tl.program_id(0)
+        i = tl.arange(0, BLOCK)
+        mk = i < D
+        h = tl.load(h_ptr + row * D + i, mask=mk, other=0)
+        if ADD:
+            n = -24 - (tl.load(E_ptr) + tl.load(ein_ptr + row))
+            h = h + _rsh(tl.load(acc_ptr + row * D + i, mask=mk, other=0), n)
+            tl.store(h_ptr + row * D + i, h, mask=mk)
+        sh = tl.maximum(_bitlen(tl.max(tl.abs(h), axis=0)) - 20, 0)
+        x = _rsh(h, sh)
+        ms = tl.sum(x * x, axis=0) // D + tl.load(EPS_ptr + sh)
+        r = tl.sqrt(ms.to(tl.float64)).to(tl.int64)
+        r = r - (r * r > ms).to(tl.int64)
+        r = r + ((r + 1) * (r + 1) <= ms).to(tl.int64)
+        r = r - (r * r > ms).to(tl.int64)
+        r = r + ((r + 1) * (r + 1) <= ms).to(tl.int64)
+        r = tl.maximum(r, 1)
+        a = x * tl.load(g_ptr + i, mask=mk, other=0) * 16384
+        aa = tl.abs(a)
+        qt = (aa.to(tl.float64) / r.to(tl.float64)).to(tl.int64)
+        qt = qt - (qt * r > aa).to(tl.int64)
+        qt = qt + ((qt + 1) * r <= aa).to(tl.int64)
+        qt = qt - (qt * r > aa).to(tl.int64)
+        qt = qt + ((qt + 1) * r <= aa).to(tl.int64)
+        y = tl.where(a < 0, -qt, qt)
+        sh2 = tl.maximum(_bitlen(tl.max(tl.abs(y), axis=0)) - 15, 0)
+        _store_dig2(M_ptr, PS, row * D + i, tl.minimum(tl.maximum(_rsh(y, sh2), -32767), 32767), mk)
+        tl.store(e_ptr + row, sh2 - 30)
+
+    @triton.jit
+    def k_rqkv(acc_ptr, E_ptr, ein_ptr, b_ptr, C_ptr, S_ptr, pos0, K_ptr, V_ptr, maxlen, Q_ptr, sh_ptr, QS,
+               NQ: tl.constexpr, NKV: tl.constexpr, HD: tl.constexpr, QP: tl.constexpr, SCQ: tl.constexpr):
+        """per row (position pos0 + row): bias, rope, q blockf per head -> q digit planes; K, V digits into the cache."""
+        row = tl.program_id(0)
+        O: tl.constexpr = (NQ + 2 * NKV) * HD
+        HH: tl.constexpr = HD // 2
+        a_ptr = acc_ptr + row * O
+        n = -24 - (tl.load(E_ptr) + tl.load(ein_ptr + row))
+        pos = pos0 + row
+        d2 = tl.arange(0, HH)
+        c = tl.load(C_ptr + pos * HH + d2)[None, :]
+        s = tl.load(S_ptr + pos * HH + d2)[None, :]
+        hq = tl.arange(0, QP)
+        mq = (hq < NQ)[:, None]
+        i1 = hq[:, None] * HD + d2[None, :]
+        x1 = _rsh(tl.load(a_ptr + i1, mask=mq, other=0), n) + tl.load(b_ptr + i1, mask=mq, other=0)
+        x2 = _rsh(tl.load(a_ptr + i1 + HH, mask=mq, other=0), n) + tl.load(b_ptr + i1 + HH, mask=mq, other=0)
+        q1 = _rshc(x1 * c - x2 * s, 14) * SCQ  # score scale folded into q before its blockf
+        q2 = _rshc(x2 * c + x1 * s, 14) * SCQ
+        sh = tl.maximum(_bitlen(tl.maximum(tl.max(tl.abs(q1), axis=1), tl.max(tl.abs(q2), axis=1))) - 15, 0)
+        qb = row * NQ * HD
+        _store_dig(Q_ptr, QS, qb + i1, tl.minimum(tl.maximum(_rsh(q1, sh[:, None]), -32767), 32767), mq)
+        _store_dig(Q_ptr, QS, qb + i1 + HH, tl.minimum(tl.maximum(_rsh(q2, sh[:, None]), -32767), 32767), mq)
+        tl.store(sh_ptr + row * NQ + hq, sh, mask=hq < NQ)
+        hk = tl.arange(0, NKV)
+        LIM: tl.constexpr = 2**22 - 1
+        PS = NKV * maxlen * HD
+        k1i = NQ * HD + hk[:, None] * HD + d2[None, :]
+        x1 = _rsh(tl.load(a_ptr + k1i), n) + tl.load(b_ptr + k1i)
+        x2 = _rsh(tl.load(a_ptr + k1i + HH), n) + tl.load(b_ptr + k1i + HH)
+        k1 = tl.minimum(tl.maximum(_rshc(_rshc(x1 * c - x2 * s, 14), 12), -LIM), LIM)
+        k2 = tl.minimum(tl.maximum(_rshc(_rshc(x2 * c + x1 * s, 14), 12), -LIM), LIM)
+        dst = hk[:, None] * maxlen * HD + pos * HD + d2[None, :]
+        _store_dig(K_ptr, PS, dst, k1, dst >= 0)
+        _store_dig(K_ptr, PS, dst + HH, k2, dst >= 0)
+        d = tl.arange(0, HD)
+        vi = (NQ + NKV) * HD + hk[:, None] * HD + d[None, :]
+        v = tl.minimum(tl.maximum(_rshc(_rsh(tl.load(a_ptr + vi), n) + tl.load(b_ptr + vi), 12), -LIM), LIM)
+        vd = hk[:, None] * maxlen * HD + pos * HD + d[None, :]
+        _store_dig(V_ptr, PS, vd, v, vd >= 0)
+
+    @triton.jit
+    def _split16(x, off: tl.constexpr):
+        """x + off in [0, 65535] -> two int8 digits h, l with x = 256 h + l + (32896 - off)."""
+        xs = x + off
+        return ((xs >> 8) - 128).to(tl.int8), ((xs & 255) - 128).to(tl.int8)
+
+    @triton.jit
+    def _dot6(ah, al, b0, b1, b2):  # (256 ah + al) @ (b0 + b1 2^8 + b2 2^16), exact (int8 dots, int32 sums < 2^21)
+        hi = tl.dot(ah, b0).to(tl.int64) + (tl.dot(ah, b1).to(tl.int64) << 8) + (tl.dot(ah, b2).to(tl.int64) << 16)
+        lo = tl.dot(al, b0).to(tl.int64) + (tl.dot(al, b1).to(tl.int64) << 8) + (tl.dot(al, b2).to(tl.int64) << 16)
+        return (hi << 8) + lo
+
+    @triton.jit
+    def _sum3(b0, b1, b2, axis: tl.constexpr):  # sums of a digit-split tile along an axis, as int64
+        return (tl.sum(b0.to(tl.int32), axis=axis).to(tl.int64) + (tl.sum(b1.to(tl.int32), axis=axis).to(tl.int64) << 8)
+                + (tl.sum(b2.to(tl.int32), axis=axis).to(tl.int64) << 16))
+
+    @triton.jit
+    def _dot9f(a0, a1, a2, b0, b1, b2):  # exact digit-split product as float64 (every term and partial sum < 2^53)
+        # int32 partial combines stay below 2^31 (each dot < 2^21 for 128-term sums of 8-bit digits)
+        lo = tl.dot(a0, b0) + ((tl.dot(a0, b1) + tl.dot(a1, b0)) << 8)
+        hi = tl.dot(a0, b2) + tl.dot(a1, b1) + tl.dot(a2, b0) + ((tl.dot(a1, b2) + tl.dot(a2, b1)) << 8)
+        return lo.to(tl.float64) + hi.to(tl.float64) * 65536.0 + tl.dot(a2, b2).to(tl.float64) * 4294967296.0
+
+    @triton.jit
+    def k_rattn3(Q_ptr, sh_ptr, QS, K_ptr, V_ptr, E_ptr, out_ptr, pos0, R, maxlen, NQ: tl.constexpr, NKV: tl.constexpr,
+                 GRP: tl.constexpr, HD: tl.constexpr, BM: tl.constexpr, CH: tl.constexpr, NA: tl.constexpr,
+                 ZTH: tl.constexpr):
+        """causal attention for BM query rows of one q head, in float64 on exact integers. The digit products give
+        q.K exactly (< 2^44); the score rshift(q.K, n) = floor(q.K * 2^-n + 1/2) is exact in float64 (a power-of-two
+        scaling and one exactly representable addition); weights come from the exp table (an int32 copy); w and
+        w*V sums stay below 2^53, so they accumulate exactly in float64. Pass 1 finds each row's max."""
+        rb, h = tl.program_id(0), tl.program_id(1)
+        j = h // GRP
+        r = rb * BM + tl.arange(0, BM)
+        rm = r < R
+        pr = pos0 + r
+        d = tl.arange(0, HD)
+        qa = Q_ptr + (r[:, None] * NQ + h) * HD + d[None, :]
+        q0 = tl.load(qa, mask=rm[:, None], other=0)
+        q1 = tl.load(qa + QS, mask=rm[:, None], other=0)
+        q2 = tl.load(qa + 2 * QS, mask=rm[:, None], other=0)
+        n = 42 - tl.load(sh_ptr + r * NQ + h, mask=rm, other=0)
+        inv = tl.exp2(-n.to(tl.float64))[:, None]  # 2^-n, exact
+        last = pos0 + tl.minimum(rb * BM + BM, R) - 1
+        PS = NKV * maxlen * HD
+        kb = j * maxlen * HD
+        Mf = tl.full([BM], -1e300, tl.float64)
+        for c in range(0, last // CH + 1):
+            t = c * CH + tl.arange(0, CH)
+            ka = K_ptr + kb + t[:, None] * HD + d[None, :]
+            km = (t <= last)[:, None]
+            k0 = tl.trans(tl.load(ka, mask=km, other=0))
+            k1 = tl.trans(tl.load(ka + PS, mask=km, other=0))
+            k2 = tl.trans(tl.load(ka + 2 * PS, mask=km, other=0))
+            accf = _dot9f(q0, q1, q2, k0, k1, k2)
+            Mf = tl.maximum(Mf, tl.max(tl.where(t[None, :] <= pr[:, None], accf, -1e300), axis=1))
+        M = tl.floor(Mf[:, None] * inv + 0.5)  # the row's max score (exact)
+        Of = tl.zeros([BM, HD], dtype=tl.float64)
+        Zf = tl.zeros([BM], dtype=tl.float64)
+        for c in range(0, last // CH + 1):
+            t = c * CH + tl.arange(0, CH)
+            ka = K_ptr + kb + t[:, None] * HD + d[None, :]
+            km = (t <= last)[:, None]
+            k0 = tl.trans(tl.load(ka, mask=km, other=0))
+            k1 = tl.trans(tl.load(ka + PS, mask=km, other=0))
+            k2 = tl.trans(tl.load(ka + 2 * PS, mask=km, other=0))
+            sc_ = tl.floor(_dot9f(q0, q1, q2, k0, k1, k2) * inv + 0.5)
+            dd = tl.where((t[None, :] <= pr[:, None]) & rm[:, None], M - sc_, NA - 1.0)
+            if tl.min(tl.min(dd, axis=1), axis=0) < ZTH:  # else every weight in the tile is EXPA[>= ZTH] = 0
+                w = tl.load(E_ptr + tl.minimum(dd, NA - 1.0).to(tl.int32))  # [BM, CH] int32
+                Zf += tl.sum(w.to(tl.float64), axis=1)
+                w0 = (((w + 128) & 255) - 128)
+                w1r = (w - w0) >> 8
+                w1 = ((w1r + 128) & 255) - 128
+                w2 = (w1r - w1) >> 8
+                va = V_ptr + kb + t[:, None] * HD + d[None, :]
+                v0 = tl.load(va, mask=km, other=0)
+                v1 = tl.load(va + PS, mask=km, other=0)
+                v2 = tl.load(va + 2 * PS, mask=km, other=0)
+                Of += _dot9f(w0.to(tl.int8), w1.to(tl.int8), w2.to(tl.int8), v0, v1, v2)
+        Oa = Of.to(tl.int64)
+        Zb = Zf.to(tl.int64)[:, None]
+        a = tl.abs(Oa)
+        hi = a // Zb
+        o = (hi << 12) + ((a - hi * Zb) << 12) // Zb
+        o = tl.where(Oa < 0, -o, o)
+        tl.store(out_ptr + r[:, None] * (NQ * HD) + h * HD + d[None, :], o, mask=rm[:, None])
+
+    @triton.jit
+    def k_rblock(x_ptr, M_ptr, e_ptr, PS, ein, N: tl.constexpr, BLOCK: tl.constexpr):
+        """per row: blockf -> digit planes and exponent ein + sh."""
+        row = tl.program_id(0)
+        i = tl.arange(0, BLOCK)
+        mk = i < N
+        x = tl.load(x_ptr + row * N + i, mask=mk, other=0)
+        sh = tl.maximum(_bitlen(tl.max(tl.abs(x), axis=0)) - 15, 0)
+        _store_dig2(M_ptr, PS, row * N + i, tl.minimum(tl.maximum(_rsh(x, sh), -32767), 32767), mk)
+        tl.store(e_ptr + row, sh + ein)
+
+    @triton.jit
+    def k_rmlp(acc_ptr, E_ptr, ein_ptr, SIG_ptr, p_ptr, M_ptr, e_ptr, PS, I: tl.constexpr, NS: tl.constexpr,
+               BLOCK: tl.constexpr):
+        """per row: gate/up -> silu via table -> p = a*u, then blockf over I (two passes)."""
+        row = tl.program_id(0)
+        n = -16 - (tl.load(E_ptr) + tl.load(ein_ptr + row))
+        mxv = tl.zeros([BLOCK], dtype=tl.int64)
+        for b0 in range(0, I, BLOCK):
+            i = b0 + tl.arange(0, BLOCK)
+            mk = i < I
+            g = _rsh(tl.load(acc_ptr + row * 2 * I + i, mask=mk, other=0), n)
+            u = _rsh(tl.load(acc_ptr + row * 2 * I + I + i, mask=mk, other=0), n)
+            idx = tl.minimum(tl.maximum(_rshc(g, 6), -NS), NS) + NS
+            a = _rshc(g * tl.load(SIG_ptr + idx, mask=mk, other=0), 16)
+            p = tl.where(mk, _rshc(a * u, 16), 0)
+            tl.store(p_ptr + row * I + i, p, mask=mk)
+            mxv = tl.maximum(mxv, tl.abs(p))
+        sh = tl.maximum(_bitlen(tl.max(mxv, axis=0)) - 15, 0)
+        for b0 in range(0, I, BLOCK):
+            i = b0 + tl.arange(0, BLOCK)
+            mk = i < I
+            p = tl.load(p_ptr + row * I + i, mask=mk, other=0)
+            _store_dig2(M_ptr, PS, row * I + i, tl.minimum(tl.maximum(_rsh(p, sh), -32767), 32767), mk)
+        tl.store(e_ptr + row, sh - 16)
+
+    @triton.jit
+    def k_rhead(W_ptr, S_ptr, WS_ptr, M_ptr, PS, E_ptr, ein_ptr, tgt_ptr, Mx_ptr, Z_ptr, tot_ptr, cumt_ptr, ft_ptr, EXPF_ptr,
+                R, V, TOT: tl.constexpr, NF: tl.constexpr, K: tl.constexpr, BO: tl.constexpr, BR: tl.constexpr,
+                MODE: tl.constexpr):
+        """output head tile (vocab x rows) recomputed in each of three passes, so logits are never stored:
+        0: max per row; 1: Z = sum EXPF[M - l]; 2: total = sum freq, cum[t] = sum of freq up to t, freq at t."""
+        NG: tl.constexpr = K // 64
+        o = tl.program_id(0) * BO + tl.arange(0, BO)
+        r = tl.program_id(1) * BR + tl.arange(0, BR)
+        om, rm = o < V, r < R
+        kk = tl.arange(0, 64)
+        accf = tl.zeros([BO, BR], dtype=tl.float64)
+        for g in range(NG):
+            w = tl.load(W_ptr + o[:, None] * K + g * 64 + kk[None, :], mask=om[:, None], other=0)
+            ma = M_ptr + r[:, None] * K + g * 64 + kk[None, :]
+            bh = tl.trans(tl.load(ma, mask=rm[:, None], other=0))
+            bl = tl.trans(tl.load(ma + PS, mask=rm[:, None], other=0))
+            ws = tl.load(WS_ptr + o * NG + g, mask=om, other=0)
+            dd = (tl.dot(w, bh) << 8) + tl.dot(w, bl) + 128 * ws[:, None]
+            accf += dd.to(tl.float64) * tl.load(S_ptr + o * NG + g, mask=om, other=0).to(tl.float64)[:, None]  # exact (< 2^52)
+        acc = accf.to(tl.int64)
+        lg = _rsh(acc, (-10 - (tl.load(E_ptr) + tl.load(ein_ptr + r, mask=rm, other=0)))[None, :])
+        valid = om[:, None] & rm[None, :]
+        if MODE == 0:
+            tl.atomic_max(Mx_ptr + r, tl.max(tl.where(valid, lg, -(2**62)), axis=0), mask=rm, sem="relaxed")
+        else:
+            mx = tl.load(Mx_ptr + r, mask=rm, other=0)[None, :]
+            f = tl.where(valid, tl.load(EXPF_ptr + tl.minimum(tl.maximum(mx - lg, 0), NF - 1), mask=valid, other=0), 0)
+            if MODE == 1:
+                tl.atomic_add(Z_ptr + r, tl.sum(f, axis=0).to(tl.uint64, bitcast=True), mask=rm, sem="relaxed")
+            else:
+                Zr = tl.load(Z_ptr + r, mask=rm, other=1).to(tl.int64, bitcast=True)[None, :]
+                fq = tl.where(valid, f * (TOT - V) // Zr + 1, 0)
+                t = tl.load(tgt_ptr + r, mask=rm, other=0)[None, :]
+                tl.atomic_add(tot_ptr + r, tl.sum(fq, axis=0).to(tl.uint64, bitcast=True), mask=rm, sem="relaxed")
+                tl.atomic_add(cumt_ptr + r, tl.sum(tl.where(o[:, None] <= t, fq, 0), axis=0).to(tl.uint64, bitcast=True),
+                              mask=rm, sem="relaxed")
+                tl.atomic_add(ft_ptr + r, tl.sum(tl.where(o[:, None] == t, fq, 0), axis=0).to(tl.uint64, bitcast=True),
+                              mask=rm, sem="relaxed")
+
     class FastInt:
-        def __init__(self, bundle, n, log, BUCKET=1024, CH=32, fused=True, APG=192):
+        def __init__(self, bundle, n, log, BUCKET=1024, CH=32, fused=True, APG=192, graphs=True):
             self.tr = None
             z = np.load(bundle)
             cfg = json.loads(bytes(z["cfg"]).decode())
@@ -696,6 +973,7 @@ def fast_class():
             hd, V, grp = D // nq, cfg["vocab_size"], nq // nkv
             self.start, self.V = cfg["bos_token_id"], V
             SC = int(round(2**16 / math.sqrt(hd)))
+            QP_ = 1 << (nq - 1).bit_length()  # q heads padded to a power of two
             NB_ = 1 << (D - 1).bit_length()  # norm block (power of two >= D)
             if not fused:
                 assert hd == 64, "the unfused debug path assumes head_dim 64"
@@ -709,11 +987,13 @@ def fast_class():
                 return Tn(z[nm + ".q"], torch.int8), Tn(z[nm + ".s"], torch.int32), sc(int(z[nm + ".E"]))
 
             emb_q, emb_s, E_emb = mat("emb")
+            head_q, head_s, E_head = mat("head") if "head.q" in z else (emb_q, emb_s, E_emb)
             layers = [dict(qkv=mat(f"{l}.qkv"), o=mat(f"{l}.o"), gu=mat(f"{l}.gu"), d=mat(f"{l}.d"),
                            b=Tn(z[f"{l}.bqkv"]), g1=Tn(z[f"{l}.g1"]), g2=Tn(z[f"{l}.g2"])) for l in range(Lr)]
             gf = Tn(z["gf"])
             C, S = Tn(z["ROPE_C"]), Tn(z["ROPE_S"])
             EXPA, EXPF, SIG = Tn(z["EXPA"]), Tn(z["EXPF"]), Tn(z["SIG"])
+            EXPA32 = EXPA.to(torch.int32)
             POW2 = torch.tensor([1 << k for k in range(63)], dtype=L64, device=dev)
             EPS = torch.tensor([(1 << max(0, 48 - 2 * s)) // 10**6 for s in range(64)], dtype=L64, device=dev)
             KV = torch.zeros(Lr, 2, nkv, maxlen, hd, dtype=torch.int32, device=dev)  # unfused path
@@ -903,14 +1183,14 @@ def fast_class():
                 for l, Ly in enumerate(layers):
                     acc, E = mv3(Ly["qkv"], mbuf, 32, 1)
                     k_qkv[(1,)](acc, 1, E, e_n, Ly["b"], C, S, pos, KV8[l, 0], KV8[l, 1], maxlen, mqb, shb, Mg_acc,
-                                NQ=nq, NKV=nkv, HD=hd, QP=16, ZERO=True, DIG=True, ZB=1 << ((nq + 2 * nkv) * hd - 1).bit_length())
+                                NQ=nq, NKV=nkv, HD=hd, QP=QP_, ZERO=True, DIG=True, ZB=1 << ((nq + 2 * nkv) * hd - 1).bit_length(), SCQ=SC)
                     cpp = triton.cdiv(nch, APG)  # about APG programs per kv head, each over cpp chunks
                     npg = triton.cdiv(nch, cpp)
                     k_att1d[(nkv, npg)](mqb, shb, KV8[l, 0], Sbuf, Mg_acc, Cm, pos, maxlen, cpp, nch, NCH, NKV=nkv, GRP=grp,
                                         CH=CH, HD=hd, GP=16, SC=SC)
                     k_att2d[(nkv, npg)](Sbuf, Mg_acc, Cm, KV8[l, 1], EXPA, O_acc_u, Z_acc_u, pos, maxlen, cpp, nch, NCH, NA=NA,
                                         NKV=nkv, GRP=grp, CH=CH, HD=hd, GP=16, ZTH=ZTH)
-                    k_mergea[(1,)](O_acc, Z_acc, mob, e_o, NQ=nq, HD=hd, QP=16)
+                    k_mergea[(1,)](O_acc, Z_acc, mob, e_o, NQ=nq, HD=hd, QP=QP_)
                     acc, E = mv3(Ly["o"], mob, 32, 1)
                     k_norm2[(1,)](hbuf, acc, E, e_o, pmax, Ly["g2"], EPS, mbuf, e_n, D=D, BLOCK=NB_, ADD=True, EINP=False, num_warps=8)
                     acc, E = mv3(Ly["gu"], mbuf, 64, 1, nw=2)
@@ -918,7 +1198,7 @@ def fast_class():
                     acc, E = mv3(Ly["d"], pbuf, 128, 1, PRO=True)
                     k_norm2[(1,)](hbuf, acc, E, e_n, pmax, layers[l + 1]["g1"] if l + 1 < Lr else gf, EPS, mbuf, e_n,
                                   D=D, BLOCK=NB_, ADD=True, EINP=True, num_warps=8)
-                k_mvlog[(triton.cdiv(V, 64),)](emb_q, emb_s, mbuf, lgbuf, E_emb, e_n, gmaxb, V, K=D, BO=64)
+                k_mvlog[(triton.cdiv(V, 64),)](head_q, head_s, mbuf, lgbuf, E_head, e_n, gmaxb, V, K=D, BO=64)
                 k_tab2[(NTB,)](lgbuf, gmaxb, EXPF, fbuf, Zt_u, V, NF=NF, BLOCK=TB)
                 k_tab3[(NTB,)](fbuf, Zt, cum, bsum, V, TOT=TOTAL, BLOCK=TB)
                 k_tab4[(NTB,)](cum, bsum, gmaxb, Zt, V, NB=1 << (NTB - 1).bit_length(), BLOCK=TB)
@@ -974,9 +1254,10 @@ def fast_class():
                     fn(*a)
                 return g
 
-            self.fwd = [capture(forward, (b + 1) * BUCKET) for b in range(nb)]
-            self.encg = [capture(enc_step, (b + 1) * BUCKET) for b in range(nb)]
-            self.srch = capture(search)
+            if graphs:
+                self.fwd = [capture(forward, (b + 1) * BUCKET) for b in range(nb)]
+                self.encg = [capture(enc_step, (b + 1) * BUCKET) for b in range(nb)]
+                self.srch = capture(search)
             torch.cuda.synchronize()
             self.t_cap = time.time() - t0
             log(f"{time.strftime('%T')} captured {2 * nb + 1} graphs in {self.t_cap:.1f}s")
@@ -1030,7 +1311,7 @@ def fast_class():
                     f = lambda: k_norm2[(1,)](hbuf, acc0, E_emb, e_o, pmax, Ly["g2"], EPS, mbuf, e_n, D=D, BLOCK=NB_, ADD=True,
                                               EINP=False, num_warps=nw)
                     say(f"norm nw={nw}: {tm(f):.2f}us")
-                f = lambda: k_mergea[(1,)](O_acc, Z_acc, mob, e_o, NQ=nq, HD=hd, QP=16)
+                f = lambda: k_mergea[(1,)](O_acc, Z_acc, mob, e_o, NQ=nq, HD=hd, QP=QP_)
                 say(f"merge: {tm(f):.2f}us")
                 f = lambda: k_mlp2[(triton.cdiv(I, 1024),)](outs.get((2 * I, D), torch.zeros(2 * I, dtype=L64, device=dev)), E_emb, e_n,
                                                              SIG, pbuf, pmax, I=I, NS=NS, BLOCK=1024)
@@ -1038,6 +1319,86 @@ def fast_class():
                 f = lambda: pmax.add_(0)
                 say(f"tiny torch kernel: {tm(f):.2f}us")
 
+            wsums = {}
+
+            def wsum(q):  # per (row, 64-group) sums of the int8 weights, for the offset-byte GEMM inputs
+                k = q.data_ptr()
+                if k not in wsums:
+                    O_, K_ = q.shape
+                    wsums[k] = q.view(O_, K_ // 64, 64).to(torch.int32).sum(-1, dtype=torch.int32).contiguous()
+                return wsums[k]
+
+            def encode_batched(ids, P=2048, say=None, BM=16, CHa=64, NWa=4, GBO=256, GBR=64, GNW=8, GST=3, HBO=256, HBR=64):
+                """Compress with every position as matrix-matrix work: rows of P positions run through all layers,
+                attention reads the digit-plane cache. Same spec, so the same counts as the step-by-step path."""
+                n = len(ids)
+                toks = torch.tensor([self.start] + list(ids[:-1]), dtype=L64, device=dev)
+                tg = torch.tensor(list(ids), dtype=L64, device=dev)
+                KV8.zero_()
+                PSd, PSi, QS = P * D, P * I, P * nq * hd
+                Md = torch.empty(2, P, D, dtype=torch.int8, device=dev)  # GEMM inputs: two offset-byte planes
+                Mi = torch.empty(2, P, I, dtype=torch.int8, device=dev)
+                Mo = torch.empty(2, P, nq * hd, dtype=torch.int8, device=dev)
+                Qd = torch.empty(3, P, nq, hd, dtype=torch.int8, device=dev)
+                shq = torch.empty(P, nq, dtype=L64, device=dev)
+                H = torch.empty(P, D, dtype=L64, device=dev)
+                e1, e2 = torch.empty(P, dtype=L64, device=dev), torch.empty(P, dtype=L64, device=dev)
+                Oqkv = (nq + 2 * nkv) * hd
+                A_qkv = torch.empty(P, Oqkv, dtype=L64, device=dev)
+                A_d = torch.empty(P, D, dtype=L64, device=dev)
+                A_gu = torch.empty(P, 2 * I, dtype=L64, device=dev)
+                Ob = torch.empty(P, nq * hd, dtype=L64, device=dev)
+                Pb = torch.empty(P, I, dtype=L64, device=dev)
+                Mx, Zr, tot, cumt, ft = (torch.empty(P, dtype=L64, device=dev) for _ in range(5))
+                counts = torch.empty(n, 3, dtype=L64, device=dev)
+                def gemm(W, Mp, PS, R, out):
+                    q, s_, E = W
+                    O, K = q.shape
+                    k_gemm[(triton.cdiv(O, GBO), triton.cdiv(R, GBR))](q, s_, wsum(q), Mp, out, R, O, PS, K=K, BO=GBO, BR=GBR,
+                                                                      num_warps=GNW, num_stages=GST)
+                    return E
+
+                for r0 in range(0, n, P):
+                    R = min(P, n - r0)
+                    tk = toks[r0 : r0 + R]
+                    H[:R] = rshift(emb_q[tk].to(L64) * torch.repeat_interleave(emb_s[tk].to(L64), 64, dim=1), -24 - E_emb)
+                    k_rnorm[(R,)](H, H, E_emb, e1, layers[0]["g1"], EPS, Md, e1, PSd, D=D, BLOCK=NB_, ADD=False, num_warps=8)
+                    for l, Ly in enumerate(layers):
+                        E = gemm(Ly["qkv"], Md, PSd, R, A_qkv)
+                        k_rqkv[(R,)](A_qkv, E, e1, Ly["b"], C, S, r0, KV8[l, 0], KV8[l, 1], maxlen, Qd, shq, QS,
+                                     NQ=nq, NKV=nkv, HD=hd, QP=QP_, SCQ=SC)
+                        k_rattn3[(triton.cdiv(R, BM), nq)](Qd, shq, QS, KV8[l, 0], KV8[l, 1], EXPA32, Ob, r0, R, maxlen, NQ=nq,
+                                                           NKV=nkv, GRP=grp, HD=hd, BM=BM, CH=CHa, NA=NA, ZTH=ZTH, num_warps=NWa)
+                        k_rblock[(R,)](Ob, Mo, e2, P * nq * hd, -24, N=nq * hd, BLOCK=1 << (nq * hd - 1).bit_length())
+                        E = gemm(Ly["o"], Mo, P * nq * hd, R, A_d)
+                        k_rnorm[(R,)](H, A_d, E, e2, Ly["g2"], EPS, Md, e1, PSd, D=D, BLOCK=NB_, ADD=True, num_warps=8)
+                        E = gemm(Ly["gu"], Md, PSd, R, A_gu)
+                        k_rmlp[(R,)](A_gu, E, e1, SIG, Pb, Mi, e2, PSi, I=I, NS=NS, BLOCK=1024)
+                        E = gemm(Ly["d"], Mi, PSi, R, A_d)
+                        k_rnorm[(R,)](H, A_d, E, e2, layers[l + 1]["g1"] if l + 1 < Lr else gf, EPS, Md, e1, PSd, D=D,
+                                      BLOCK=NB_, ADD=True, num_warps=8)
+                    Mx.fill_(-(2**62)); Zr.zero_(); tot.zero_(); cumt.zero_(); ft.zero_()
+                    tgr = tg[r0 : r0 + R]
+                    for mode in range(3):
+                        k_rhead[(triton.cdiv(V, HBO), triton.cdiv(R, HBR))](head_q, head_s, wsum(head_q), Md, PSd, E_head, e1, tgr, Mx,
+                                                                           Zr.view(torch.uint64), tot.view(torch.uint64),
+                                                                           cumt.view(torch.uint64), ft.view(torch.uint64), EXPF,
+                                                                           R, V, TOT=TOTAL, NF=NF, K=D, BO=HBO, BR=HBR,
+                                                                           MODE=mode, num_warps=GNW, num_stages=GST)
+                    counts[r0 : r0 + R] = torch.stack([tot[:R], cumt[:R], cumt[:R] - ft[:R]], 1)
+                    if say:
+                        torch.cuda.synchronize()
+                        say(f"{time.strftime('%T')}   rows {r0 + R}/{n}")
+                cnt = counts.tolist()
+                bad = [k for k, (tt, hi, lo) in enumerate(cnt) if not 0 <= lo < hi <= tt]
+                if bad:
+                    raise ValueError(f"bad counts at token {bad[0]}: {cnt[bad[0]]}")
+                enc = Encoder()
+                for tt, hi, lo in cnt:
+                    enc.code_counts(tt, hi, lo)
+                return struct.pack("<I", n) + enc.finish()
+
+            self.encode_batched = encode_batched
             self.bench = bench
             self.forward_eager = forward
             self.__dict__.update(reset=reset, tok=tok, pos=pos, cum=cum, ids_gpu=ids_gpu, counts=counts, st=st, res=res)
@@ -1126,7 +1487,10 @@ if modal is not None:
             ids = encode_text(hf, text) if text is not None else None
             maxlen = (len(ids) if ids else struct.unpack("<I", archive[:4])[0]) + 1
             if fast:
-                m = fast_class()(f"/int/{bundle}", maxlen - 1, say, **({"APG": int(targ)} if targ else {}))
+                kw_ = {"graphs": task != "bencode"}
+                if targ and task.startswith("prof"):
+                    kw_["APG"] = int(targ)
+                m = fast_class()(f"/int/{bundle}", maxlen - 1, say, **kw_)
             else:
                 m = model_class()(f"/int/{bundle}", maxlen, "cuda")
             start = m.start
@@ -1134,6 +1498,42 @@ if modal is not None:
             res = {"log": log}
             if task == "hashes":
                 run_hashes(m, start, ids[:n], say)
+            if task in ("bencode", "bcheck", "bround"):  # batched compression (bcheck: also step-by-step, compare archives)
+                ids_ = ids[:n] if n else ids
+                opts = dict(kv.split("=") for kv in targ.split(",") if "=" in kv)
+                targ2 = "prof" if "prof" in targ.split(",") else ""
+                Pr = int(opts.get("P", 2048))
+                ak = dict(BM=int(opts.get("BM", 16)), CHa=int(opts.get("CH", 64)), NWa=int(opts.get("NW", 4)),
+                          **{k: int(v) for k, v in opts.items() if k in ("GBO", "GBR", "GNW", "GST", "HBO", "HBR")})
+                t0 = time.time()
+                m.encode_batched(ids_, P=Pr, **ak)  # first run compiles the kernels (Triton caches them)
+                torch.cuda.synchronize()
+                say(f"{time.strftime('%T')} first (compiling) batched run: {time.time() - t0:.1f}s")
+                torch.cuda.synchronize()
+                t0 = time.time()
+                arch = m.encode_batched(ids_, P=Pr, **ak)
+                torch.cuda.synchronize()
+                dt = time.time() - t0
+                res["archive"] = arch
+                say(f"{time.strftime('%T')} batched encode: {len(ids_)} tokens -> {len(arch)} bytes, {dt:.2f}s ({len(ids_) / dt:.0f} tok/s), P={Pr} {ak}")
+                if targ2 == "prof":
+                    from torch.profiler import profile, ProfilerActivity
+                    with profile(activities=[ProfilerActivity.CUDA]) as pr:
+                        m.encode_batched(ids_, P=Pr, **ak)
+                        torch.cuda.synchronize()
+                    tbl = pr.key_averages().table(sort_by="cuda_time_total", row_limit=14, max_name_column_width=40)
+                    print(tbl, flush=True); log.append(tbl)
+                if task == "bround":  # decode the batched archive step by step
+                    t0 = time.time()
+                    out_ = m.decode(arch)
+                    dt = time.time() - t0
+                    say(f"{time.strftime('%T')} step-by-step decode: {len(out_)} tokens, {dt:.1f}s ({len(out_) / dt:.0f} tok/s), "
+                        f"round trip {'OK' if out_ == list(ids_) else 'FAILED'}")
+                if task == "bcheck":
+                    t0 = time.time()
+                    a2 = m.encode(ids_)
+                    say(f"{time.strftime('%T')} step-by-step encode: {len(a2)} bytes, {time.time() - t0:.1f}s; "
+                        f"archives {'IDENTICAL' if a2 == arch else 'DIFFER'}")
             if task == "bench":
                 m.bench(say)
             if task == "prof":

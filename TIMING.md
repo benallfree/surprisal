@@ -287,3 +287,37 @@ Same code, bundle `coder1.5b.npz` (1.5 GB). The attention scale is now `round(2^
 - **Exact skip of empty attention chunks:** a chunk whose best score is at least 11,357/1024 nats below the head's max
   has every weight `EXPA[...] = 0` by definition, so the weighted-sum pass skips it. This is exact. It bought only
   about 1–5%: attention on this file is not sparse enough.
+
+### Batched compression (2026-11-22, night)
+
+The compressor knows every token in advance, so it can run all positions as matrix-matrix work, prefill-style, in rows of
+2,048 positions. Under the integer spec a batched forward pass computes exactly the same tables as the step-by-step one.
+Every archive below matched the step-by-step archive byte for byte, and each was round-tripped.
+
+| Model | Archive | Batched compress (H100) | Step-by-step compress | Speedup |
+|---|---:|---:|---:|---:|
+| 0.5B | 7,185 | **2.04 s** | 28.9 s | 14× |
+| 1.5B | 5,855 | **3.82 s** | 50.8 s | 13× |
+| 7B | 4,969 | **9.79 s** | ~120 s (decode measured: 120.8 s) | 12× |
+
+- Not counted: about 20 s for the first run to compile the Triton kernels (cached afterwards), plus loading the bundle
+  (25 s for the 7B's 7.6 GB from Modal's volume).
+- How it stays exact:
+  - **GEMMs:** int8 tensor-core dots. Activations are split into two offset bytes (`x = 256 h + l + 128`); the offset
+    comes back through precomputed per-group sums of the int8 weights. The integer group scales are applied in float64,
+    which is exact: each term is below 2^43 and even 296 groups sum below 2^52.
+  - **Attention:** two passes over the keys per 16 query rows and one q head. The digit products give q·K exactly
+    (below 2^44), and the score `floor(q·K · 2^-n + 1/2)` is exact in float64. A tile whose scores are all at least
+    11,357/1024 nats below the row max has every weight `EXPA[…] = 0` by the spec, so it's skipped.
+  - **Output head:** three passes (max, Σ exp, frequencies with the running count up to the target token), recomputing
+    the head GEMM each time so the 152K logits per position are never stored.
+- **One spec change:** the attention scale now multiplies q *before* its block-float rounding, which makes the
+  float64 score path exact. For head_dim 64 (the 0.5B) the scale is 2^13 and nothing changes: the 0.5B archives are
+  byte-identical before and after. The 1.5B and 7B tables changed, re-checked against the numpy spec (1.5B, 30
+  tables) and by round trip. The 1.5B archive kept its size; the 7B's moved from 4,972 to 4,969 bytes.
+- Where the 7B's 9.8 s goes: attention 6.5 s, GEMMs 2.3 s, output head 0.7 s. Attention runs at a small fraction
+  of the int8 tensor-core peak (two passes, three-digit operands, float64 bookkeeping). The GEMMs reach about 15%,
+  held back by the per-64-group scale step.
+- Possible next steps, both spec changes:
+  - Attention in one pass, using integer online-softmax rescaling with a fixed chunk order defined by the spec.
+  - Larger quantization groups (fewer scale steps in the GEMMs), which needs a size check first.

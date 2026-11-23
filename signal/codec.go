@@ -97,18 +97,30 @@ func (c *Codec) Compress(kind int, data []byte, progress Progress) ([]byte, erro
 		return nil, err
 	}
 	defer ses.Close()
+	// Every token is known, so the model runs many positions at once (FeedBatch); the counts are the ones
+	// decompression's step-by-step tables give. Chunks only pace the progress reports.
+	const chunk = 2048
 	for s0 := 0; s0 < n; s0 += Seg {
 		ses.Reset()
-		prev := c.Model.BOS()
-		for k := s0; k < min(s0+Seg, n); k++ {
-			cum, err := ses.Feed(prev)
+		s1 := min(s0+Seg, n)
+		for k0 := s0; k0 < s1; k0 += chunk {
+			k1 := min(k0+chunk, s1)
+			toks := make([]int, 0, k1-k0)
+			if k0 == s0 {
+				toks = append(toks, c.Model.BOS())
+				toks = append(toks, ids[k0:k1-1]...)
+			} else {
+				toks = append(toks, ids[k0-1:k1-1]...)
+			}
+			cs, err := ses.FeedBatch(toks, ids[k0:k1])
 			if err != nil {
 				return nil, err
 			}
-			enc.codeToken(cum, ids[k])
-			prev = ids[k]
+			for _, ct := range cs {
+				enc.code(uint64(ct.Total), uint64(ct.High), uint64(ct.Low))
+			}
 			if progress != nil {
-				progress(k+1, n)
+				progress(k1, n)
 			}
 		}
 	}

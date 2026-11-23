@@ -102,3 +102,22 @@ func TestManifestMatchesSpec(t *testing.T) {
 		t.Fatal("signal/models-v1.json differs from llm/spec/models-v1.json (copy it over)")
 	}
 }
+
+// checkCompress: compressing gives the vector byte for byte (compression only: decoding the long vectors takes minutes).
+func checkCompress(t *testing.T, id int, input, archive string) {
+	c := openTest(t, id)
+	want, a := vec(t, input), vec(t, archive)
+	t0 := time.Now()
+	p, err := c.Compress(KindStream, want, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(p, a) {
+		t.Fatalf("%s: compressed %d bytes, not byte-identical to %s (%d bytes)", input, len(p), archive, len(a))
+	}
+	t.Logf("%s on %s: %d bytes -> %d, byte-identical, %v", input, c.Device(), len(want), len(p), time.Since(t0).Round(time.Millisecond))
+}
+
+func TestCompressBJJ05B(t *testing.T) { checkCompress(t, 1, "bjj.html", "m1-bjj.13k") }
+func TestCompressBJJ15B(t *testing.T) { checkCompress(t, 2, "bjj.html", "m2-bjj.13k") }
+func TestCompressBJJ7B(t *testing.T)  { checkCompress(t, 3, "bjj.html", "m3-bjj.13k") }

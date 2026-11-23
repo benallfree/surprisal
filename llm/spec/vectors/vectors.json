@@ -58,6 +58,15 @@
       "how": "H100 batched and step by step agree; round-trips"
     },
     {
+      "file": "m3-tiny.13k",
+      "model": 3,
+      "input": "tiny.html",
+      "bytes": 35,
+      "tokens": 124,
+      "sha256": "2e25d9729c240db785bb933f720fdbe3f340137478be59fcea254554085393b9",
+      "how": "encoded on an H100; the pure-Go nollama implementation on a Mac produces the same bytes"
+    },
+    {
       "file": "m3-bjj.13k",
       "model": 3,
       "input": "bjj.html",

@@ -5,8 +5,10 @@ model's forward pass is integer arithmetic whose result does not depend on the o
 implementation on any machine (CPU, GPU, any language) computes the same probability tables, bit for bit, and decodes
 any archive made by any other.
 
-Reference implementation: `llm/intref.py` (numpy, slow, authoritative). Fast implementations: `llm/intgpu.py`
-(PyTorch, plain and Triton/CUDA). Conformance: `llm/spec/vectors/`.
+Reference implementation: `llm/intref.py` (numpy, slow, authoritative). Other implementations: `llm/intgpu.py`
+(PyTorch, plain and Triton/CUDA), and nollama's `engine` package (pure Go, CPU, with NEON kernels; `nollama pack`,
+`unpack` and `convert`, the last of which reproduces the converted models byte for byte). Conformance:
+`llm/spec/vectors/`.
 
 Compressed archives use the extension `.13k`; converted models are GGUF files.
 
@@ -59,6 +61,10 @@ are byte-identical.
   - `EXPF[i] = round(2^30 e^{−i/1024})`, i < 24,576;
   - `SIG[i] = round(2^16 / (1 + e^{−(i−16384)/1024}))`, i ≤ 32,768;
   - `ROPE_C/S_hd[pos, j] = round(cos/sin(pos · 10^6^{−2j/hd}) · 2^14)` for pos < 32,768 and hd ∈ {64, 128}.
+
+  Go's math library recomputes all seven tables byte-identically on arm64. nollama's converter therefore generates
+  them and checks each against its SHA-256: EXPA `6a5c35d8…`, EXPF `f1bc8936…`, SIG `bf265d6d…`,
+  ROPE_C/S_64 `d8095cb9…`/`f2f65aef…`, ROPE_C/S_128 `b23e31ed…`/`6f1899b8…`.
 - **Requirements** (Qwen2.5): rope_theta = 10^6, 32,768 positions, rms_norm_eps = 10^−6, and every `in` dimension a
   multiple of 128.
 
@@ -191,7 +197,8 @@ Only the decoder's model must match; the encoder's choice of tokenization is fre
   - `m1-slice.13k`: byte-identical between the numpy spec and the GPU;
   - `m1-bjj.13k`, `m2-bjj.13k`, `m3-bjj.13k`: the full file for each profile, made on an H100 by the batched and
     step-by-step paths, which agree, and round-tripped;
-  - `m1-bjj3.13k`: `bjj.html` three times (72,378 tokens, three segments), testing the long-input rule.
+  - `m1-bjj3.13k`: `bjj.html` three times (72,378 tokens, three segments), testing the long-input rule;
+  - `m3-tiny.13k`: the 7B on `tiny.html`, made on an H100 and reproduced byte for byte by nollama in Go on a Mac.
 
   An implementation must decode each to its input, and should reproduce each byte for byte when encoding.
 - **Table hashes:**

@@ -358,3 +358,27 @@ files (Go, CUDA, Metal, assembly, one JSON; the 2.5 MB of generated PTX left out
 By language: Go 0.50 bits/byte, CUDA 0.40, Metal 0.37, assembly 0.31, JSON 1.64. 154 s of H100 time, with
 `kvcache.go` and `kvcache_test.go` round-tripped through the step-by-step decoder. Code the model has never seen
 compresses almost as well as meshcore (5.5× vs 6.3× against zip -9), so memorization explains little of that result.
+
+### Tried: one-pass attention (2026-11-22, late; branch `one-pass-attention`)
+
+The idea was a spec in which attention takes one pass over fixed 64-key chunks in ascending order, with integer
+online-softmax rescaling: `(x·f + 2^14) >> 15`, exact in int64 via a 32-bit split. The batched compressor then needs
+only one pass over the keys. Step-by-step decode keeps its chunk parallelism by summing chunks within runs of equal
+running max and rescaling only between runs.
+
+- It is exact and was fully verified:
+  - numpy, plain PyTorch and both GPU paths agree over 300 tables (five chunks);
+  - the slice archives match numpy;
+  - the 0.5B full file round-trips.
+- It is not worth it:
+  - 7B batched compress went from 9.79 to 9.50 s (attention 6.47 → 6.17 s);
+  - 0.5B batched compress went from 2.04 to 2.25 s (some row's max rises in nearly every tile, so the int64 rescale
+    runs almost every chunk);
+  - step-by-step decode went from 29.6 to 32.7 s (two more kernels per layer).
+- Not adopted; the two-pass global-max rule stays.
+- Lesson: score arithmetic isn't what limits batched attention. Each 16-row, one-head program re-reads the K/V digit
+  planes, so traffic scales with heads × row blocks. The next attempt should share the K/V tiles across all 7 q
+  heads of a kv head, and across more rows.
+- Found along the way: a kernel that reads a value and then zeroes it in the same program needs a barrier in between,
+  because scalars and small vectors are held by several threads. It caused nondeterministic tables in the one-pass
+  decode merge. The main code's one such site (the MLP-max reset in the norm kernel) now has the barrier.

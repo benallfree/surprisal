@@ -573,6 +573,7 @@ def fast_class():
             if EINP:
                 pm = tl.load(pmax_ptr)
                 ein = tl.maximum(_bitlen(pm) - 15, 0) - 16
+                tl.debug_barrier()  # every thread has read pmax before it is reset
                 tl.store(pmax_ptr, pm * 0)
             else:
                 ein = tl.load(ein_ptr)

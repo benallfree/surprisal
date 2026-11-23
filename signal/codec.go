@@ -145,16 +145,20 @@ func (c *Codec) Decompress(a []byte, progress Progress) (Header, []byte, error) 
 	defer ses.Close()
 	for s0 := 0; s0 < h.Tokens; s0 += Seg {
 		ses.Reset()
-		prev := c.Model.BOS()
-		for k := s0; k < min(s0+Seg, h.Tokens); k++ {
-			// the search runs where the table is (on a GPU, only the result comes back)
-			t, ct, err := ses.FeedFind(prev, dec.target)
+		if err := ses.Start(c.Model.BOS()); err != nil {
+			return h, nil, err
+		}
+		s1 := min(s0+Seg, h.Tokens)
+		for k := s0; k < s1; k++ {
+			// the search runs where the table is and feeds the token found (on CUDA the next step then runs while
+			// the decoder updates)
+			num, den := dec.state()
+			t, ct, err := ses.FindFeed(num, den, k+1 < s1)
 			if err != nil {
 				return h, nil, err
 			}
 			dec.update(uint64(ct.Total), uint64(ct.High), uint64(ct.Low))
-			prev = t
-			ids = append(ids, prev)
+			ids = append(ids, t)
 			if progress != nil {
 				progress(k+1, h.Tokens)
 			}

@@ -114,6 +114,9 @@ func (d *decoder) next(cum []int64) int {
 	return t
 }
 
+// state gives target's numerator and denominator: target(total) = (num * total - 1) / den.
+func (d *decoder) state() (num, den uint64) { return d.value - d.low + 1, d.high - d.low + 1 }
+
 // target is the count the next token's interval holds, for a table with this total: the token is the first t with
 // cum[t] > target.
 func (d *decoder) target(total int64) int64 {

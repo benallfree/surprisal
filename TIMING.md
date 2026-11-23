@@ -382,3 +382,9 @@ running max and rescaling only between runs.
 - Found along the way: a kernel that reads a value and then zeroes it in the same program needs a barrier in between,
   because scalars and small vectors are held by several threads. It caused nondeterministic tables in the one-pass
   decode merge. The main code's one such site (the MLP-max reset in the norm kernel) now has the barrier.
+
+Solid, the simple way: the same 111 files as one ustar tar (977,408 bytes, 425,346 tokens; the extra 84K tokens are
+mostly NUL padding), compressed as one document in 14 windows of 32K tokens (fresh context per window):
+**48,999 bytes**, 12.6% smaller than one file at a time. It also restores the exact tar, names and metadata included.
+That is 6.3× smaller than zip -9 and 4.2× smaller than tar + xz -9e (208,100). 211 s of H100 time, including about
+20 s of kernel compilation.

@@ -29,7 +29,8 @@ Ops (D = hidden, per token):
 - rmsnorm(h, g): sh = max(0, bitlen(max|h|) - 20); x = rshift(h, sh); ms = sum(x^2) // D + (2^(48-2sh)) // 10^6;
   r = max(1, isqrt(ms)); y = tdiv(x * g * 2^14, r) (e = -30); return blockf(y).
 - layer: (m,e) = rmsnorm(h, g1); qkv = rshift(matvec, to e=-24) + b; rope on q, k:
-  (x1*c - x2*s, x2*c + x1*s) >> 14 (rshift); cache K, V = clip(rshift(k or v, 12), +-(2^23-1)) (e = -12; keeps every product sum below 2^53).
+  (x1*c - x2*s, x2*c + x1*s) >> 14 (rshift); cache K, V = clip(rshift(k or v, 12), +-(2^22-1)) (e = -12; keeps sums below 2^53 and lets a fast
+  implementation split K, V into three signed bytes).
   attention per q head: (mq, eq) = blockf(q_head); score_t = rshift(mq . K_t, to e=-10, including the 1/8 scale);
   M = max score; w_t = EXPA[min(M - score_t, len-1)]; Z = sum w; O = sum w_t V_t;
   o = sign(O) * (|O| * 2^12 // Z)  (computed as hi/remainder so nothing overflows; e = -24).
@@ -234,7 +235,7 @@ class IntModel:
             q = self.rope(x[: nq * hd].reshape(nq, hd), pos)
             k = self.rope(x[nq * hd : (nq + nkv) * hd].reshape(nkv, hd), pos)
             v = x[(nq + nkv) * hd :].reshape(nkv, hd)
-            lim = 2**23 - 1
+            lim = 2**22 - 1
             self.K[l, :, pos] = np.clip(rshift(k, 12), -lim, lim)
             self.Vc[l, :, pos] = np.clip(rshift(v, 12), -lim, lim)
             o = self.attn(l, q, pos + 1).reshape(-1)

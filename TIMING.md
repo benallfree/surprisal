@@ -223,9 +223,9 @@ integer arithmetic only, so any implementation on any hardware computes the same
   scale per 64 inputs, integer biases and norm weights, and stored tables (rope cos/sin, exp, sigmoid). The bundle is the model.
 - Every step is integer and independent of order: integer sums, max, shifts, truncating division, `isqrt`, table lookups.
   Activations enter matmuls as 16-bit mantissas with one shared exponent; the residual stream is int64 at 2^-24;
-  the KV cache is clipped to 2^23 so every sum stays below 2^53. Start token: the config's `bos_token_id`.
+  the KV cache is clipped to 2^22 so every sum stays below 2^53. Start token: the config's `bos_token_id`.
 - `intref.py` (numpy) is the spec. `llm/intgpu.py` is the same thing in PyTorch (any device) and, with `--fast`,
-  in Triton kernels replayed as CUDA graphs (10 launches per layer).
+  in Triton kernels replayed as CUDA graphs (about 10 launches per layer).
 
 **Size costs nothing.** On the 6 KB slice (ideal sizes, before the 4-byte header): float64 652.1 bytes, float64
 with the bundle's int8 weights 651.8, full integer 651.8. On the full BJJ file (55,854 bytes, 24,126 tokens): **7,185
@@ -238,23 +238,35 @@ bytes**, against 7,183 for the bf16 float codec on an H100/H200 and 7,184 on a B
   is byte-identical to the H100's archive (655 bytes).
 - The full file round-trips on an H100, and the archive is identical across three kernel versions.
 
-**Speed (0.5B, H100, `llm/int-H100.log`):**
+**Speed (0.5B, full file, `llm/int-H100.log`, `llm/int-H200.log`):**
 
-| Path | Compress | Decompress | tok/s |
-|---|---:|---:|---:|
-| bf16 float codec (`cudacodec.py`, for reference) | 28.2 s | 29.0 s | 832 |
-| integer, Triton + CUDA graphs | 44.7 s | 45.6 s | 529 |
-| integer, plain PyTorch (float64 matmuls) | — | — | 7 |
-| integer, numpy spec on the M1 Max CPU | — | — | 6 |
+| Path | GPU | Compress | Decompress | tok/s |
+|---|---|---:|---:|---:|
+| bf16 float codec (`cudacodec.py`, for reference) | H100 | 28.2 s | 29.0 s | 832 |
+| bf16 float codec | H200 | 26.3 s | 27.0 s | 893 |
+| integer, Triton + CUDA graphs | H100 | 28.9 s | **29.6 s** | 815 |
+| integer, Triton + CUDA graphs | H200 | 28.0 s | **28.7 s** | 842 |
+| integer, plain PyTorch (float64 matmuls) | H100 | — | — | 7 |
+| integer, numpy spec on the M1 Max CPU | — | — | — | 6 |
 
-- Cold start: 24 s to load the bundle and capture 49 graphs.
-- A forward step takes 1.10 ms at 1K context and 2.57 ms at 24K. To decode the full file in 30 s it needs to
-  average 1.24 ms.
-- Where the time goes: the residual + RMSNorm kernel runs as one program (about 6 µs, 49 per step). The matvecs take
-  about 4 µs each (97 per step). Attention grows with context: scores, weights and sums in int64/exact float64, with
-  integer atomics across chunks.
-- Next: fold the norm into the neighbouring matvecs, and make attention cheaper at long context. Also write a Metal
-  version for the Mac: the numpy spec decodes at 6 tok/s there, so a Mac decode of the full file would take over an
-  hour today.
-- Ladder on the H100, slice, decode tok/s: plain PyTorch 7 → Triton matvec + compile pieces 364 → split-K, float64-exact
-  attention 505 → fused integer kernels with integer atomics 657 → no stray fills, chunked attention 819.
+- The H100 and H200 archives are byte-identical (7,185 bytes). The float codec's archives differ between GPU types.
+- Cold start: about 17 s to load the bundle and capture 49 graphs (once Triton's cache is warm).
+- A forward step takes 0.94 ms at 1K context, 1.26 ms at 13K and 1.44 ms at 24K (H100).
+- The Mac only has the numpy spec today (6 tok/s), so decoding the full file there would take over an hour. A Metal
+  version is the next step for the Mac.
+
+How it got under 30 s (H100, decode tok/s; the ladder starts at the slice and ends on the full file):
+1. Plain PyTorch: 7.
+2. Triton int8 matvec, with torch.compile for the integer glue: 364 on the slice.
+3. Split-K, plus exact float64 attention dot products: 505.
+4. Hand-fused integer kernels, using integer atomics to combine split-K partials and attention chunks: 657.
+5. Dropped stray fill kernels, gave attention a fixed program count: 819 on the slice; 529 on the full file, where
+   long context dominated.
+6. KV cache stored as three int8 digit planes; attention as int8 tensor-core dots over all 7 q heads per kv head:
+   24K-context step 2.58 → 1.59 ms.
+7. Tuned matvec splits, `clz` for bit lengths, float64-estimate division with exact integer correction in the
+   norm (5.2 → 3.3 µs), about 192 attention programs per kv head: 30.3 s.
+8. Output table as a matvec epilogue plus three small kernels, instead of six generic ones: 29.6 s.
+
+One spec change along the way: K and V are now clipped at ±(2^22 − 1), so their top byte fits in int8. Real values
+stay below 2^20, and every archive was byte-identical before and after.

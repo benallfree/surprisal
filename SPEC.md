@@ -5,10 +5,16 @@ model's forward pass is integer arithmetic whose result does not depend on the o
 implementation on any machine (CPU, GPU, any language) computes the same probability tables, bit for bit, and decodes
 any archive made by any other.
 
-Reference implementation: `llm/intref.py` (numpy, slow, authoritative). Other implementations: `llm/intgpu.py`
-(PyTorch, plain and Triton/CUDA), and nollama's `engine` package (pure Go, CPU, with NEON kernels; `nollama pack`,
-`unpack` and `convert`, the last of which reproduces the converted models byte for byte). Conformance:
-`llm/spec/vectors/`.
+The spec has two parts.
+
+- **The integer model** (§1.2–§4): conversion, the model file, the arithmetic, the forward pass and the frequency
+  table. Implemented by nollama's `engine` package (pure Go, CPU, NEON kernels: `LoadIntModel`, `NewSession`/`Feed`,
+  `ConvertIntModel`), which knows nothing about compression.
+- **The codec** (§1.1, §5–§7): the model manifest, the coder, the archive and file-set formats, and tokenization.
+  Implemented by **signal** (`signal/`, `cmd/signal/`), which calls nollama for the model.
+
+Reference implementation of both: `llm/intref.py` (numpy, slow, authoritative). Also `llm/intgpu.py` (PyTorch, plain
+and Triton/CUDA). Conformance: `llm/spec/vectors/`.
 
 Compressed archives use the extension `.13k`; converted models are GGUF files.
 
@@ -167,11 +173,20 @@ Witten-Neal-Cleary, 32-bit: TOP = 2^32 − 1, HALF = 2^31, QTR = 2^30.
 ## 6. Archive
 
 ```
-byte 0   0xA1          magic (0xA) and format version 1
+byte 0   kind          0xA1: a stream (the decoded bytes are one unnamed blob)
+                       0xA2: a file set (the decoded bytes are a container of named files, below)
 byte 1   model id      §1.1
 varint   n             token count, unsigned LEB128
 rest     coder output  §5
 ```
+
+**File set:** the decoded bytes are, for each file, its path, `\n`, its length in bytes (decimal), `\n`, then its
+bytes.
+- **Paths** are relative and slash-separated, with no `..`, backslash, newline or NUL, and already clean.
+  Decoders refuse anything else.
+- **Order:** signal sorts files by path and names them relative to their common directory.
+- **Paths are coded too:** they go through the model like the contents, so later files are compressed in the context
+  of earlier ones.
 
 **Long inputs:** the n tokens are coded in segments of at most 32,768 tokens: [0, 32768), [32768, 65536), and so on.
 Each segment starts a fresh context (empty cache, start token at position 0). The coder runs on, unbroken, across

@@ -1,0 +1,119 @@
+package signal
+
+import (
+	_ "embed"
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"github.com/benallfree/nollama/engine"
+	"github.com/benallfree/nollama/models"
+)
+
+//go:embed models-v1.json
+var manifestJSON []byte
+
+// ModelInfo is a manifest entry: the model an archive names by id, where it comes from, and its converted file.
+type ModelInfo struct {
+	ID      int    `json:"id"`
+	Name    string `json:"name"`
+	Profile string `json:"profile"`
+	Source  struct {
+		Repo     string   `json:"repo"`
+		Revision string   `json:"revision"`
+		Files    []string `json:"files"`
+	} `json:"source"`
+	Bundle struct {
+		File   string `json:"file"`
+		SHA256 string `json:"sha256"`
+		Bytes  int64  `json:"bytes"`
+	} `json:"bundle"`
+}
+
+// Models lists the manifest (ids are permanent).
+func Models() []ModelInfo {
+	var d struct {
+		Models []ModelInfo `json:"models"`
+	}
+	if err := json.Unmarshal(manifestJSON, &d); err != nil {
+		panic(err)
+	}
+	return d.Models
+}
+
+// ModelByID finds an archive's model.
+func ModelByID(id int) (ModelInfo, bool) {
+	for _, m := range Models() {
+		if m.ID == id {
+			return m, true
+		}
+	}
+	return ModelInfo{}, false
+}
+
+// ModelByProfile finds a profile's model (good, better, best).
+func ModelByProfile(p string) (ModelInfo, bool) {
+	for _, m := range Models() {
+		if m.Profile == p {
+			return m, true
+		}
+	}
+	return ModelInfo{}, false
+}
+
+// ModelsDir is where converted models live: $SIGNAL_MODELS, else nollama's models directory (shared with nollama).
+func ModelsDir() string {
+	if d := os.Getenv("SIGNAL_MODELS"); d != "" {
+		return models.ExpandHome(d)
+	}
+	if d := os.Getenv("NOLLAMA_MODELS"); d != "" {
+		return models.ExpandHome(d)
+	}
+	return models.DefaultDir()
+}
+
+// Path is where the model's converted file lives.
+func (m ModelInfo) Path() string { return filepath.Join(ModelsDir(), m.Bundle.File) }
+
+// Present reports whether the converted file is installed.
+func (m ModelInfo) Present() bool {
+	_, err := os.Stat(m.Path())
+	return err == nil
+}
+
+// Setup makes the converted model: it downloads the official weights at the pinned revision (unless src names a
+// local copy), converts them with nollama, and installs the file only if its SHA-256 is the manifest's.
+func (m ModelInfo) Setup(src string, logf func(format string, a ...any)) error {
+	if logf == nil {
+		logf = func(string, ...any) {}
+	}
+	dir := ModelsDir()
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	if src == "" {
+		src = filepath.Join(dir, "signal-src", filepath.Base(m.Source.Repo)+"@"+m.Source.Revision[:12])
+		defer os.RemoveAll(src)
+		for _, f := range m.Source.Files {
+			s := models.Source{Name: m.Source.Repo + "/" + f, Path: filepath.Join(src, f),
+				URL: "https://huggingface.co/" + m.Source.Repo + "/resolve/" + m.Source.Revision + "/" + f}
+			if err := models.Fetch(s, nil, func(done, total int64) { logf("download %s: %d/%d MB", f, done>>20, total>>20) }); err != nil {
+				return err
+			}
+		}
+	}
+	tmp := filepath.Join(dir, fmt.Sprintf("signal-convert-%d.gguf", os.Getpid()))
+	defer os.Remove(tmp)
+	if err := engine.ConvertIntModel(src, tmp, func(format string, a ...any) { logf("convert: "+format, a...) }); err != nil {
+		return err
+	}
+	h, err := engine.FileSHA256(tmp)
+	if err != nil {
+		return err
+	}
+	if h != m.Bundle.SHA256 {
+		return fmt.Errorf("signal: the converted %s has sha256 %s, not the manifest's %s", m.Bundle.File, h, m.Bundle.SHA256)
+	}
+	return os.Rename(tmp, m.Path())
+}

@@ -1,0 +1,103 @@
+package signal
+
+import (
+	"bytes"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+)
+
+// The vectors in ../llm/spec/vectors come from the reference implementation (llm/intref.py) and the GPU path. The
+// models must be installed (SIGNAL_MODELS); tests skip the ones that are not.
+
+func vec(t *testing.T, name string) []byte {
+	b, err := os.ReadFile(filepath.Join("..", "llm", "spec", "vectors", name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}
+
+func openTest(t *testing.T, id int) *Codec {
+	m, _ := ModelByID(id)
+	if !m.Present() {
+		t.Skipf("model %d not installed in %s", id, ModelsDir())
+	}
+	c, err := Open(m, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { c.Close() })
+	return c
+}
+
+func checkVector(t *testing.T, id int, input, archive string) {
+	c := openTest(t, id)
+	want, a := vec(t, input), vec(t, archive)
+	t0 := time.Now()
+	h, got, err := c.Decompress(a, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h.Kind != KindStream || !bytes.Equal(got, want) {
+		t.Fatalf("%s: decompressed %d bytes, differ from %s", archive, len(got), input)
+	}
+	t.Logf("%s: %d tokens decoded in %v", archive, h.Tokens, time.Since(t0).Round(time.Millisecond))
+	if p := c.Compress(KindStream, want, nil); !bytes.Equal(p, a) {
+		t.Fatalf("%s: compressed %d bytes, not byte-identical to the vector (%d bytes)", input, len(p), len(a))
+	}
+}
+
+func TestVectorTiny(t *testing.T)   { checkVector(t, 1, "tiny.html", "m1-tiny.13k") }
+func TestVectorSlice(t *testing.T)  { checkVector(t, 1, "slice.html", "m1-slice.13k") }
+func TestVector7BTiny(t *testing.T) { checkVector(t, 3, "tiny.html", "m3-tiny.13k") }
+
+func TestFileSet(t *testing.T) {
+	c := openTest(t, 1)
+	fs := []File{
+		{"README.md", []byte("# demo\n\nTwo files and an empty one.\n")},
+		{"src/main.go", []byte("package main\n\nfunc main() { println(\"hi\") }\n")},
+		{"src/empty.txt", nil},
+		{"bin/blob", []byte{0xff, 0xfe, 0x00, 'a', 0xc3}}, // not UTF-8
+	}
+	a, err := c.CompressFiles(fs, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h, b, err := c.Decompress(a, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := DecodeFiles(b)
+	if err != nil || h.Kind != KindFiles || len(got) != len(fs) {
+		t.Fatalf("file set: %v, kind %#x, %d files", err, h.Kind, len(got))
+	}
+	for i := range fs {
+		if got[i].Path != fs[i].Path || !bytes.Equal(got[i].Data, fs[i].Data) {
+			t.Fatalf("file %d: %q differs", i, fs[i].Path)
+		}
+	}
+	t.Logf("file set: %d files, %d bytes -> %d bytes", len(fs), len(b), len(a))
+}
+
+func TestFileSetPaths(t *testing.T) {
+	for _, p := range []string{"", "/etc/passwd", "../x", "a/../../x", "a\\b", "./a"} {
+		if _, err := encodeFiles([]File{{p, nil}}); err == nil {
+			t.Errorf("path %q accepted", p)
+		}
+	}
+	if _, err := decodeFiles([]byte("a\n5\nab")); err == nil {
+		t.Error("truncated file set accepted")
+	}
+}
+
+func TestManifestMatchesSpec(t *testing.T) {
+	spec, err := os.ReadFile(filepath.Join("..", "llm", "spec", "models-v1.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(spec, manifestJSON) {
+		t.Fatal("signal/models-v1.json differs from llm/spec/models-v1.json (copy it over)")
+	}
+}

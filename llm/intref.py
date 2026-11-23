@@ -1,11 +1,11 @@
 """Integer-only Qwen2.5 inference: the reference (the spec) for a codec whose archives depend on the model alone.
 The full v1 definition (bundle format, archive container, coder, conformance vectors) is SPEC.md.
 
-    .venv/bin/python llm/intref.py tables spec/tables-v1.i13k                 # once: freeze the lookup tables
-    .venv/bin/python llm/intref.py build  <hf-model-dir> <bundle.i13k>       # convert once; the bundle IS the model
-    .venv/bin/python llm/intref.py score  <hf-model-dir> <bundle.i13k> <text> [variants]   # ideal sizes: float,f8,int
-    .venv/bin/python llm/intref.py encode <hf-model-dir> <bundle.i13k> <text> <archive>
-    .venv/bin/python llm/intref.py decode <hf-model-dir> <bundle.i13k> <archive> <text>
+    .venv/bin/python llm/intref.py tables spec/tables-v1.gguf                 # once: freeze the lookup tables
+    .venv/bin/python llm/intref.py build  <hf-model-dir> <model.gguf>       # convert once; the bundle IS the model
+    .venv/bin/python llm/intref.py score  <hf-model-dir> <model.gguf> <text> [variants]   # ideal sizes: float,f8,int
+    .venv/bin/python llm/intref.py encode <hf-model-dir> <model.gguf> <text> <archive>
+    .venv/bin/python llm/intref.py decode <hf-model-dir> <model.gguf> <archive> <text>
 
 Why: floating-point sums depend on the order of additions, and every GPU, library and kernel orders them differently,
 so float probabilities differ in the last bits from machine to machine and an arithmetic-coded archive only decodes on
@@ -95,7 +95,7 @@ def quant(w):
     return q.reshape(o, i).astype(np.int8), s.astype(np.int16), E
 
 
-TABLES = Path(__file__).parent / "spec" / "tables-v1.i13k"
+TABLES = Path(__file__).parent / "spec" / "tables-v1.gguf"
 
 
 def make_tables(dst):
@@ -110,21 +110,23 @@ def make_tables(dst):
         ang = np.arange(32768, dtype=np.float64)[:, None] * inv[None]
         t += [(f"ROPE_C_{hd}", np.rint(np.cos(ang) * 2**14).astype(np.int16)),
               (f"ROPE_S_{hd}", np.rint(np.sin(ang) * 2**14).astype(np.int16))]
-    bndl.write(dst, b"{}", t)
+    bndl.write(dst, [("intcodec.spec_version", bndl.U32, 1)], t, arch="intcodec-tables")
 
 
 def build(src, dst):
-    """bf16 safetensors -> v1 bundle. Deterministic: exact int8 rounding (see quant) and frozen tables."""
+    """bf16 safetensors -> converted model (GGUF). Deterministic: exact int8 rounding (see quant), frozen tables,
+    and nothing in the file that depends on where the weights came from."""
     cfg = json.loads((Path(src) / "config.json").read_text())
     assert cfg["rope_theta"] == 1e6 and cfg["max_position_embeddings"] == 32768, "tables cover Qwen2.5 rope only"
     W = load_st(src)
     L = cfg["num_hidden_layers"]
     _, tab = bndl.read(TABLES)
-    out = []
+    out, exps = [], []
 
     def put(name, w):
         q, s_, E = quant(w)
-        out.extend([(name + ".q", q), (name + ".s", s_), (name + ".E", np.array(E, dtype=np.int32))])
+        out.extend([(name + ".q", q), (name + ".s", s_)])
+        exps.append(("intcodec.exp." + name, bndl.I32, E))
 
     fx = lambda a, k: np.rint(a.astype(np.float64) * 2**k).astype(I64)  # exact power-of-two scaling, then round
     put("emb", W["model.embed_tokens.weight"])
@@ -144,7 +146,9 @@ def build(src, dst):
     hd = cfg["hidden_size"] // cfg["num_attention_heads"]
     out += [("ROPE_C", tab[f"ROPE_C_{hd}"]), ("ROPE_S", tab[f"ROPE_S_{hd}"]),
             ("EXPA", tab["EXPA"]), ("EXPF", tab["EXPF"]), ("SIG", tab["SIG"])]
-    bndl.write(dst, bndl.canonical_config(cfg), out)
+    kvs = ([("intcodec.spec_version", bndl.U32, 1)] + bndl.config_kvs(cfg) + exps
+           + bndl.tokenizer_kvs(Path(src) / "tokenizer.json", cfg["vocab_size"]))
+    bndl.write(dst, kvs, out)
 
 
 # ---------------------------------------------------------------- integer helpers

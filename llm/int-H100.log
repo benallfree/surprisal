@@ -4623,3 +4623,8 @@ Self CUDA time total: 21.451s
 05:45:41 first (compiling) batched run: 23.3s
 05:45:48 batched encode: 72378 tokens -> 16945 bytes, 7.15s (10119 tok/s), P=2048 {'BM': 16, 'CHa': 64, 'NWa': 4}
 05:47:24 step-by-step decode: 72378 tokens, 95.8s (755 tok/s), round trip OK
+--- H100 decode fast 2026-11-22 22:24:38
+06:24:23 GPU: NVIDIA H100 80GB HBM3
+06:24:36 captured 7 graphs in 7.9s
+06:24:36 loaded in 11.6s
+06:24:38 decode: 2341 tokens, 2.4s (983 tok/s)

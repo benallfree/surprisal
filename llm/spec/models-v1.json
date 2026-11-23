@@ -1,7 +1,7 @@
 {
   "format": 1,
   "spec": "SPEC.md, version 1",
-  "note": "Ids are permanent: never reuse or delete one, so old archives keep decoding. urls: where the bundle can be downloaded (filled in once hosted); anyone can also rebuild it from the source revision with `intref.py build` and check the sha256.",
+  "note": "Ids are permanent: never reuse or delete one, so old archives keep decoding. urls: where the converted model can be downloaded (filled in once hosted); anyone can also rebuild it from the source revision with `intref.py build` and check the sha256.",
   "models": [
     {
       "id": 1,
@@ -12,13 +12,15 @@
         "revision": "8123ea2e9354afb7ffcc6c8641d1b2f5ecf18301",
         "files": [
           "config.json",
-          "model.safetensors"
+          "model.safetensors",
+          "tokenizer.json"
         ]
       },
       "bundle": {
-        "file": "coder0.5b-v1.i13k",
-        "sha256": "2dc17ac59e3860e9d17e2fc3b13f52cad550e1794e277dbff5c3fcfafef2892e",
-        "bytes": 514465395
+        "file": "qwen2.5-coder-0.5b-int-v1.gguf",
+        "format": "GGUF v3 (SPEC.md \u00a71.3)",
+        "sha256": "2b9fa35d48b67e9170488af611179f46e7d151a4ca7bc015d75da9c1ee554b45",
+        "bytes": 520402688
       },
       "urls": []
     },
@@ -31,13 +33,15 @@
         "revision": "df3ce67c0e24480f20468b6ef2894622d69eb73b",
         "files": [
           "config.json",
-          "model.safetensors"
+          "model.safetensors",
+          "tokenizer.json"
         ]
       },
       "bundle": {
-        "file": "coder1.5b-v1.i13k",
-        "sha256": "56e043757ea9fe0f8cf038097e64e41d142552a786f1f31fa9ba396c480385d5",
-        "bytes": 1601655900
+        "file": "qwen2.5-coder-1.5b-int-v1.gguf",
+        "format": "GGUF v3 (SPEC.md \u00a71.3)",
+        "sha256": "6d3e399f0493dbcf463f31586d3aedb790f7c5ea78104687deefdedc4951270d",
+        "bytes": 1607594656
       },
       "urls": []
     },
@@ -53,13 +57,15 @@
           "model-00001-of-00004.safetensors",
           "model-00002-of-00004.safetensors",
           "model-00003-of-00004.safetensors",
-          "model-00004-of-00004.safetensors"
+          "model-00004-of-00004.safetensors",
+          "tokenizer.json"
         ]
       },
       "bundle": {
-        "file": "coder7b-v1.i13k",
-        "sha256": "a36ac4e2943e67f787c780060c739991a1c54e547586fed4def8f7c659494648",
-        "bytes": 7864618128
+        "file": "qwen2.5-coder-7b-int-v1.gguf",
+        "format": "GGUF v3 (SPEC.md \u00a71.3)",
+        "sha256": "4f447ba7697edf55399910cbff7a74e261e19e6896e4a7dda3decb6053d9496a",
+        "bytes": 7870559904
       },
       "urls": []
     }

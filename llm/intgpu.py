@@ -1725,7 +1725,7 @@ if modal is not None:
         return body(*a)
 
     @app.local_entrypoint()
-    def main(gpu: str = "H100", task: str = "roundtrip", bundle: str = "coder0.5b-v1.i13k", repo: str = "Qwen/Qwen2.5-Coder-0.5B",
+    def main(gpu: str = "H100", task: str = "roundtrip", bundle: str = "qwen2.5-coder-0.5b-int-v1.gguf", repo: str = "Qwen/Qwen2.5-Coder-0.5B",
              file: str = "bjj-case/3-fully-minified.html", n: int = 0, archive: str = "", out: str = "", fast: bool = False):
         fn = {"H100": run_h100, "H200": run_h200}[gpu]
         text = Path(file).read_bytes().decode("utf-8") if task != "decode" else None

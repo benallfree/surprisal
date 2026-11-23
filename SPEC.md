@@ -8,6 +8,8 @@ any archive made by any other.
 Reference implementation: `llm/intref.py` (numpy, slow, authoritative). Fast implementations: `llm/intgpu.py`
 (PyTorch, plain and Triton/CUDA). Conformance: `llm/spec/vectors/`.
 
+Compressed archives use the extension `.13k`; converted models are GGUF files.
+
 Contents: [1 Models](#1-models) · [2 Arithmetic](#2-arithmetic) · [3 Forward pass](#3-forward-pass) ·
 [4 Frequency table](#4-frequency-table) · [5 Coder](#5-coder) · [6 Archive](#6-archive) · [7 Text](#7-text) ·
 [8 Conformance](#8-conformance) · [9 Implementation notes](#9-implementation-notes)
@@ -18,16 +20,17 @@ Contents: [1 Models](#1-models) · [2 Arithmetic](#2-arithmetic) · [3 Forward p
 
 `llm/spec/models-v1.json` lists the models. An archive names its model by a one-byte id.
 
-| id | profile | source (official, pinned revision) | bundle | BJJ archive |
+| id | profile | source (official, pinned revision) | converted model | BJJ archive |
 |---:|---|---|---|---:|
-| 1 | good | `Qwen/Qwen2.5-Coder-0.5B` @ `8123ea2e` | `coder0.5b-v1.i13k`, 514 MB | 7,186 |
-| 2 | better | `Qwen/Qwen2.5-Coder-1.5B` @ `df3ce67c` | `coder1.5b-v1.i13k`, 1.6 GB | 5,856 |
-| 3 | best | `Qwen/Qwen2.5-Coder-7B` @ `0396a761` | `coder7b-v1.i13k`, 7.9 GB | 4,970 |
+| 1 | good | `Qwen/Qwen2.5-Coder-0.5B` @ `8123ea2e` | `qwen2.5-coder-0.5b-int-v1.gguf`, 520 MB | 7,186 |
+| 2 | better | `Qwen/Qwen2.5-Coder-1.5B` @ `df3ce67c` | `qwen2.5-coder-1.5b-int-v1.gguf`, 1.6 GB | 5,856 |
+| 3 | best | `Qwen/Qwen2.5-Coder-7B` @ `0396a761` | `qwen2.5-coder-7b-int-v1.gguf`, 7.9 GB | 4,970 |
 
-Each entry has the bundle's SHA-256, its size and download URLs. Ids are permanent: an id is never reused or deleted,
+The converted model is a modified copy of the official one: the same weights, rounded to integers (§1.2). Each
+entry has its SHA-256, its size and download URLs. Ids are permanent: an id is never reused or deleted,
 so old archives keep decoding. A new or updated model gets a new id.
 
-### 1.2 Conversion (bf16 weights → bundle)
+### 1.2 Conversion (official bf16 weights → converted model)
 
 Run once per model. Anyone can repeat it and must get the manifest's SHA-256: the Mac (arm64) and Linux x86 builds
 are byte-identical.
@@ -50,7 +53,7 @@ are byte-identical.
 - **Biases:** `bqkv = rint(b · 2^24)` (int64), with q, k, v concatenated.
 - **Norm weights:** `g = rint(g · 2^16)` (int64), for `g1` (input_layernorm), `g2` (post_attention_layernorm) and
   `gf` (final norm).
-- **Tables** are copied from `llm/spec/tables-v1.i13k` (computed once and frozen, so no platform's libm is
+- **Tables** are copied from `llm/spec/tables-v1.gguf` (computed once and frozen, so no platform's libm is
   involved):
   - `EXPA[i] = round(2^15 e^{−i/1024})`, i < 16,384;
   - `EXPF[i] = round(2^30 e^{−i/1024})`, i < 24,576;
@@ -59,24 +62,33 @@ are byte-identical.
 - **Requirements** (Qwen2.5): rope_theta = 10^6, 32,768 positions, rms_norm_eps = 10^−6, and every `in` dimension a
   multiple of 128.
 
-### 1.3 Bundle file (`.i13k`)
+### 1.3 Converted model file (GGUF)
 
-```
-magic   8 bytes   "I13KMDL1"
-u32     config JSON length, then the JSON: the keys bos_token_id, hidden_size, intermediate_size,
-        max_position_embeddings, num_attention_heads, num_hidden_layers, num_key_value_heads, rms_norm_eps,
-        rope_theta, tie_word_embeddings, vocab_size; sorted, no spaces
-u32     tensor count, then per tensor: u16 name length, name, u8 dtype (1 int8, 2 int16, 3 int32, 4 int64),
-        u8 ndim, ndim × u32 dims, data (row-major)
-```
+A GGUF v3 file, written deterministically (everything is little-endian; tensor data aligned to 32 bytes).
 
-Everything is little-endian. Tensor order:
-1. `emb.q, emb.s, emb.E`, then `head.q, head.s, head.E` if the head is untied.
-2. `gf`.
-3. Per layer l: `l.qkv.{q,s,E}, l.bqkv, l.o.{q,s,E}, l.gu.{q,s,E}, l.d.{q,s,E}, l.g1, l.g2`.
-4. `ROPE_C, ROPE_S, EXPA, EXPF, SIG`.
+**Metadata, in this order:**
+1. `general.architecture` = "qwen2-intcodec", then `general.alignment` = 32 (uint32), then
+   `intcodec.spec_version` = 1 (uint32).
+2. The config: `intcodec.<key>` for bos_token_id, hidden_size, intermediate_size, max_position_embeddings,
+   num_attention_heads, num_hidden_layers, num_key_value_heads, rms_norm_eps, rope_theta, tie_word_embeddings and
+   vocab_size. Integers are uint32, rms_norm_eps and rope_theta float64, tie_word_embeddings bool.
+3. The exponents: `intcodec.exp.<matrix>` (int32), in tensor order.
+4. The tokenizer, in the standard GGUF form:
+   - `tokenizer.ggml.model` = "gpt2", `tokenizer.ggml.pre` = "qwen2";
+   - `tokenizer.ggml.tokens`: padded to vocab_size with `[PAD<i>]`;
+   - `tokenizer.ggml.token_type`: 1 normal, 3 control, 4 user-defined, 5 padding;
+   - `tokenizer.ggml.merges`.
 
-`E` is a 0-dimensional int32.
+   These are taken from the source revision's tokenizer.json.
+
+**Tensors**, GGUF integer types (I8 = 24, I16 = 25, I32 = 26, I64 = 27), dims in GGUF order (dims[0] contiguous):
+1. `emb.q` (I8), `emb.s` (I16), then `head.q`, `head.s` if the head is untied.
+2. `gf` (I64).
+3. Per layer l: `l.qkv.q, l.qkv.s, l.bqkv, l.o.q, l.o.s, l.gu.q, l.gu.s, l.d.q, l.d.s, l.g1, l.g2`.
+4. `ROPE_C, ROPE_S` (I16), `EXPA, EXPF, SIG` (I32).
+
+Nothing in the file depends on where the weights came from: building from the official repo and from a faithful copy
+gives the same bytes.
 
 ## 2. Arithmetic
 

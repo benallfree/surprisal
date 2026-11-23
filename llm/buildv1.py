@@ -11,7 +11,7 @@ here = Path(__file__).parent
 image = (modal.Image.debian_slim(python_version="3.12").pip_install("numpy")
          .add_local_file(str(here / "intref.py"), "/root/intref.py")
          .add_local_file(str(here / "bundle.py"), "/root/bundle.py")
-         .add_local_file(str(here / "spec" / "tables-v1.i13k"), "/root/spec/tables-v1.i13k"))
+         .add_local_file(str(here / "spec" / "tables-v1.gguf"), "/root/spec/tables-v1.gguf"))
 app = modal.App("compress13k-buildv1", image=image)
 hf = modal.Volume.from_name("compress13k-hf")
 iv = modal.Volume.from_name("compress13k-int")
@@ -25,7 +25,7 @@ def build(size):
     d = Path("/cache/hub") / ("models--" + repo.replace("/", "--"))
     rev = (d / "refs" / "main").read_text().strip()
     src = d / "snapshots" / rev
-    dst = f"/int/coder{size.lower()}-v1.i13k"
+    dst = f"/int/qwen2.5-coder-{size.lower()}-int-v1.gguf"
     t0 = time.time()
     intref.build(str(src), dst)
     iv.commit()

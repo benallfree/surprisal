@@ -90,6 +90,10 @@ def model_class():
             acc = (wp @ m.to(torch.float64)).to(L64)
             return self.rshift(acc, to - (E + e))
 
+        @staticmethod
+        def resc(x, f):  # (x * f + 2^14) >> 15, exact (see intref.resc)
+            return (x >> 32) * f * (1 << 17) + (((x & 0xFFFFFFFF) * f + (1 << 14)) >> 15)
+
         def isqrt(self, v):
             r = torch.sqrt(v.to(torch.float64)).to(L64)
             for _ in range(2):
@@ -118,11 +122,19 @@ def model_class():
             mq = self.rshift(qs, sh[..., None]).clamp(-32767, 32767)
             K, Vv = self.K[l, :, :T], self.Vc[l, :, :T]  # [nkv, T, hd] float64 holding ints
             acc = torch.matmul(K, mq.to(torch.float64).transpose(1, 2)).to(L64)  # [nkv, T, grp]
-            s = self.rshift(acc, (42 - sh)[:, None, :])
-            d = s.amax(1, keepdim=True) - s
-            w = self.EXPA[d.clamp(max=NA - 1)]
-            Z = w.sum(1)  # [nkv, grp]
-            O = torch.matmul(w.transpose(1, 2).to(torch.float64), Vv).to(L64)  # [nkv, grp, hd]
+            s = self.rshift(acc, (42 - sh)[:, None, :])  # [nkv, T, grp]
+            for c in range(0, T, 64):  # one pass over fixed 64-key chunks (see intref)
+                sc = s[:, c : c + 64]
+                mc = sc.amax(1)
+                if c == 0:
+                    m, Z, O = mc, torch.zeros_like(mc), torch.zeros(self.nkv, grp, hd, dtype=L64, device=self.dev)
+                else:
+                    mn = torch.maximum(m, mc)
+                    f = self.EXPA[(mn - m).clamp(max=NA - 1)]
+                    Z, O, m = self.resc(Z, f), self.resc(O, f[..., None]), mn
+                w = self.EXPA[(m[:, None, :] - sc).clamp(max=NA - 1)]
+                Z = Z + w.sum(1)
+                O = O + torch.matmul(w.transpose(1, 2).to(torch.float64), Vv[:, c : c + 64]).to(L64)
             a, Zb = O.abs(), Z[..., None]
             hi = a // Zb
             rem = a - hi * Zb
@@ -166,7 +178,8 @@ def model_class():
             f = self.EXPF[(lg.max() - lg).clamp(max=NF - 1)]
             Z = f.sum()
             self.pos += 1
-            return torch.cumsum(f * (TOTAL - self.V) // Z + 1, 0)
+            self.cum_last = torch.cumsum(f * (TOTAL - self.V) // Z + 1, 0)
+            return self.cum_last
 
     return TorchInt
 
@@ -573,6 +586,7 @@ def fast_class():
             if EINP:
                 pm = tl.load(pmax_ptr)
                 ein = tl.maximum(_bitlen(pm) - 15, 0) - 16
+                tl.debug_barrier()
                 tl.store(pmax_ptr, pm * 0)
             else:
                 ein = tl.load(ein_ptr)
@@ -962,6 +976,159 @@ def fast_class():
                 tl.atomic_add(ft_ptr + r, tl.sum(tl.where(o[:, None] == t, fq, 0), axis=0).to(tl.uint64, bitcast=True),
                               mask=rm, sem="relaxed")
 
+    @triton.jit
+    def _resc(x, f):  # (x * f + 2^14) >> 15 for |x| < 2^52, 0 <= f <= 2^15, exact in int64
+        return (x >> 32) * f * 131072 + (((x & 0xFFFFFFFF) * f + 16384) >> 15)
+
+    @triton.jit
+    def _maxop(a, b):
+        return tl.maximum(a, b)
+
+    @triton.jit
+    def k_rattn4(Q_ptr, sh_ptr, QS, K_ptr, V_ptr, E_ptr, out_ptr, pos0, R, maxlen, NQ: tl.constexpr, NKV: tl.constexpr,
+                 GRP: tl.constexpr, HD: tl.constexpr, BM: tl.constexpr, NA: tl.constexpr, ZTH: tl.constexpr):
+        """one-pass causal attention (the spec's fixed 64-key chunks, ascending, integer online rescaling) for BM
+        query rows of one q head. Scores are exact in float64 (see k_rattn3); Z and O are int64."""
+        CH: tl.constexpr = 64
+        rb, h = tl.program_id(0), tl.program_id(1)
+        j = h // GRP
+        r = rb * BM + tl.arange(0, BM)
+        rm = r < R
+        pr = pos0 + r
+        d = tl.arange(0, HD)
+        qa = Q_ptr + (r[:, None] * NQ + h) * HD + d[None, :]
+        q0 = tl.load(qa, mask=rm[:, None], other=0)
+        q1 = tl.load(qa + QS, mask=rm[:, None], other=0)
+        q2 = tl.load(qa + 2 * QS, mask=rm[:, None], other=0)
+        n = 42 - tl.load(sh_ptr + r * NQ + h, mask=rm, other=0)
+        inv = tl.exp2(-n.to(tl.float64))[:, None]
+        last = pos0 + tl.minimum(rb * BM + BM, R) - 1
+        PS = NKV * maxlen * HD
+        kb = j * maxlen * HD
+        m = tl.full([BM], -1e300, tl.float64)
+        Z = tl.zeros([BM], dtype=tl.int64)
+        O = tl.zeros([BM, HD], dtype=tl.int64)
+        for c in range(0, last // CH + 1):
+            t = c * CH + tl.arange(0, CH)
+            ka = K_ptr + kb + t[:, None] * HD + d[None, :]
+            km = (t <= last)[:, None]
+            k0 = tl.trans(tl.load(ka, mask=km, other=0))
+            k1 = tl.trans(tl.load(ka + PS, mask=km, other=0))
+            k2 = tl.trans(tl.load(ka + 2 * PS, mask=km, other=0))
+            sc_ = tl.floor(_dot9f(q0, q1, q2, k0, k1, k2) * inv + 0.5)
+            valid = (t[None, :] <= pr[:, None]) & rm[:, None]
+            mn = tl.maximum(m, tl.max(tl.where(valid, sc_, -1e300), axis=1))
+            need = (mn > m) & (m > -1e299)
+            if tl.max(need.to(tl.int32), axis=0) > 0:
+                f = tl.where(need, tl.load(E_ptr + tl.minimum(mn - m, NA - 1.0).to(tl.int32)), 32768).to(tl.int64)
+                Z = _resc(Z, f)
+                O = _resc(O, f[:, None])
+            m = mn
+            dd = tl.where(valid, m[:, None] - sc_, NA - 1.0)
+            if tl.min(tl.min(dd, axis=1), axis=0) < ZTH:
+                w = tl.load(E_ptr + tl.minimum(dd, NA - 1.0).to(tl.int32))  # [BM, CH] int32
+                Z += tl.sum(w, axis=1).to(tl.int64)
+                w0 = (((w + 128) & 255) - 128)
+                w1r = (w - w0) >> 8
+                w1 = ((w1r + 128) & 255) - 128
+                w2 = (w1r - w1) >> 8
+                va = V_ptr + kb + t[:, None] * HD + d[None, :]
+                v0 = tl.load(va, mask=km, other=0)
+                v1 = tl.load(va + PS, mask=km, other=0)
+                v2 = tl.load(va + 2 * PS, mask=km, other=0)
+                O += _dot9f(w0.to(tl.int8), w1.to(tl.int8), w2.to(tl.int8), v0, v1, v2).to(tl.int64)
+        Zb = Z[:, None]
+        a = tl.abs(O)
+        hi = a // Zb
+        o = (hi << 12) + ((a - hi * Zb) << 12) // Zb
+        o = tl.where(O < 0, -o, o)
+        tl.store(out_ptr + r[:, None] * (NQ * HD) + h * HD + d[None, :], o, mask=rm[:, None])
+
+    @triton.jit
+    def k_seg(Cm_ptr, pm_ptr, seg_ptr, Ms_ptr, nch, NCH, MC: tl.constexpr):
+        """per q head: running max of the chunk maxima (pm), run ids (seg: +1 whenever the running max rises) and
+        each run's max (Ms)."""
+        h = tl.program_id(0)
+        c = tl.arange(0, MC)
+        cv = c < nch
+        cm = tl.load(Cm_ptr + h * NCH + c, mask=cv, other=-(2**62))
+        pm = tl.associative_scan(cm, 0, _maxop)
+        tl.store(pm_ptr + h * NCH + c, pm, mask=cv)
+        # running max of the chunks before c: the same scan over the maxima shifted by one (no reload of pm)
+        cmp_ = tl.load(Cm_ptr + h * NCH + c - 1, mask=cv & (c >= 1), other=-(2**62))
+        prev = tl.associative_scan(cmp_, 0, _maxop)
+        inc = ((c >= 1) & (pm > prev)).to(tl.int64)
+        sg = tl.cumsum(inc, axis=0)
+        tl.store(seg_ptr + h * NCH + c, sg, mask=cv)
+        tl.store(Ms_ptr + h * NCH + sg, pm, mask=cv & ((c == 0) | (inc > 0)))
+
+    @triton.jit
+    def k_att2s(S_ptr, pm_ptr, seg_ptr, V_ptr, E_ptr, Os_ptr, Zs_ptr, maxlen, CPP, nch, NCH, NA: tl.constexpr,
+                NKV: tl.constexpr, GRP: tl.constexpr, CH: tl.constexpr, HD: tl.constexpr, GP: tl.constexpr,
+                ZTH: tl.constexpr):
+        """per (kv head, CPP chunks): weights relative to the chunk's running max; w and w*V sums added into the
+        chunk's run accumulator (integer atomics: runs are summed exactly in any order)."""
+        j, c0 = tl.program_id(0), tl.program_id(1) * CPP
+        d = tl.arange(0, HD)
+        g = tl.arange(0, GP)
+        gm = g < GRP
+        hrow = j * GRP + g
+        PS = NKV * maxlen * HD
+        for c in range(CPP):
+            cc = c0 + c
+            if cc < nch:
+                mg = tl.load(pm_ptr + hrow * NCH + cc, mask=gm, other=0)
+                sg = tl.load(seg_ptr + hrow * NCH + cc, mask=gm, other=0)
+                t = cc * CH + tl.arange(0, CH)
+                sv = tl.load(S_ptr + hrow[None, :] * maxlen + t[:, None], mask=gm[None, :], other=-(2**60))
+                dd = mg[None, :] - sv
+                if tl.min(tl.min(tl.where(gm[None, :], dd, NA), axis=1), axis=0) < ZTH:
+                    w = tl.load(E_ptr + tl.minimum(dd, NA - 1))  # [CH, GP]
+                    va = V_ptr + j * maxlen * HD + t[:, None] * HD + d[None, :]
+                    v0 = tl.load(va)
+                    v1 = tl.load(va + PS)
+                    v2 = tl.load(va + 2 * PS)
+                    w0, w1, w2 = _dig(w)
+                    o = _dot9(tl.trans(w0), tl.trans(w1), tl.trans(w2), v0, v1, v2)  # [GP, HD]
+                    tl.atomic_add(Zs_ptr + hrow * NCH + sg, tl.sum(w, axis=0).to(tl.uint64, bitcast=True), mask=gm,
+                                  sem="relaxed")
+                    tl.atomic_add(Os_ptr + (hrow[:, None] * NCH + sg[:, None]) * HD + d[None, :],
+                                  o.to(tl.uint64, bitcast=True), mask=gm[:, None], sem="relaxed")
+
+    @triton.jit
+    def k_mergeseg(Zs_ptr, Os_ptr, Ms_ptr, seg_ptr, E_ptr, out_ptr, pos_ptr, NCH, NA: tl.constexpr, HD: tl.constexpr):
+        """per q head: combine the runs in order (rescale when the max rises), o = O / Z; zero the run sums."""
+        h = tl.program_id(0)
+        d = tl.arange(0, HD)
+        J = tl.load(seg_ptr + h * NCH + tl.load(pos_ptr) // 64) + 1
+        Z = tl.load(Zs_ptr + h * NCH)
+        O = tl.load(Os_ptr + h * NCH * HD + d)
+        mp = tl.load(Ms_ptr + h * NCH)
+        for jj in range(1, J):
+            mu = tl.load(Ms_ptr + h * NCH + jj)
+            f = tl.load(E_ptr + tl.minimum(mu - mp, NA - 1))
+            Z = _resc(Z, f) + tl.load(Zs_ptr + h * NCH + jj)
+            O = _resc(O, f) + tl.load(Os_ptr + (h * NCH + jj) * HD + d)
+            mp = mu
+        # zero the run sums only after every thread has read them (values can be held by several threads)
+        tl.debug_barrier()
+        for jj in range(0, J):
+            tl.store(Zs_ptr + h * NCH + jj, tl.zeros([], dtype=tl.int64))
+            tl.store(Os_ptr + (h * NCH + jj) * HD + d, tl.zeros([HD], dtype=tl.int64))
+        a = tl.abs(O)
+        hi = a // Z
+        o = (hi << 12) + ((a - hi * Z) << 12) // Z
+        tl.store(out_ptr + h * HD + d, tl.where(O < 0, -o, o))
+
+    @triton.jit
+    def k_blockf1(x_ptr, m_ptr, e_ptr, ein, N: tl.constexpr, BLOCK: tl.constexpr):
+        i = tl.arange(0, BLOCK)
+        mk = i < N
+        x = tl.load(x_ptr + i, mask=mk, other=0)
+        sh = tl.maximum(_bitlen(tl.max(tl.abs(x), axis=0)) - 15, 0)
+        tl.store(m_ptr + i, tl.minimum(tl.maximum(_rsh(x, sh), -32767), 32767), mask=mk)
+        tl.store(e_ptr, sh + ein)
+
     class FastInt:
         def __init__(self, bundle, n, log, BUCKET=1024, CH=32, fused=True, APG=192, graphs=True):
             self.tr = None
@@ -976,7 +1143,7 @@ def fast_class():
             QP_ = 1 << (nq - 1).bit_length()  # q heads padded to a power of two
             NB_ = 1 << (D - 1).bit_length()  # norm block (power of two >= D)
             if not fused:
-                assert hd == 64, "the unfused debug path assumes head_dim 64"
+                raise ValueError("the unfused debug path implements the old two-pass attention rule")
             self.BUCKET = BUCKET
             nb = (n + BUCKET) // BUCKET  # positions 0..n-1 need attention length up to n
             maxlen = nb * BUCKET
@@ -1143,6 +1310,13 @@ def fast_class():
             e_n, e_o, e_m = (torch.zeros(1, dtype=L64, device=dev) for _ in range(3))
             Mg_acc = torch.zeros(nq, dtype=L64, device=dev)
             Cm = torch.zeros(nq, NCH, dtype=L64, device=dev)  # per-chunk score max
+            NC64 = maxlen // 64
+            MC64 = 1 << (NC64 - 1).bit_length()
+            PMb, SEGb, MSb = (torch.zeros(nq, NC64, dtype=L64, device=dev) for _ in range(3))
+            Zs = torch.zeros(nq, NC64, dtype=L64, device=dev)
+            Os = torch.zeros(nq, NC64, hd, dtype=L64, device=dev)
+            Zs_u, Os_u = Zs.view(torch.uint64), Os.view(torch.uint64)
+            Ob1 = torch.zeros(nq * hd, dtype=L64, device=dev)
             ZTH = int((EXPA != 0).nonzero().max()) + 1  # EXPA[d] = 0 for every d >= ZTH
             assert bool((EXPA[ZTH:] == 0).all())
             O_acc = torch.zeros(nq, hd, dtype=L64, device=dev)
@@ -1184,13 +1358,19 @@ def fast_class():
                     acc, E = mv3(Ly["qkv"], mbuf, 32, 1)
                     k_qkv[(1,)](acc, 1, E, e_n, Ly["b"], C, S, pos, KV8[l, 0], KV8[l, 1], maxlen, mqb, shb, Mg_acc,
                                 NQ=nq, NKV=nkv, HD=hd, QP=QP_, ZERO=True, DIG=True, ZB=1 << ((nq + 2 * nkv) * hd - 1).bit_length(), SCQ=SC)
-                    cpp = triton.cdiv(nch, APG)  # about APG programs per kv head, each over cpp chunks
-                    npg = triton.cdiv(nch, cpp)
-                    k_att1d[(nkv, npg)](mqb, shb, KV8[l, 0], Sbuf, Mg_acc, Cm, pos, maxlen, cpp, nch, NCH, NKV=nkv, GRP=grp,
-                                        CH=CH, HD=hd, GP=16, SC=SC)
-                    k_att2d[(nkv, npg)](Sbuf, Mg_acc, Cm, KV8[l, 1], EXPA, O_acc_u, Z_acc_u, pos, maxlen, cpp, nch, NCH, NA=NA,
-                                        NKV=nkv, GRP=grp, CH=CH, HD=hd, GP=16, ZTH=ZTH)
-                    k_mergea[(1,)](O_acc, Z_acc, mob, e_o, NQ=nq, HD=hd, QP=QP_)
+                    n64 = Lb // 64  # spec chunks in this bucket
+                    cpp = triton.cdiv(n64, APG)
+                    npg = triton.cdiv(n64, cpp)
+                    k_att1d[(nkv, npg)](mqb, shb, KV8[l, 0], Sbuf, Mg_acc, Cm, pos, maxlen, cpp, n64, NC64, NKV=nkv, GRP=grp,
+                                        CH=64, HD=hd, GP=16, SC=SC)
+                    k_seg[(nq,)](Cm, PMb, SEGb, MSb, n64, NC64, MC=MC64)
+                    k_att2s[(nkv, npg)](Sbuf, PMb, SEGb, KV8[l, 1], EXPA, Os_u, Zs_u, maxlen, cpp, n64, NC64, NA=NA, NKV=nkv,
+                                        GRP=grp, CH=64, HD=hd, GP=16, ZTH=ZTH)
+                    k_mergeseg[(nq,)](Zs, Os, MSb, SEGb, EXPA, Ob1, pos, NC64, NA=NA, HD=hd)
+                    k_blockf1[(1,)](Ob1, mob, e_o, -24, N=nq * hd, BLOCK=1 << (nq * hd - 1).bit_length())
+                    if self.tr is not None and l == 0:
+                        self.tr.append(("mo", mob.clone())); self.tr.append(("eo", e_o.clone()))
+                        self.tr.append(("seg", SEGb[:, :4].clone())); self.tr.append(("pm", PMb[:, :4].clone()))
                     acc, E = mv3(Ly["o"], mob, 32, 1)
                     k_norm2[(1,)](hbuf, acc, E, e_o, pmax, Ly["g2"], EPS, mbuf, e_n, D=D, BLOCK=NB_, ADD=True, EINP=False, num_warps=8)
                     acc, E = mv3(Ly["gu"], mbuf, 64, 1, nw=2)
@@ -1234,7 +1414,7 @@ def fast_class():
 
             def reset():
                 KV.zero_(); KV8.zero_(); pos.zero_(); tok.fill_(self.start)
-                O_acc.zero_(); Z_acc.zero_(); pmax.zero_(); Zt.zero_(); gmaxb.fill_(-(2**62))
+                O_acc.zero_(); Z_acc.zero_(); pmax.zero_(); Zt.zero_(); gmaxb.fill_(-(2**62)); Zs.zero_(); Os.zero_()
                 for o_ in outs.values():
                     o_.zero_()
                 st.copy_(torch.tensor([0, 0, TOP + 1]))
@@ -1367,8 +1547,8 @@ def fast_class():
                         E = gemm(Ly["qkv"], Md, PSd, R, A_qkv)
                         k_rqkv[(R,)](A_qkv, E, e1, Ly["b"], C, S, r0, KV8[l, 0], KV8[l, 1], maxlen, Qd, shq, QS,
                                      NQ=nq, NKV=nkv, HD=hd, QP=QP_, SCQ=SC)
-                        k_rattn3[(triton.cdiv(R, BM), nq)](Qd, shq, QS, KV8[l, 0], KV8[l, 1], EXPA32, Ob, r0, R, maxlen, NQ=nq,
-                                                           NKV=nkv, GRP=grp, HD=hd, BM=BM, CH=CHa, NA=NA, ZTH=ZTH, num_warps=NWa)
+                        k_rattn4[(triton.cdiv(R, BM), nq)](Qd, shq, QS, KV8[l, 0], KV8[l, 1], EXPA32, Ob, r0, R, maxlen, NQ=nq,
+                                                           NKV=nkv, GRP=grp, HD=hd, BM=BM, NA=NA, ZTH=ZTH, num_warps=NWa)
                         k_rblock[(R,)](Ob, Mo, e2, P * nq * hd, -24, N=nq * hd, BLOCK=1 << (nq * hd - 1).bit_length())
                         E = gemm(Ly["o"], Mo, P * nq * hd, R, A_d)
                         k_rnorm[(R,)](H, A_d, E, e2, Ly["g2"], EPS, Md, e1, PSd, D=D, BLOCK=NB_, ADD=True, num_warps=8)
@@ -1399,6 +1579,7 @@ def fast_class():
                 return struct.pack("<I", n) + enc.finish()
 
             self.encode_batched = encode_batched
+            self.dbg = dict(Cm=Cm, PM=PMb, SEG=SEGb, MS=MSb, Zs=Zs, Ob1=Ob1)
             self.bench = bench
             self.forward_eager = forward
             self.__dict__.update(reset=reset, tok=tok, pos=pos, cum=cum, ids_gpu=ids_gpu, counts=counts, st=st, res=res)
@@ -1534,6 +1715,64 @@ if modal is not None:
                     a2 = m.encode(ids_)
                     say(f"{time.strftime('%T')} step-by-step encode: {len(a2)} bytes, {time.time() - t0:.1f}s; "
                         f"archives {'IDENTICAL' if a2 == arch else 'DIFFER'}")
+            if task == "attdbg":  # layer-0 attention output at position N: decode path vs plain PyTorch
+                P_ = n or 128
+                ref = model_class()(f"/int/{bundle}", P_ + 8, "cuda")
+                prev = start
+                for k in range(P_ + 1):
+                    if k == P_:
+                        ref.tr = []
+                        m.tr = []
+                        m.tok.fill_(prev)
+                        with torch.no_grad():
+                            m.forward_eager(m.BUCKET)
+                    else:
+                        m.step(torch.tensor(prev, device="cuda"))
+                    ref.step(torch.tensor(prev, device="cuda"))
+                    prev = ids[k]
+                trs = list(m.tr)
+                t_eager = m.cum.clone()
+                t_ref = ref.cum_last.clone()
+                say(f"final table eager {table_hash(t_eager)} ref {table_hash(t_ref)}")
+                m.tr = None
+                m.reset()
+                prev = start
+                for k in range(P_ + 1):
+                    tg_ = m.step(torch.tensor(prev, device="cuda")).clone()
+                    prev = ids[k]
+                say(f"final table graph {table_hash(tg_)}")
+                rt = dict(ref.tr); ft = dict(trs)
+                for k in ("mo", "eo"):
+                    a_, b_ = rt[k].reshape(-1), ft[k].reshape(-1)
+                    nd = int((a_ != b_).sum())
+                    i_ = int((a_ != b_).nonzero()[0]) if nd else -1
+                    say(f"{k}: {nd} differ; first {i_}: ref {a_[max(i_,0):max(i_,0)+4].tolist()} fast {b_[max(i_,0):max(i_,0)+4].tolist()}")
+                say(f"seg {ft['seg'][:3].tolist()} pm {ft['pm'][:3].tolist()}")
+            if task == "racedbg":  # replay one position many times from the same state; count distinct results
+                P_ = n or 129
+                prev = start
+                for k in range(P_):
+                    m.step(torch.tensor(prev, device="cuda"))
+                    prev = ids[k]
+                hs, hob = {}, {}
+                for rep in range(30):
+                    m.pos.fill_(P_)
+                    m.tok.fill_(prev)
+                    m.fwd[P_ // m.BUCKET].replay()
+                    torch.cuda.synchronize()
+                    hs[table_hash(m.cum)] = hs.get(table_hash(m.cum), 0) + 1
+                    ob = m.dbg["Ob1"]
+                    hob[table_hash(ob)] = hob.get(table_hash(ob), 0) + 1
+                say(f"position {P_}: {len(hs)} distinct tables {hs}; last-layer attention outputs {len(hob)} distinct")
+            if task == "segdbg":
+                prev = start
+                for k, t in enumerate(ids[:131]):
+                    m.step(torch.tensor(prev, device="cuda"))
+                    prev = t
+                    if k >= 126:
+                        dd = m.dbg
+                        say(f"pos {k}: Cm {dd['Cm'][0, :4].tolist()} PM {dd['PM'][0, :4].tolist()} SEG {dd['SEG'][0, :4].tolist()} "
+                            f"MS {dd['MS'][0, :4].tolist()} Zs {dd['Zs'][0, :4].tolist()}")
             if task == "bench":
                 m.bench(say)
             if task == "prof":
@@ -1582,6 +1821,7 @@ if modal is not None:
                 c_ref = ref.step  # (already stepped once) -> compare tables
                 ref2 = model_class()(f"/int/{bundle}", 8, "cuda")
                 t_ref = ref2.step(torch.tensor(start, device="cuda")).clone()
+                trs = list(m.tr)
                 t_eager = m.cum.clone()
                 m.tr = None
                 m.reset()

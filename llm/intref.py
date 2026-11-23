@@ -35,7 +35,10 @@ Ops (D = hidden, per token):
   SC = round(2^16 / sqrt(head_dim)) (2^13 for head_dim 64, where this equals blockf(q) with shift 29 - sh) and sh is
   the head's blockf shift. (Scaling before the rounding keeps every score a power-of-two rounding of an exact
   integer below 2^44, which float64 computes exactly.)
-  M = max score; w_t = EXPA[min(M - score_t, len-1)]; Z = sum w; O = sum w_t V_t;
+  One pass over fixed 64-key chunks [0,64), [64,128), ... in ascending order (the last one partial), keeping a
+  running max m, Z and O[hd]: for chunk c, m' = max(m, max score in c); if c > 0, Z = resc(Z, f), O = resc(O, f) with
+  f = EXPA[min(m' - m, len-1)] and resc(x, f) = (x * f + 2^14) >> 15 (exact via a 32-bit split of x);
+  w_t = EXPA[min(m' - score_t, len-1)]; Z += sum w; O += sum w_t V_t; m = m'.
   o = sign(O) * (|O| * 2^12 // Z)  (computed as hi/remainder so nothing overflows; e = -24).
   h += rshift(matvec(Wo, blockf(o)), to -24).
   (m,e) = rmsnorm(h, g2); g, u = rshift(matvec(Wgu), to -16); a = rshift(g * SIG[clip(rshift(g, 6), +-16384) + 16384], 16);
@@ -144,6 +147,15 @@ def rshift_arr(x, n):
     return np.where(n > 0, r, x << np.maximum(-n, 0))
 
 
+CB = 64  # attention key chunk
+
+
+def resc(x, f):
+    """(x * f + 2^14) >> 15 for int64 x (|x| < 2^52) and 0 <= f <= 2^15, exactly, without overflow."""
+    xh, xl = x >> 32, x & 0xFFFFFFFF
+    return xh * f * (1 << 17) + ((xl * f + (1 << 14)) >> 15)
+
+
 def bitlen(v):
     return int(v).bit_length()
 
@@ -225,10 +237,19 @@ class IntModel:
             acc = exact_mm(K, mq.T, int(np.abs(K).max()) * 32767 * hd)  # [T, grp]
             # q e = -24 + sh, K e = -12, times 2^-3 -> e = -39 + sh; to e = -10
             s = rshift_arr(acc, (42 - sh)[None, :])
-            d = s.max(axis=0)[None, :] - s
-            w = self.EXPA[np.minimum(d, NA - 1)]
-            Z = w.sum(axis=0)  # [grp]
-            O = exact_mm(w.T, Vv, int(Z.max()) * int(np.abs(Vv).max()))  # [grp, hd]
+            vmax = int(np.abs(Vv).max())
+            for c in range(0, T, CB):  # one pass over fixed chunks, ascending
+                sc = s[c : c + CB]
+                mc = sc.max(axis=0)
+                if c == 0:
+                    m, Z, O = mc, np.zeros(grp, I64), np.zeros((grp, hd), I64)
+                else:
+                    mn = np.maximum(m, mc)
+                    f = self.EXPA[np.minimum(mn - m, NA - 1)]
+                    Z, O, m = resc(Z, f), resc(O, f[:, None]), mn
+                w = self.EXPA[np.minimum(m[None, :] - sc, NA - 1)]
+                Z = Z + w.sum(axis=0)
+                O = O + exact_mm(w.T, Vv[c : c + CB], (1 << 15) * CB * vmax)
             a = np.abs(O)
             hi = a // Z[:, None]
             rem = a - hi * Z[:, None]

@@ -343,3 +343,18 @@ compressed on its own with the integer 7B (committed codec 9d9bc1a, batched), fr
 - Memorization check: part of this tree is public code that predates the model. But brand-new code compresses about as
   well: nollama's Go source, written days before this run, came out at 0.47 bits per byte (partial run, 138 files).
   Readable code is simply very predictable to a 7B coder model; the minified BJJ game is much harder.
+
+Unseen-code control, `nollama/engine` (first commit 2026-11-21, long after the model's training data): 111 hand-written
+files (Go, CUDA, Metal, assembly, one JSON; the 2.5 MB of generated PTX left out), 891,145 bytes, 341,417 tokens.
+
+| Method | Bytes | 7B is smaller by |
+|---|---:|---:|
+| zip (default) | 312,600 | 5.6× |
+| zip -9 | 306,344 | 5.5× |
+| tar + xz -9e | 208,100 | 3.7× |
+| tar + brotli -11 | 204,953 | 3.7× |
+| **integer 7B, per file** | **56,038** | |
+
+By language: Go 0.50 bits/byte, CUDA 0.40, Metal 0.37, assembly 0.31, JSON 1.64. 154 s of H100 time, with
+`kvcache.go` and `kvcache_test.go` round-tripped through the step-by-step decoder. Code the model has never seen
+compresses almost as well as meshcore (5.5× vs 6.3× against zip -9), so memorization explains little of that result.

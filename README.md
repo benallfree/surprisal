@@ -78,7 +78,7 @@ position at once (batched); decompression has to go one token at a time.
 <table>
 <tr><th></th><th>compress</th><th>decompress</th></tr>
 <tr><td>Python</td><td align="right">2.0 s</td><td align="right">30.0 s</td></tr>
-<tr><td>signal</td><td align="right">2.6 s</td><td align="right">1 min 6 s</td></tr>
+<tr><td>signal</td><td align="right">2.6 s</td><td align="right">53 s</td></tr>
 </table>
 
 </td></tr>
@@ -95,7 +95,7 @@ position at once (batched); decompression has to go one token at a time.
 <table>
 <tr><th></th><th>compress</th><th>decompress</th></tr>
 <tr><td>Python</td><td align="right">3.8 s</td><td align="right">54.4 s</td></tr>
-<tr><td>signal</td><td align="right">4.5 s</td><td align="right">1 min 54 s</td></tr>
+<tr><td>signal</td><td align="right">4.5 s</td><td align="right">1 min 38 s</td></tr>
 </table>
 
 </td></tr>
@@ -112,7 +112,7 @@ position at once (batched); decompression has to go one token at a time.
 <table>
 <tr><th></th><th>compress</th><th>decompress</th></tr>
 <tr><td>Python</td><td align="right">9.3 s</td><td align="right">2 min 3 s</td></tr>
-<tr><td>signal</td><td align="right">12.9 s</td><td align="right">3 min 16 s</td></tr>
+<tr><td>signal</td><td align="right">12.7 s</td><td align="right">3 min 15 s</td></tr>
 </table>
 
 </td></tr>
@@ -120,7 +120,7 @@ position at once (batched); decompression has to go one token at a time.
 
 \* Estimated from the numpy reference's speed over the first 300, 120 and 30 tokens (6.9, 2.3 and 0.08 tok/s); later
 tokens are slower, and the 7B doesn't fit in memory and swaps. signal's H100 runs: `llm/gostage.sh` cross-compiles the
-tests and the CLI, `llm/gorun.py` runs them on Modal.
+tests and the CLI, `llm/gorun.py` runs them on Modal; H100 decompression times vary by about 10% between runs.
 
 ## Reproduce
 

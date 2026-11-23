@@ -321,3 +321,25 @@ Every archive below matched the step-by-step archive byte for byte, and each was
 - Possible next steps, both spec changes:
   - Attention in one pass, using integer online-softmax rescaling with a fixed chunk order defined by the spec.
   - Larger quantization groups (fewer scale steps in the GEMMs), which needs a size check first.
+
+### Other corpora: a C++ source tree (2026-11-22, night)
+
+`meshenvy/envyos/packages/meshcore/src`: 166 C++ files (`.cpp`/`.h`), 863,664 bytes, 329,238 tokens. Each file was
+compressed on its own with the integer 7B (committed codec 9d9bc1a, batched), fresh context per file. The one
+105 KB font-data file needed four 32K-token segments.
+
+| Method | Bytes | vs zip |
+|---|---:|---:|
+| zip -9 | 267,227 | 1.00 |
+| raw deflate -9 per file (no zip headers) | 245,223 | 0.92 |
+| tar + xz -9e (solid) | 160,692 | 0.60 |
+| tar + brotli -11 (solid) | 159,744 | 0.60 |
+| **integer 7B, per file** (streams 40,348 + 4-byte lengths + xz'd file list 1,140) | **42,152** | **0.158** |
+
+- That is 0.34 bits per byte on `.cpp` and 0.45 on `.h`: 6.3× smaller than zip and 3.8× smaller than xz or brotli,
+  even though the solid baselines see the whole tree and the 7B sees one file at a time.
+- 106 s of H100 time for the whole tree, after loading and kernel compilation. Three files round-tripped through the
+  step-by-step decoder, including `Mesh.cpp` (28,701 B → 1,073 B).
+- Memorization check: part of this tree is public code that predates the model. But brand-new code compresses about as
+  well: nollama's Go source, written days before this run, came out at 0.47 bits per byte (partial run, 138 files).
+  Readable code is simply very predictable to a 7B coder model; the minified BJJ game is much harder.

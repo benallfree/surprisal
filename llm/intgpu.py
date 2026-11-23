@@ -42,6 +42,7 @@ def model_class():
             self.hd = self.D // self.nq
             self.V = cfg["vocab_size"]
             self.start = cfg["bos_token_id"]
+            self.SC = int(round(2**16 / math.sqrt(self.hd)))  # attention scale, see intref.att_scale
             T = lambda a, dt=L64: torch.from_numpy(np.ascontiguousarray(a)).to(dev, dt)
 
             def mat(n):
@@ -116,7 +117,7 @@ def model_class():
             mq = self.rshift(qs, sh[..., None]).clamp(-32767, 32767)
             K, Vv = self.K[l, :, :T], self.Vc[l, :, :T]  # [nkv, T, hd] float64 holding ints
             acc = torch.matmul(K, mq.to(torch.float64).transpose(1, 2)).to(L64)  # [nkv, T, grp]
-            s = self.rshift(acc, (29 - sh)[:, None, :])
+            s = self.rshift(acc * self.SC, (42 - sh)[:, None, :])
             d = s.amax(1, keepdim=True) - s
             w = self.EXPA[d.clamp(max=NA - 1)]
             Z = w.sum(1)  # [nkv, grp]
@@ -404,7 +405,7 @@ def fast_class():
     @triton.jit
     def k_qkv(acc_ptr, SK: tl.constexpr, E_ptr, ein_ptr, b_ptr, C_ptr, S_ptr, pos_ptr, K_ptr, V_ptr, maxlen, mq_ptr, sh_ptr,
               Mg_ptr, NQ: tl.constexpr, NKV: tl.constexpr, HD: tl.constexpr, QP: tl.constexpr, ZERO: tl.constexpr = False,
-              DIG: tl.constexpr = False):
+              DIG: tl.constexpr = False, ZB: tl.constexpr = 2048):
         """sum partials, rshift to -24, + bias, rope q and k, blockf each q head, store clipped k, v at pos."""
         hz = tl.arange(0, QP)
         tl.store(Mg_ptr + hz, tl.full([QP], -(2**62), tl.int64), mask=hz < NQ)
@@ -456,8 +457,8 @@ def fast_class():
             tl.store(V_ptr + vdst, v.to(tl.int32))
         if ZERO:
             tl.debug_barrier()
-            zi = tl.arange(0, 2048)
-            tl.store(acc_ptr + zi, tl.zeros([2048], dtype=tl.int64), mask=zi < O)
+            zi = tl.arange(0, ZB)
+            tl.store(acc_ptr + zi, tl.zeros([ZB], dtype=tl.int64), mask=zi < O)
 
     @triton.jit
     def k_mergea(O_ptr, Z_ptr, m_ptr, e_ptr, NQ: tl.constexpr, HD: tl.constexpr, QP: tl.constexpr):
@@ -619,50 +620,8 @@ def fast_class():
         tl.atomic_max(pmax_ptr, tl.max(tl.abs(p), axis=0), sem="relaxed")
 
     @triton.jit
-    def k_att1h(q_ptr, sh_ptr, K_ptr, S_ptr, Mg_ptr, pos_ptr, maxlen, GRP: tl.constexpr, CH: tl.constexpr, HD: tl.constexpr,
-                CPP, nch):
-        """one program per (q head, CPP consecutive chunks)."""
-        hq, c0 = tl.program_id(0), tl.program_id(1) * CPP
-        j = hq // GRP
-        T = tl.load(pos_ptr) + 1
-        d = tl.arange(0, HD)
-        qg = tl.load(q_ptr + hq * HD + d).to(tl.float64)
-        n = 29 - tl.load(sh_ptr + hq)
-        mrun = tl.full([CH], -(2**62), tl.int64)
-        for c in range(CPP):
-            t = (c0 + c) * CH + tl.arange(0, CH)
-            kk = tl.load(K_ptr + j * maxlen * HD + t[:, None] * HD + d[None, :], mask=(t < T)[:, None], other=0).to(tl.float64)
-            acc = tl.sum(kk * qg[None, :], axis=1).to(tl.int64)  # exact: integer sums below 2^44
-            r = (acc + (tl.full([CH], 1, tl.int64) << tl.maximum(n - 1, 0))) >> tl.maximum(n, 0)
-            r = tl.where(n > 0, r, acc << tl.maximum(-n, 0))
-            r = tl.where(t < T, r, tl.full([CH], -(2**60), tl.int64))
-            tl.store(S_ptr + hq * maxlen + t, r, mask=t < nch * CH)
-            mrun = tl.maximum(mrun, r)
-        tl.atomic_max(Mg_ptr + hq, tl.max(mrun, axis=0), sem="relaxed")
-
-    @triton.jit
-    def k_att2h(S_ptr, Mg_ptr, V_ptr, E_ptr, Oacc_ptr, Zacc_ptr, pos_ptr, maxlen, NA: tl.constexpr, GRP: tl.constexpr,
-                CH: tl.constexpr, HD: tl.constexpr, CPP, nch):
-        hq, c0 = tl.program_id(0), tl.program_id(1) * CPP
-        j = hq // GRP
-        T = tl.load(pos_ptr) + 1
-        d = tl.arange(0, HD)
-        mg = tl.load(Mg_ptr + hq)
-        za = tl.zeros([CH], dtype=tl.int64)
-        oa = tl.zeros([HD], dtype=tl.int64)
-        for c in range(CPP):
-            t = (c0 + c) * CH + tl.arange(0, CH)
-            vv = tl.load(V_ptr + j * maxlen * HD + t[:, None] * HD + d[None, :], mask=(t < T)[:, None], other=0).to(tl.float64)
-            s = tl.load(S_ptr + hq * maxlen + t, mask=t < nch * CH, other=-(2**60))
-            w = tl.load(E_ptr + tl.minimum(mg - s, NA - 1))
-            za += w
-            oa += tl.sum(w.to(tl.float64)[:, None] * vv, axis=0).to(tl.int64)  # exact (< 2^44 per chunk)
-        tl.atomic_add(Zacc_ptr + hq, tl.sum(za, axis=0).to(tl.uint64, bitcast=True), sem="relaxed")
-        tl.atomic_add(Oacc_ptr + hq * HD + d, oa.to(tl.uint64, bitcast=True), sem="relaxed")
-
-    @triton.jit
-    def k_att1d(q_ptr, sh_ptr, K_ptr, S_ptr, Mg_ptr, pos_ptr, maxlen, CPP, nch, NKV: tl.constexpr, GRP: tl.constexpr,
-                CH: tl.constexpr, HD: tl.constexpr, GP: tl.constexpr):
+    def k_att1d(q_ptr, sh_ptr, K_ptr, S_ptr, Mg_ptr, Cm_ptr, pos_ptr, maxlen, CPP, nch, NCH, NKV: tl.constexpr,
+                GRP: tl.constexpr, CH: tl.constexpr, HD: tl.constexpr, GP: tl.constexpr, SC: tl.constexpr):
         """one program per (kv head, CPP chunks), all q heads at once: scores = K @ q^T from int8 digit dots (exact),
         shifted to e = -10, stored; max per head by atomic max."""
         j, c0 = tl.program_id(0), tl.program_id(1) * CPP
@@ -672,7 +631,7 @@ def fast_class():
         gm = g < GRP
         q0, q1, q2 = _dig(tl.load(q_ptr + (j * GRP + g[:, None]) * HD + d[None, :], mask=gm[:, None], other=0))
         q0, q1, q2 = tl.trans(q0), tl.trans(q1), tl.trans(q2)  # [HD, GP]
-        n = (29 - tl.load(sh_ptr + j * GRP + g, mask=gm, other=0))[None, :]
+        n = (42 - tl.load(sh_ptr + j * GRP + g, mask=gm, other=0))[None, :]
         PS = NKV * maxlen * HD
         mrun = tl.full([GP], -(2**62), tl.int64)
         for c in range(CPP):
@@ -682,17 +641,19 @@ def fast_class():
             k0 = tl.load(ka, mask=mk, other=0)
             k1 = tl.load(ka + PS, mask=mk, other=0)
             k2 = tl.load(ka + 2 * PS, mask=mk, other=0)
-            acc = _dot9(k0, k1, k2, q0, q1, q2)  # [CH, GP]
+            acc = _dot9(k0, k1, k2, q0, q1, q2) * SC  # [CH, GP]; |q.K| < 2^44, times SC < 2^16
             r = (acc + ((acc * 0 + 1) << tl.maximum(n - 1, 0))) >> tl.maximum(n, 0)
             r = tl.where(n > 0, r, acc << tl.maximum(-n, 0))
             r = tl.where(mk, r, -(2**60))
             tl.store(S_ptr + (j * GRP + g[None, :]) * maxlen + t[:, None], r, mask=gm[None, :] & (t < nch * CH)[:, None])
-            mrun = tl.maximum(mrun, tl.max(r, axis=0))
+            cmax = tl.max(r, axis=0)
+            tl.store(Cm_ptr + (j * GRP + g) * NCH + c0 + c, cmax, mask=gm & (c0 + c < nch))  # chunk max per head
+            mrun = tl.maximum(mrun, cmax)
         tl.atomic_max(Mg_ptr + j * GRP + g, mrun, mask=gm, sem="relaxed")
 
     @triton.jit
-    def k_att2d(S_ptr, Mg_ptr, V_ptr, E_ptr, Oacc_ptr, Zacc_ptr, pos_ptr, maxlen, CPP, nch, NA: tl.constexpr,
-                NKV: tl.constexpr, GRP: tl.constexpr, CH: tl.constexpr, HD: tl.constexpr, GP: tl.constexpr):
+    def k_att2d(S_ptr, Mg_ptr, Cm_ptr, V_ptr, E_ptr, Oacc_ptr, Zacc_ptr, pos_ptr, maxlen, CPP, nch, NCH, NA: tl.constexpr,
+                NKV: tl.constexpr, GRP: tl.constexpr, CH: tl.constexpr, HD: tl.constexpr, GP: tl.constexpr, ZTH: tl.constexpr):
         """w = EXPA[M - s]; Z += sum w; O += w^T @ V from int8 digit dots (exact)."""
         j, c0 = tl.program_id(0), tl.program_id(1) * CPP
         T = tl.load(pos_ptr) + 1
@@ -703,19 +664,23 @@ def fast_class():
         PS = NKV * maxlen * HD
         oa = tl.zeros([GP, HD], dtype=tl.int64)
         za = tl.zeros([GP], dtype=tl.int64)
+        mgv = tl.load(Mg_ptr + j * GRP + g, mask=gm, other=0)
         for c in range(CPP):
-            t = (c0 + c) * CH + tl.arange(0, CH)
-            va = V_ptr + j * maxlen * HD + t[:, None] * HD + d[None, :]
-            mk = (t < T)[:, None]
-            v0 = tl.load(va, mask=mk, other=0)
-            v1 = tl.load(va + PS, mask=mk, other=0)
-            v2 = tl.load(va + 2 * PS, mask=mk, other=0)
-            sv = tl.load(S_ptr + (j * GRP + g[None, :]) * maxlen + t[:, None], mask=gm[None, :] & (t < nch * CH)[:, None],
-                         other=-(2**60))
-            w = tl.load(E_ptr + tl.minimum(mg - sv, NA - 1))  # [CH, GP]; 0 when masked (EXPA[NA-1] = 0)
-            za += tl.sum(w, axis=0)
-            w0, w1, w2 = _dig(w)
-            oa += _dot9(tl.trans(w0), tl.trans(w1), tl.trans(w2), v0, v1, v2)
+            # a chunk whose best score is >= ZTH below the max for every head has all weights EXPA[...] = 0: skip it
+            cm = tl.load(Cm_ptr + (j * GRP + g) * NCH + c0 + c, mask=gm & (c0 + c < nch), other=-(2**62))
+            if tl.max(tl.where(gm, cm - mgv + ZTH, -1), axis=0) > 0:
+                t = (c0 + c) * CH + tl.arange(0, CH)
+                va = V_ptr + j * maxlen * HD + t[:, None] * HD + d[None, :]
+                mk = (t < T)[:, None]
+                v0 = tl.load(va, mask=mk, other=0)
+                v1 = tl.load(va + PS, mask=mk, other=0)
+                v2 = tl.load(va + 2 * PS, mask=mk, other=0)
+                sv = tl.load(S_ptr + (j * GRP + g[None, :]) * maxlen + t[:, None], mask=gm[None, :] & (t < nch * CH)[:, None],
+                             other=-(2**60))
+                w = tl.load(E_ptr + tl.minimum(mg - sv, NA - 1))  # [CH, GP]; 0 when masked (EXPA[NA-1] = 0)
+                za += tl.sum(w, axis=0)
+                w0, w1, w2 = _dig(w)
+                oa += _dot9(tl.trans(w0), tl.trans(w1), tl.trans(w2), v0, v1, v2)
         tl.atomic_add(Zacc_ptr + j * GRP + g, za.to(tl.uint64, bitcast=True), mask=gm, sem="relaxed")
         tl.atomic_add(Oacc_ptr + (j * GRP + g[:, None]) * HD + d[None, :], oa.to(tl.uint64, bitcast=True), mask=gm[:, None],
                       sem="relaxed")
@@ -730,6 +695,10 @@ def fast_class():
             nq, nkv = cfg["num_attention_heads"], cfg["num_key_value_heads"]
             hd, V, grp = D // nq, cfg["vocab_size"], nq // nkv
             self.start, self.V = cfg["bos_token_id"], V
+            SC = int(round(2**16 / math.sqrt(hd)))
+            NB_ = 1 << (D - 1).bit_length()  # norm block (power of two >= D)
+            if not fused:
+                assert hd == 64, "the unfused debug path assumes head_dim 64"
             self.BUCKET = BUCKET
             nb = (n + BUCKET) // BUCKET  # positions 0..n-1 need attention length up to n
             maxlen = nb * BUCKET
@@ -893,6 +862,9 @@ def fast_class():
             mqb, shb = torch.zeros(nq, hd, dtype=L64, device=dev), torch.zeros(nq, dtype=L64, device=dev)
             e_n, e_o, e_m = (torch.zeros(1, dtype=L64, device=dev) for _ in range(3))
             Mg_acc = torch.zeros(nq, dtype=L64, device=dev)
+            Cm = torch.zeros(nq, NCH, dtype=L64, device=dev)  # per-chunk score max
+            ZTH = int((EXPA != 0).nonzero().max()) + 1  # EXPA[d] = 0 for every d >= ZTH
+            assert bool((EXPA[ZTH:] == 0).all())
             O_acc = torch.zeros(nq, hd, dtype=L64, device=dev)
             Z_acc = torch.zeros(nq, dtype=L64, device=dev)
             O_acc_u, Z_acc_u = O_acc.view(torch.uint64), Z_acc.view(torch.uint64)
@@ -927,25 +899,25 @@ def fast_class():
             def forward3(Lb):
                 nch = Lb // CH
                 hbuf.copy_(head_h(tok))
-                k_norm2[(1,)](hbuf, hbuf, E_emb, e_n, pmax, layers[0]["g1"], EPS, mbuf, e_n, D=D, BLOCK=1024, ADD=False, EINP=False, num_warps=8)
+                k_norm2[(1,)](hbuf, hbuf, E_emb, e_n, pmax, layers[0]["g1"], EPS, mbuf, e_n, D=D, BLOCK=NB_, ADD=False, EINP=False, num_warps=8)
                 for l, Ly in enumerate(layers):
                     acc, E = mv3(Ly["qkv"], mbuf, 32, 1)
                     k_qkv[(1,)](acc, 1, E, e_n, Ly["b"], C, S, pos, KV8[l, 0], KV8[l, 1], maxlen, mqb, shb, Mg_acc,
-                                NQ=nq, NKV=nkv, HD=hd, QP=16, ZERO=True, DIG=True)
+                                NQ=nq, NKV=nkv, HD=hd, QP=16, ZERO=True, DIG=True, ZB=1 << ((nq + 2 * nkv) * hd - 1).bit_length())
                     cpp = triton.cdiv(nch, APG)  # about APG programs per kv head, each over cpp chunks
                     npg = triton.cdiv(nch, cpp)
-                    k_att1d[(nkv, npg)](mqb, shb, KV8[l, 0], Sbuf, Mg_acc, pos, maxlen, cpp, nch, NKV=nkv, GRP=grp, CH=CH,
-                                        HD=hd, GP=16)
-                    k_att2d[(nkv, npg)](Sbuf, Mg_acc, KV8[l, 1], EXPA, O_acc_u, Z_acc_u, pos, maxlen, cpp, nch, NA=NA, NKV=nkv,
-                                        GRP=grp, CH=CH, HD=hd, GP=16)
+                    k_att1d[(nkv, npg)](mqb, shb, KV8[l, 0], Sbuf, Mg_acc, Cm, pos, maxlen, cpp, nch, NCH, NKV=nkv, GRP=grp,
+                                        CH=CH, HD=hd, GP=16, SC=SC)
+                    k_att2d[(nkv, npg)](Sbuf, Mg_acc, Cm, KV8[l, 1], EXPA, O_acc_u, Z_acc_u, pos, maxlen, cpp, nch, NCH, NA=NA,
+                                        NKV=nkv, GRP=grp, CH=CH, HD=hd, GP=16, ZTH=ZTH)
                     k_mergea[(1,)](O_acc, Z_acc, mob, e_o, NQ=nq, HD=hd, QP=16)
                     acc, E = mv3(Ly["o"], mob, 32, 1)
-                    k_norm2[(1,)](hbuf, acc, E, e_o, pmax, Ly["g2"], EPS, mbuf, e_n, D=D, BLOCK=1024, ADD=True, EINP=False, num_warps=8)
+                    k_norm2[(1,)](hbuf, acc, E, e_o, pmax, Ly["g2"], EPS, mbuf, e_n, D=D, BLOCK=NB_, ADD=True, EINP=False, num_warps=8)
                     acc, E = mv3(Ly["gu"], mbuf, 64, 1, nw=2)
                     k_mlp2[(triton.cdiv(I, 1024),)](acc, E, e_n, SIG, pbuf, pmax, I=I, NS=NS, BLOCK=1024)
                     acc, E = mv3(Ly["d"], pbuf, 128, 1, PRO=True)
                     k_norm2[(1,)](hbuf, acc, E, e_n, pmax, layers[l + 1]["g1"] if l + 1 < Lr else gf, EPS, mbuf, e_n,
-                                  D=D, BLOCK=1024, ADD=True, EINP=True, num_warps=8)
+                                  D=D, BLOCK=NB_, ADD=True, EINP=True, num_warps=8)
                 k_mvlog[(triton.cdiv(V, 64),)](emb_q, emb_s, mbuf, lgbuf, E_emb, e_n, gmaxb, V, K=D, BO=64)
                 k_tab2[(NTB,)](lgbuf, gmaxb, EXPF, fbuf, Zt_u, V, NF=NF, BLOCK=TB)
                 k_tab3[(NTB,)](fbuf, Zt, cum, bsum, V, TOT=TOTAL, BLOCK=TB)
@@ -1055,7 +1027,7 @@ def fast_class():
                         + f" | current-ish BO=32: " + "; ".join(f"{t:.2f}us TPS={tp} nw={w}" for t, b, tp, w in res if b == 32 and w == 4)[:120])
                 acc0 = torch.zeros(D, dtype=L64, device=dev)
                 for nw in (2, 4, 8, 16, 32):
-                    f = lambda: k_norm2[(1,)](hbuf, acc0, E_emb, e_o, pmax, Ly["g2"], EPS, mbuf, e_n, D=D, BLOCK=1024, ADD=True,
+                    f = lambda: k_norm2[(1,)](hbuf, acc0, E_emb, e_o, pmax, Ly["g2"], EPS, mbuf, e_n, D=D, BLOCK=NB_, ADD=True,
                                               EINP=False, num_warps=nw)
                     say(f"norm nw={nw}: {tm(f):.2f}us")
                 f = lambda: k_mergea[(1,)](O_acc, Z_acc, mob, e_o, NQ=nq, HD=hd, QP=16)

@@ -270,3 +270,27 @@ How it got under 30 s (H100, decode tok/s; the ladder starts at the slice and en
 
 One spec change along the way: K and V are now clipped at ±(2^22 − 1), so their top byte fits in int8. Real values
 stay below 2^20, and every archive was byte-identical before and after.
+
+### Integer 1.5B (2026-11-22, evening)
+
+Same code, bundle `coder1.5b.npz` (1.5 GB). The attention scale is now `round(2^16 / sqrt(head_dim))` as an integer
+(the 1.5B has head_dim 128). For head_dim 64 that is exactly 2^13, the old rule, so the 0.5B archives are unchanged.
+
+| Model | GPU | Archive | Compress | Decompress | tok/s |
+|---|---|---:|---:|---:|---:|
+| 1.5B float (`cudacodec.py`) | H200 | 5,855 | 46.1 s | 46.8 s | 516 |
+| 1.5B integer | H200 | **5,855** | 46.5 s | 47.2 s | 511 |
+| 1.5B integer | H100 | **5,855** | 50.8 s | 53.5 s | 451 |
+
+- **Size:** the same as float, byte for byte in length, and 18.5% smaller than the 0.5B's 7,185.
+- **Exactness:** the first 30 tables match the numpy spec on the Mac, and the full file round-trips.
+- **Speed:** the step takes 1.65 ms at 1K context and 2.40 ms at 24K (H100), so 30 s would need about 1.8×.
+  - The int8 weights are 1.54 GB per token: 0.46 ms at the H100's peak bandwidth. The matvecs take 0.74 ms.
+  - The other kernels (two norms, qkv epilogue, two attention passes, merge, MLP per layer) add about 1 ms across
+    28 layers.
+  - Attention adds about 0.75 ms by 24K.
+  - None of this closes with tuning; it would take fusing the norms into the matvecs and a different attention
+    design.
+- **Exact skip of empty attention chunks:** a chunk whose best score is at least 11,357/1024 nats below the head's max
+  has every weight `EXPA[...] = 0` by definition, so the weighted-sum pass skips it. This is exact. It bought only
+  about 1–5%: attention on this file is not sparse enough.

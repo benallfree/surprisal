@@ -1098,3 +1098,231 @@ Self CUDA time total: 7.562ms
 01:43:33 loaded in 16.8s
 01:44:01 encode: 24126 tokens -> 7185 bytes, 28.9s (834 tok/s)
 01:44:31 decode: 24126 tokens, 29.6s (815 tok/s), round trip OK
+--- H100 roundtrip fast 2026-11-22 18:06:00
+02:05:42 GPU: NVIDIA H100 80GB HBM3
+02:05:55 captured 7 graphs in 10.0s
+02:05:55 loaded in 12.8s
+02:05:58 encode: 2341 tokens -> 655 bytes, 2.3s (1024 tok/s)
+02:06:00 decode: 2341 tokens, 2.4s (993 tok/s), round trip OK
+--- H100 hashes fast 2026-11-22 18:06:53
+02:06:38 GPU: NVIDIA H100 80GB HBM3
+02:06:53 captured 3 graphs in 10.6s
+02:06:53 loaded in 14.5s
+0 33cf6a057e557808
+1 565a0ef67413066d
+2 b4084de6a7c5d6ab
+3 d197c0a02bfe7a7d
+4 8e9411cee6b84020
+5 29aea208682a6b84
+6 225f19e6b61c3c35
+7 7cc87d18deef075b
+8 9f8981627c257942
+9 7e47b177aeb6e89f
+10 0db6184473647134
+11 78ef2aeda366000c
+12 ad62ceccf870bfa0
+13 0422c92438869929
+14 e5812a65dab322f6
+15 1475b131acc96162
+16 d549ebed5cf9708e
+17 047a992d8fddf8c8
+18 1829e8bb09ef8840
+19 4c7857a67f304a47
+20 f35822e26fdad30b
+21 2a5ac00ef202839a
+22 c9e3e670352ebab8
+23 bdcf4307b2af9416
+24 6f5f6259fa37d0ef
+25 668668ddf205320a
+26 1db441f5e82c9432
+27 43a44c0a348f097a
+28 7fa9ba82c1d3585e
+29 2f1f55d3866e8944
+--- H100 roundtrip fast 2026-11-22 18:09:22
+02:07:14 GPU: NVIDIA H100 80GB HBM3
+02:07:34 captured 49 graphs in 16.2s
+02:07:34 loaded in 19.6s
+02:08:27 encode: 24126 tokens -> 5855 bytes, 53.4s (452 tok/s)
+02:09:21 decode: 24126 tokens, 54.1s (446 tok/s), round trip OK
+--- H100 prof fast 2026-11-22 18:10:03
+02:09:39 GPU: NVIDIA H100 80GB HBM3
+02:10:02 captured 49 graphs in 18.3s
+02:10:02 loaded in 21.7s
+forward graph at context 1024: 1.645 ms/step
+forward graph at context 13312: 2.139 ms/step
+forward graph at context 24576: 2.373 ms/step
+context 1:
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                                    Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg    # of Calls  
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                                   k_mv2         0.00%       0.000us         0.00%       0.000us       0.000us       3.685ms        45.08%       3.685ms       6.581us           560  
+                                 k_norm2         0.00%       0.000us         0.00%       0.000us       0.000us       1.430ms        17.50%       1.430ms       5.019us           285  
+                                k_mergea         0.00%       0.000us         0.00%       0.000us       0.000us     606.316us         7.42%     606.316us       4.331us           140  
+                                 k_att2d         0.00%       0.000us         0.00%       0.000us       0.000us     533.482us         6.53%     533.482us       3.811us           140  
+                                   k_qkv         0.00%       0.000us         0.00%       0.000us       0.000us     510.172us         6.24%     510.172us       3.644us           140  
+                                 k_att1d         0.00%       0.000us         0.00%       0.000us       0.000us     474.386us         5.80%     474.386us       3.388us           140  
+                                 k_mvlog         0.00%       0.000us         0.00%       0.000us       0.000us     455.336us         5.57%     455.336us      91.067us             5  
+                                  k_mlp2         0.00%       0.000us         0.00%       0.000us       0.000us     392.509us         4.80%     392.509us       2.804us           140  
+                                  k_tab3         0.00%       0.000us         0.00%       0.000us       0.000us      31.317us         0.38%      31.317us       6.263us             5  
+                                  k_tab2         0.00%       0.000us         0.00%       0.000us       0.000us      19.903us         0.24%      19.903us       3.981us             5  
+                                  k_tab4         0.00%       0.000us         0.00%       0.000us       0.000us       9.792us         0.12%       9.792us       1.958us             5  
+triton_poi_fused___lshift_____rshift_...         0.00%       0.000us         0.00%       0.000us       0.000us       7.631us         0.09%       7.631us       1.526us             5  
+void at::native::vectorized_elementwi...         0.00%       0.000us         0.00%       0.000us       0.000us       6.867us         0.08%       6.867us       1.373us             5  
+          Memcpy DtoD (Device -> Device)         0.00%       0.000us         0.00%       0.000us       0.000us       5.819us         0.07%       5.819us       1.164us             5  
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+Self CPU time total: 7.519ms
+Self CUDA time total: 8.174ms
+
+context 24065:
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                                    Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg    # of Calls  
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                                   k_mv2         0.00%       0.000us         0.00%       0.000us       0.000us       3.806ms        31.41%       3.806ms       6.796us           560  
+                                 k_att2d         0.00%       0.000us         0.00%       0.000us       0.000us       2.563ms        21.15%       2.563ms      18.310us           140  
+                                 k_att1d         0.00%       0.000us         0.00%       0.000us       0.000us       1.887ms        15.58%       1.887ms      13.481us           140  
+                                 k_norm2         0.00%       0.000us         0.00%       0.000us       0.000us       1.478ms        12.20%       1.478ms       5.188us           285  
+                                k_mergea         0.00%       0.000us         0.00%       0.000us       0.000us     912.981us         7.53%     912.981us       6.521us           140  
+                                   k_qkv         0.00%       0.000us         0.00%       0.000us       0.000us     517.695us         4.27%     517.695us       3.698us           140  
+                                 k_mvlog         0.00%       0.000us         0.00%       0.000us       0.000us     460.061us         3.80%     460.061us      92.012us             5  
+                                  k_mlp2         0.00%       0.000us         0.00%       0.000us       0.000us     401.883us         3.32%     401.883us       2.871us           140  
+                                  k_tab3         0.00%       0.000us         0.00%       0.000us       0.000us      33.407us         0.28%      33.407us       6.681us             5  
+                                  k_tab2         0.00%       0.000us         0.00%       0.000us       0.000us      20.384us         0.17%      20.384us       4.077us             5  
+                                  k_tab4         0.00%       0.000us         0.00%       0.000us       0.000us       9.920us         0.08%       9.920us       1.984us             5  
+triton_poi_fused___lshift_____rshift_...         0.00%       0.000us         0.00%       0.000us       0.000us       8.160us         0.07%       8.160us       1.632us             5  
+void at::native::vectorized_elementwi...         0.00%       0.000us         0.00%       0.000us       0.000us       7.104us         0.06%       7.104us       1.421us             5  
+          Memcpy DtoD (Device -> Device)         0.00%       0.000us         0.00%       0.000us       0.000us       6.144us         0.05%       6.144us       1.229us             5  
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+Self CPU time total: 7.699ms
+Self CUDA time total: 12.118ms
+
+--- H100 prof:256 fast 2026-11-22 18:11:27
+02:10:56 GPU: NVIDIA H100 80GB HBM3
+02:11:26 captured 49 graphs in 24.2s
+02:11:26 loaded in 28.8s
+forward graph at context 1024: 1.662 ms/step
+forward graph at context 13312: 2.198 ms/step
+forward graph at context 24576: 2.517 ms/step
+context 1:
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                                    Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg    # of Calls  
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                                   k_mv2         0.00%       0.000us         0.00%       0.000us       0.000us       3.766ms        45.40%       3.766ms       6.724us           560  
+                                 k_norm2         0.00%       0.000us         0.00%       0.000us       0.000us       1.457ms        17.57%       1.457ms       5.112us           285  
+                                k_mergea         0.00%       0.000us         0.00%       0.000us       0.000us     600.375us         7.24%     600.375us       4.288us           140  
+                                   k_qkv         0.00%       0.000us         0.00%       0.000us       0.000us     538.744us         6.50%     538.744us       3.848us           140  
+                                 k_att2d         0.00%       0.000us         0.00%       0.000us       0.000us     502.684us         6.06%     502.684us       3.591us           140  
+                                 k_mvlog         0.00%       0.000us         0.00%       0.000us       0.000us     481.018us         5.80%     481.018us      96.204us             5  
+                                 k_att1d         0.00%       0.000us         0.00%       0.000us       0.000us     480.797us         5.80%     480.797us       3.434us           140  
+                                  k_mlp2         0.00%       0.000us         0.00%       0.000us       0.000us     379.740us         4.58%     379.740us       2.712us           140  
+                                  k_tab3         0.00%       0.000us         0.00%       0.000us       0.000us      31.040us         0.37%      31.040us       6.208us             5  
+                                  k_tab2         0.00%       0.000us         0.00%       0.000us       0.000us      19.616us         0.24%      19.616us       3.923us             5  
+                                  k_tab4         0.00%       0.000us         0.00%       0.000us       0.000us      10.080us         0.12%      10.080us       2.016us             5  
+triton_poi_fused___lshift_____rshift_...         0.00%       0.000us         0.00%       0.000us       0.000us       8.544us         0.10%       8.544us       1.709us             5  
+void at::native::vectorized_elementwi...         0.00%       0.000us         0.00%       0.000us       0.000us       7.360us         0.09%       7.360us       1.472us             5  
+          Memcpy DtoD (Device -> Device)         0.00%       0.000us         0.00%       0.000us       0.000us       5.664us         0.07%       5.664us       1.133us             5  
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+Self CPU time total: 13.478ms
+Self CUDA time total: 8.294ms
+
+context 24065:
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                                    Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg    # of Calls  
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                                   k_mv2         0.00%       0.000us         0.00%       0.000us       0.000us       3.862ms        29.96%       3.862ms       6.896us           560  
+                                 k_att2d         0.00%       0.000us         0.00%       0.000us       0.000us       2.924ms        22.69%       2.924ms      20.884us           140  
+                                 k_att1d         0.00%       0.000us         0.00%       0.000us       0.000us       2.192ms        17.01%       2.192ms      15.658us           140  
+                                 k_norm2         0.00%       0.000us         0.00%       0.000us       0.000us       1.511ms        11.72%       1.511ms       5.302us           285  
+                                k_mergea         0.00%       0.000us         0.00%       0.000us       0.000us     894.359us         6.94%     894.359us       6.388us           140  
+                                   k_qkv         0.00%       0.000us         0.00%       0.000us       0.000us     543.905us         4.22%     543.905us       3.885us           140  
+                                 k_mvlog         0.00%       0.000us         0.00%       0.000us       0.000us     482.461us         3.74%     482.461us      96.492us             5  
+                                  k_mlp2         0.00%       0.000us         0.00%       0.000us       0.000us     387.517us         3.01%     387.517us       2.768us           140  
+                                  k_tab3         0.00%       0.000us         0.00%       0.000us       0.000us      32.959us         0.26%      32.959us       6.592us             5  
+                                  k_tab2         0.00%       0.000us         0.00%       0.000us       0.000us      20.224us         0.16%      20.224us       4.045us             5  
+                                  k_tab4         0.00%       0.000us         0.00%       0.000us       0.000us      10.016us         0.08%      10.016us       2.003us             5  
+triton_poi_fused___lshift_____rshift_...         0.00%       0.000us         0.00%       0.000us       0.000us       9.152us         0.07%       9.152us       1.830us             5  
+void at::native::vectorized_elementwi...         0.00%       0.000us         0.00%       0.000us       0.000us       7.487us         0.06%       7.487us       1.497us             5  
+          Memcpy DtoD (Device -> Device)         0.00%       0.000us         0.00%       0.000us       0.000us       5.728us         0.04%       5.728us       1.146us             5  
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+Self CPU time total: 13.262ms
+Self CUDA time total: 12.888ms
+
+--- H100 bench fast 2026-11-22 18:12:57
+02:10:54 GPU: NVIDIA H100 80GB HBM3
+02:11:07 captured 3 graphs in 8.8s
+02:11:07 loaded in 12.4s
+mv qkv 2048x1536: best 2.31us BO=32 TPS=1 nw=2; 2.31us BO=64 TPS=1 nw=4; 2.32us BO=64 TPS=1 nw=2; 2.40us BO=128 TPS=1 nw=4 | current-ish BO=32: 2.77us TPS=1 nw=4; 2.92us TPS=2 nw=4; 3.24us TPS=3 nw=4; 3.67us TPS=4 nw=4; 4.70us TPS=7 nw=4; 6.97us TPS=12 nw=4
+mv o 1536x1536: best 2.01us BO=64 TPS=1 nw=4; 2.07us BO=64 TPS=1 nw=2; 2.14us BO=128 TPS=1 nw=4; 2.21us BO=32 TPS=1 nw=2 | current-ish BO=32: 2.44us TPS=1 nw=4; 2.62us TPS=2 nw=4; 2.97us TPS=3 nw=4; 3.42us TPS=4 nw=4; 4.52us TPS=7 nw=4; 6.79us TPS=12 nw=4
+mv gu 17920x1536: best 6.71us BO=64 TPS=1 nw=2; 6.91us BO=128 TPS=1 nw=4; 7.12us BO=64 TPS=3 nw=2; 7.53us BO=64 TPS=2 nw=2 | current-ish BO=32: 12.02us TPS=1 nw=4; 12.04us TPS=7 nw=4; 12.12us TPS=3 nw=4; 12.31us TPS=2 nw=4; 12.98us TPS=4 nw=4; 13.88us TPS=12 nw=4
+mv d 1536x8960: best 4.17us BO=64 TPS=1 nw=2; 4.23us BO=128 TPS=1 nw=4; 4.93us BO=128 TPS=2 nw=4; 5.04us BO=32 TPS=1 nw=2 | current-ish BO=32: 6.84us TPS=3 nw=4; 6.96us TPS=4 nw=4; 7.11us TPS=1 nw=4; 7.50us TPS=7 nw=4; 7.58us TPS=2 nw=4; 31.65us TPS=70 nw=4
+mv emb 151936x1536: best 90.84us BO=32 TPS=12 nw=2; 90.91us BO=32 TPS=12 nw=4; 91.00us BO=64 TPS=12 nw=4; 92.81us BO=16 TPS=12 nw=2 | current-ish BO=32: 90.91us TPS=12 nw=4; 99.91us TPS=7 nw=4; 103.28us TPS=4 nw=4; 107.82us TPS=1 nw=4; 109.29us TPS=3 nw=4; 115.21us TPS=2 n
+norm nw=2: 8.62us
+norm nw=4: 5.16us
+norm nw=8: 4.47us
+norm nw=16: 4.53us
+norm nw=32: 5.39us
+merge: 4.20us
+mlp: 2.85us
+tiny torch kernel: 1.06us
+--- H100 roundtrip fast 2026-11-22 18:14:15
+02:14:00 GPU: NVIDIA H100 80GB HBM3
+02:14:10 captured 7 graphs in 7.4s
+02:14:10 loaded in 9.5s
+02:14:13 encode: 2341 tokens -> 655 bytes, 2.3s (1013 tok/s)
+02:14:15 decode: 2341 tokens, 2.4s (983 tok/s), round trip OK
+--- H100 prof fast 2026-11-22 18:15:12
+02:14:43 GPU: NVIDIA H100 80GB HBM3
+02:15:11 captured 49 graphs in 20.0s
+02:15:11 loaded in 27.5s
+forward graph at context 1024: 1.646 ms/step
+forward graph at context 13312: 2.165 ms/step
+forward graph at context 24576: 2.401 ms/step
+context 1:
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                                    Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg    # of Calls  
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                                   k_mv2         0.00%       0.000us         0.00%       0.000us       0.000us       3.714ms        44.86%       3.714ms       6.632us           560  
+                                 k_norm2         0.00%       0.000us         0.00%       0.000us       0.000us       1.433ms        17.31%       1.433ms       5.028us           285  
+                                k_mergea         0.00%       0.000us         0.00%       0.000us       0.000us     604.840us         7.31%     604.840us       4.320us           140  
+                                 k_att2d         0.00%       0.000us         0.00%       0.000us       0.000us     566.494us         6.84%     566.494us       4.046us           140  
+                                   k_qkv         0.00%       0.000us         0.00%       0.000us       0.000us     524.599us         6.34%     524.599us       3.747us           140  
+                                 k_att1d         0.00%       0.000us         0.00%       0.000us       0.000us     498.469us         6.02%     498.469us       3.560us           140  
+                                 k_mvlog         0.00%       0.000us         0.00%       0.000us       0.000us     460.482us         5.56%     460.482us      92.096us             5  
+                                  k_mlp2         0.00%       0.000us         0.00%       0.000us       0.000us     390.562us         4.72%     390.562us       2.790us           140  
+                                  k_tab3         0.00%       0.000us         0.00%       0.000us       0.000us      31.520us         0.38%      31.520us       6.304us             5  
+                                  k_tab2         0.00%       0.000us         0.00%       0.000us       0.000us      20.032us         0.24%      20.032us       4.006us             5  
+                                  k_tab4         0.00%       0.000us         0.00%       0.000us       0.000us       9.695us         0.12%       9.695us       1.939us             5  
+triton_poi_fused___lshift_____rshift_...         0.00%       0.000us         0.00%       0.000us       0.000us       8.192us         0.10%       8.192us       1.638us             5  
+void at::native::vectorized_elementwi...         0.00%       0.000us         0.00%       0.000us       0.000us       6.913us         0.08%       6.913us       1.383us             5  
+          Memcpy DtoD (Device -> Device)         0.00%       0.000us         0.00%       0.000us       0.000us       5.728us         0.07%       5.728us       1.146us             5  
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+Self CPU time total: 7.630ms
+Self CUDA time total: 8.279ms
+
+context 24065:
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                                    Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg     Self CUDA   Self CUDA %    CUDA total  CUDA time avg    # of Calls  
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                                   k_mv2         0.00%       0.000us         0.00%       0.000us       0.000us       3.807ms        31.25%       3.807ms       6.797us           560  
+                                 k_att2d         0.00%       0.000us         0.00%       0.000us       0.000us       2.678ms        21.98%       2.678ms      19.125us           140  
+                                 k_att1d         0.00%       0.000us         0.00%       0.000us       0.000us       1.863ms        15.30%       1.863ms      13.310us           140  
+                                 k_norm2         0.00%       0.000us         0.00%       0.000us       0.000us       1.467ms        12.04%       1.467ms       5.146us           285  
+                                k_mergea         0.00%       0.000us         0.00%       0.000us       0.000us     900.959us         7.40%     900.959us       6.435us           140  
+                                   k_qkv         0.00%       0.000us         0.00%       0.000us       0.000us     525.921us         4.32%     525.921us       3.757us           140  
+                                 k_mvlog         0.00%       0.000us         0.00%       0.000us       0.000us     459.620us         3.77%     459.620us      91.924us             5  
+                                  k_mlp2         0.00%       0.000us         0.00%       0.000us       0.000us     391.933us         3.22%     391.933us       2.800us           140  
+                                  k_tab3         0.00%       0.000us         0.00%       0.000us       0.000us      33.345us         0.27%      33.345us       6.669us             5  
+                                  k_tab2         0.00%       0.000us         0.00%       0.000us       0.000us      20.768us         0.17%      20.768us       4.154us             5  
+                                  k_tab4         0.00%       0.000us         0.00%       0.000us       0.000us      10.048us         0.08%      10.048us       2.010us             5  
+triton_poi_fused___lshift_____rshift_...         0.00%       0.000us         0.00%       0.000us       0.000us       8.032us         0.07%       8.032us       1.606us             5  
+void at::native::vectorized_elementwi...         0.00%       0.000us         0.00%       0.000us       0.000us       6.976us         0.06%       6.976us       1.395us             5  
+          Memcpy DtoD (Device -> Device)         0.00%       0.000us         0.00%       0.000us       0.000us       6.017us         0.05%       6.017us       1.203us             5  
+----------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+Self CPU time total: 7.641ms
+Self CUDA time total: 12.183ms
+
+--- H100 roundtrip fast 2026-11-22 18:17:48
+02:15:36 GPU: NVIDIA H100 80GB HBM3
+02:16:03 captured 49 graphs in 22.2s
+02:16:03 loaded in 26.7s
+02:16:54 encode: 24126 tokens -> 5855 bytes, 50.8s (475 tok/s)
+02:17:47 decode: 24126 tokens, 53.5s (451 tok/s), round trip OK

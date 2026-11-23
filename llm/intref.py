@@ -31,7 +31,8 @@ Ops (D = hidden, per token):
 - layer: (m,e) = rmsnorm(h, g1); qkv = rshift(matvec, to e=-24) + b; rope on q, k:
   (x1*c - x2*s, x2*c + x1*s) >> 14 (rshift); cache K, V = clip(rshift(k or v, 12), +-(2^22-1)) (e = -12; keeps sums below 2^53 and lets a fast
   implementation split K, V into three signed bytes).
-  attention per q head: (mq, eq) = blockf(q_head); score_t = rshift(mq . K_t, to e=-10, including the 1/8 scale);
+  attention per q head: (mq, eq) = blockf(q_head); score_t = rshift((mq . K_t) * SC, 42 - sh) (e = -10), where
+  SC = round(2^16 / sqrt(head_dim)) (2^13 for head_dim 64) and sh is the q head's blockf shift;
   M = max score; w_t = EXPA[min(M - score_t, len-1)]; Z = sum w; O = sum w_t V_t;
   o = sign(O) * (|O| * 2^12 // Z)  (computed as hi/remainder so nothing overflows; e = -24).
   h += rshift(matvec(Wo, blockf(o)), to -24).
@@ -121,6 +122,11 @@ def build(src, dst):
 
 
 # ---------------------------------------------------------------- integer helpers
+def att_scale(hd):
+    """Attention score scale as an integer: round(2^16 / sqrt(hd)) (8192 = 2^13 exactly for hd = 64)."""
+    return int(round(2**16 / math.sqrt(hd)))
+
+
 def rshift(x, n):
     n = int(n)
     if n <= 0:
@@ -162,6 +168,7 @@ class IntModel:
         self.nq, self.nkv = cfg["num_attention_heads"], cfg["num_key_value_heads"]
         self.hd = self.D // self.nq
         self.V = cfg["vocab_size"]
+        self.SC = att_scale(self.hd)
 
         def mat(n):
             q, s = z[n + ".q"], z[n + ".s"]
@@ -212,7 +219,7 @@ class IntModel:
             mq = np.clip(rshift_arr(qs, sh[:, None]), -32767, 32767)
             acc = exact_mm(K, mq.T, int(np.abs(K).max()) * 32767 * hd)  # [T, grp]
             # q e = -24 + sh, K e = -12, times 2^-3 -> e = -39 + sh; to e = -10
-            s = rshift_arr(acc, (29 - sh)[None, :])
+            s = rshift_arr(acc * self.SC, (42 - sh)[None, :])
             d = s.max(axis=0)[None, :] - s
             w = self.EXPA[np.minimum(d, NA - 1)]
             Z = w.sum(axis=0)  # [grp]

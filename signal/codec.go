@@ -18,13 +18,14 @@ type Codec struct {
 	Model *engine.IntModel
 }
 
-// Open loads a model's converted file. threads <= 0: all CPUs.
-func Open(info ModelInfo, threads int) (*Codec, error) {
+// Open loads a model's converted file, on a GPU when one works (gpu "auto" or "") or the CPU ("off").
+// threads <= 0: all CPUs.
+func Open(info ModelInfo, threads int, gpu string) (*Codec, error) {
 	if !info.Present() {
 		return nil, fmt.Errorf("signal: model %d (%s, %s) is not installed in %s: run signal --setup %s", info.ID,
 			info.Profile, info.Source.Repo, ModelsDir(), info.Profile)
 	}
-	m, err := engine.LoadIntModel(info.Path(), threads)
+	m, err := engine.LoadIntModelOptions(info.Path(), engine.IntOptions{Threads: threads, GPU: gpu})
 	if err != nil {
 		return nil, err
 	}
@@ -33,6 +34,9 @@ func Open(info ModelInfo, threads int) (*Codec, error) {
 
 // Close releases the model.
 func (c *Codec) Close() error { return c.Model.Close() }
+
+// Device names where the model runs.
+func (c *Codec) Device() string { return c.Model.Device() }
 
 // Progress, if set, gets the tokens done and the total.
 type Progress func(done, total int)
@@ -84,23 +88,31 @@ func (c *Codec) tokenize(b []byte) []int {
 }
 
 // Compress codes data as an archive of the given kind (KindStream or KindFiles).
-func (c *Codec) Compress(kind int, data []byte, progress Progress) []byte {
+func (c *Codec) Compress(kind int, data []byte, progress Progress) ([]byte, error) {
 	ids := c.tokenize(data)
 	n := len(ids)
 	enc := newEncoder()
-	ses := c.Model.NewSession(min(max(n, 1), Seg))
+	ses, err := c.Model.NewSession(min(max(n, 1), Seg))
+	if err != nil {
+		return nil, err
+	}
+	defer ses.Close()
 	for s0 := 0; s0 < n; s0 += Seg {
 		ses.Reset()
 		prev := c.Model.BOS()
 		for k := s0; k < min(s0+Seg, n); k++ {
-			enc.codeToken(ses.Feed(prev), ids[k])
+			cum, err := ses.Feed(prev)
+			if err != nil {
+				return nil, err
+			}
+			enc.codeToken(cum, ids[k])
 			prev = ids[k]
 			if progress != nil {
 				progress(k+1, n)
 			}
 		}
 	}
-	return append(Header{Kind: kind, Model: c.Info.ID, Tokens: n}.bytes(), enc.finish()...)
+	return append(Header{Kind: kind, Model: c.Info.ID, Tokens: n}.bytes(), enc.finish()...), nil
 }
 
 // Decompress decodes an archive made with this codec's model.
@@ -114,12 +126,20 @@ func (c *Codec) Decompress(a []byte, progress Progress) (Header, []byte, error) 
 	}
 	dec := newDecoder(body)
 	ids := make([]int, 0, h.Tokens)
-	ses := c.Model.NewSession(min(max(h.Tokens, 1), Seg))
+	ses, err := c.Model.NewSession(min(max(h.Tokens, 1), Seg))
+	if err != nil {
+		return h, nil, err
+	}
+	defer ses.Close()
 	for s0 := 0; s0 < h.Tokens; s0 += Seg {
 		ses.Reset()
 		prev := c.Model.BOS()
 		for k := s0; k < min(s0+Seg, h.Tokens); k++ {
-			prev = dec.next(ses.Feed(prev))
+			cum, err := ses.Feed(prev)
+			if err != nil {
+				return h, nil, err
+			}
+			prev = dec.next(cum)
 			ids = append(ids, prev)
 			if progress != nil {
 				progress(k+1, h.Tokens)
@@ -135,7 +155,7 @@ func (c *Codec) CompressFiles(fs []File, progress Progress) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return c.Compress(KindFiles, b, progress), nil
+	return c.Compress(KindFiles, b, progress)
 }
 
 // DecodeFiles splits a file set archive's decoded bytes into its files.

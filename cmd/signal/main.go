@@ -44,7 +44,8 @@ func main() {
 	setup := flag.String("setup", "", "download and convert a profile's model: good, better or best")
 	from := flag.String("from", "", "with --setup: convert this local copy of the official weights instead of downloading")
 	list := flag.Bool("list", false, "list the models and whether each is installed")
-	threads := flag.Int("threads", 0, "threads (default: all CPUs)")
+	threads := flag.Int("threads", 0, "CPU threads (default: all CPUs)")
+	gpu := flag.String("gpu", "auto", "auto (a GPU when one works) or off (the CPU); both give the same archives")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, usage, signal.ModelsDir())
 		flag.PrintDefaults()
@@ -57,9 +58,9 @@ func main() {
 	case *list:
 		cmdList()
 	case *compress && !*decompress:
-		err = cmdCompress(flag.Args(), *out, *profile, *threads)
+		err = cmdCompress(flag.Args(), *out, *profile, *threads, *gpu)
 	case *decompress && !*compress && flag.NArg() == 1:
-		err = cmdDecompress(flag.Arg(0), *out, *force, *threads)
+		err = cmdDecompress(flag.Arg(0), *out, *force, *threads, *gpu)
 	default:
 		flag.Usage()
 		os.Exit(2)
@@ -184,7 +185,7 @@ func gather(args []string) ([]signal.File, error) {
 	return files, nil
 }
 
-func cmdCompress(args []string, out, profile string, threads int) error {
+func cmdCompress(args []string, out, profile string, threads int, gpu string) error {
 	m, ok := signal.ModelByProfile(profile)
 	if !ok {
 		return fmt.Errorf("unknown profile %q", profile)
@@ -193,11 +194,12 @@ func cmdCompress(args []string, out, profile string, threads int) error {
 	if err != nil {
 		return err
 	}
-	c, err := signal.Open(m, threads)
+	c, err := signal.Open(m, threads, gpu)
 	if err != nil {
 		return err
 	}
 	defer c.Close()
+	fmt.Fprintf(os.Stderr, "%s on %s\n", m.Name, c.Device())
 	if out == "" {
 		out = "archive.13k"
 	}
@@ -218,7 +220,7 @@ func cmdCompress(args []string, out, profile string, threads int) error {
 	return nil
 }
 
-func cmdDecompress(archive, out string, force bool, threads int) error {
+func cmdDecompress(archive, out string, force bool, threads int, gpu string) error {
 	a, err := os.ReadFile(archive)
 	if err != nil {
 		return err
@@ -231,11 +233,12 @@ func cmdDecompress(archive, out string, force bool, threads int) error {
 	if !ok {
 		return fmt.Errorf("the archive needs model %d, which this signal doesn't know (update signal)", h.Model)
 	}
-	c, err := signal.Open(m, threads)
+	c, err := signal.Open(m, threads, gpu)
 	if err != nil {
 		return err
 	}
 	defer c.Close()
+	fmt.Fprintf(os.Stderr, "%s on %s\n", m.Name, c.Device())
 	if out == "" {
 		out = strings.TrimSuffix(filepath.Base(archive), ".13k")
 	}

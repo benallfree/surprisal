@@ -21,10 +21,11 @@ func vec(t *testing.T, name string) []byte {
 
 func openTest(t *testing.T, id int) *Codec {
 	m, _ := ModelByID(id)
+	gpu := os.Getenv("SIGNAL_TEST_GPU") // "off" tests the CPU path
 	if !m.Present() {
 		t.Skipf("model %d not installed in %s", id, ModelsDir())
 	}
-	c, err := Open(m, 0)
+	c, err := Open(m, 0, gpu)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,8 +44,8 @@ func checkVector(t *testing.T, id int, input, archive string) {
 	if h.Kind != KindStream || !bytes.Equal(got, want) {
 		t.Fatalf("%s: decompressed %d bytes, differ from %s", archive, len(got), input)
 	}
-	t.Logf("%s: %d tokens decoded in %v", archive, h.Tokens, time.Since(t0).Round(time.Millisecond))
-	if p := c.Compress(KindStream, want, nil); !bytes.Equal(p, a) {
+	t.Logf("%s on %s: %d tokens decoded in %v", archive, c.Device(), h.Tokens, time.Since(t0).Round(time.Millisecond))
+	if p, err := c.Compress(KindStream, want, nil); err != nil || !bytes.Equal(p, a) {
 		t.Fatalf("%s: compressed %d bytes, not byte-identical to the vector (%d bytes)", input, len(p), len(a))
 	}
 }

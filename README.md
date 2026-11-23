@@ -55,6 +55,73 @@ Their sizes are the sum of −log2 p over tokens, assuming bit-identical inferen
 9. **The fine print, in the Hutter Prize spirit:** the trained context mixer's state is about 250 MB, and Qwen is about 1 GB of weights. "Free decoder" rules make that fine. Count the codec's size, as the Hutter Prize does, and none of this wins. The float LLM numbers also assume both ends run bit-identical inference, which in practice means the same GPU type and kernels. `llm/intref.py` removes that: an integer-only forward pass whose archives decode on any hardware with the same model bundle, at no cost in size (7,185 vs 7,183 bytes on the BJJ file) and decompresses the BJJ file in 29.6 s on an H100 (see TIMING.md). The integer codec is frozen as **spec v1** in `SPEC.md` (model manifest, deterministic conversion, archive format, test vectors). **signal** (`cmd/signal`) is the command-line compressor built on it: `signal -c files…` / `signal -d archive.13k`, with nollama running the integer model.
 10. **2025 entries were already squeezed to fit 13 KB.** Most are minified and some are Roadroller-packed, which leaves less redundancy. On readable source the gap would be larger.
 
+## Speed: Python reference vs signal
+
+Wall time on the BJJ file (55,854 bytes, 24,126 tokens) with each model of spec v1. Every archive and every decode is
+byte-identical across both implementations and both machines. Python is `llm/intref.py` (numpy) on the Mac and
+`llm/intgpu.py` (Triton) on the H100; signal is `cmd/signal` with nollama (Metal on the Mac). Compression runs every
+position at once (batched); decompression has to go one token at a time.
+
+<!-- speed-table: keep updated when either implementation gets faster -->
+<table>
+<tr><th>model</th><th>M1 Max (Mac)</th><th>H100</th></tr>
+<tr><td><b>0.5B</b></td><td>
+
+<table>
+<tr><th></th><th>compress</th><th>decompress</th></tr>
+<tr><td>Python</td><td align="right">~58 min*</td><td align="right">~58 min*</td></tr>
+<tr><td>signal</td><td align="right">53 s</td><td align="right">3 min 52 s</td></tr>
+</table>
+
+</td><td>
+
+<table>
+<tr><th></th><th>compress</th><th>decompress</th></tr>
+<tr><td>Python</td><td align="right">2.0 s</td><td align="right">30.0 s</td></tr>
+<tr><td>signal</td><td align="right">no CUDA yet</td><td align="right">no CUDA yet</td></tr>
+</table>
+
+</td></tr>
+<tr><td><b>1.5B</b></td><td>
+
+<table>
+<tr><th></th><th>compress</th><th>decompress</th></tr>
+<tr><td>Python</td><td align="right">~2.9 h*</td><td align="right">~2.9 h*</td></tr>
+<tr><td>signal</td><td align="right">2 min 10 s</td><td align="right">measuring</td></tr>
+</table>
+
+</td><td>
+
+<table>
+<tr><th></th><th>compress</th><th>decompress</th></tr>
+<tr><td>Python</td><td align="right">3.8 s</td><td align="right">54.4 s</td></tr>
+<tr><td>signal</td><td align="right">no CUDA yet</td><td align="right">no CUDA yet</td></tr>
+</table>
+
+</td></tr>
+<tr><td><b>7B</b></td><td>
+
+<table>
+<tr><th></th><th>compress</th><th>decompress</th></tr>
+<tr><td>Python</td><td align="right">~3.5 days*</td><td align="right">~3.5 days*</td></tr>
+<tr><td>signal</td><td align="right">7 min 30 s</td><td align="right">measuring</td></tr>
+</table>
+
+</td><td>
+
+<table>
+<tr><th></th><th>compress</th><th>decompress</th></tr>
+<tr><td>Python</td><td align="right">9.3 s</td><td align="right">123.4 s</td></tr>
+<tr><td>signal</td><td align="right">no CUDA yet</td><td align="right">no CUDA yet</td></tr>
+</table>
+
+</td></tr>
+</table>
+
+\* Estimated from the numpy reference's speed over the first 300, 120 and 30 tokens (6.9, 2.3 and 0.08 tok/s); later
+tokens are slower, and the 7B doesn't fit in memory and swaps. signal on the H100 needs nollama's CUDA backend for
+integer models, in progress.
+
 ## Reproduce
 
 ```bash

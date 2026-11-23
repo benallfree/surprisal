@@ -78,7 +78,7 @@ position at once (batched); decompression has to go one token at a time.
 <table>
 <tr><th></th><th>compress</th><th>decompress</th></tr>
 <tr><td>Python</td><td align="right">2.0 s</td><td align="right">30.0 s</td></tr>
-<tr><td>signal</td><td align="right">2.7 s</td><td align="right">34.8 s</td></tr>
+<tr><td>signal</td><td align="right">2.4 s</td><td align="right">34.8 s</td></tr>
 </table>
 
 </td></tr>

@@ -29,6 +29,10 @@ def body(cmd):
 
 
 kw = dict(image=image, volumes={"/int": intvol}, timeout=3600)
+# the CUDA toolkit image, for Nsight Compute (ncu)
+ncu_image = modal.Image.from_registry("nvidia/cuda:12.6.3-devel-ubuntu24.04", add_python="3.12")
+if STAGE:
+    ncu_image = ncu_image.add_local_dir(STAGE, "/work")
 
 
 @app.function(gpu="H100!", **kw)  # "!": no upgrade to an H200
@@ -36,6 +40,11 @@ def run_h100(cmd: str):
     body(cmd)
 
 
+@app.function(gpu="H100!", image=ncu_image, volumes={"/int": intvol}, timeout=3600)
+def run_h100_ncu(cmd: str):
+    body(cmd)
+
+
 @app.local_entrypoint()
 def main(cmd: str, gpu: str = "H100"):
-    {"H100": run_h100}[gpu].remote(cmd)
+    {"H100": run_h100, "H100-ncu": run_h100_ncu}[gpu].remote(cmd)

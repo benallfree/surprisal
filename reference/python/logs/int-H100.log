@@ -4628,3 +4628,8 @@ Self CUDA time total: 21.451s
 06:24:36 captured 7 graphs in 7.9s
 06:24:36 loaded in 11.6s
 06:24:38 decode: 2341 tokens, 2.4s (983 tok/s)
+--- H100 encode fast 2026-11-22 22:34:08
+06:33:50 GPU: NVIDIA H100 80GB HBM3
+06:34:08 captured 3 graphs in 7.9s
+06:34:08 loaded in 16.7s
+06:34:08 encode: 124 tokens -> 35 bytes, 0.5s (234 tok/s)

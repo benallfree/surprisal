@@ -1,4 +1,4 @@
-// Inject the benchmark results (results.json + results.md from bench.mjs) into README.md
+// Inject the benchmark results (results.json + results.md from bench.mjs) into STUDY.md
 // between <!-- results:start --> and <!-- results:end -->.
 //   node report.mjs
 import fs from 'node:fs'
@@ -70,9 +70,9 @@ RR marks games whose submission is Roadroller-packed. Rows are sorted by the las
 
 ${t}<!-- results:end -->`
 
-const readme = fs.readFileSync(dir + 'README.md', 'utf8')
+const readme = fs.readFileSync(dir + 'STUDY.md', 'utf8')
 const out = readme.includes('<!-- results:start -->')
   ? readme.replace(/<!-- results:start -->[\s\S]*<!-- results:end -->/, block)
   : readme.trimEnd() + '\n\n## Results\n\n' + block + '\n'
-fs.writeFileSync(dir + 'README.md', out)
-console.log(`README.md: wrote ${games.length} rows`)
+fs.writeFileSync(dir + 'STUDY.md', out)
+console.log(`STUDY.md: wrote ${games.length} rows`)

@@ -2,15 +2,15 @@
 
 Local check against the numpy reference (prints one hash per frequency table, same format as `intref.py hashes`):
 
-    python llm/intgpu.py hashes <bundle.npz> <hf-model-dir> <text> <N> [cpu|cuda]
+    python reference/python/intgpu.py hashes <bundle.npz> <hf-model-dir> <text> <N> [cpu|cuda]
 
 On Modal (bundle in Volume `compress13k-int` at /int/<name>.npz):
 
-    .venv/bin/modal run llm/intgpu.py --gpu H100 --task roundtrip --fast     # full file: encode, decode, compare
+    .venv/bin/modal run reference/python/intgpu.py --gpu H100 --task roundtrip --fast     # full file: encode, decode, compare
     (--fast = the Triton/CUDA-graph path, over 100x faster; without it, the plain PyTorch version of the spec)
-    .venv/bin/modal run llm/intgpu.py --gpu H100 --task hashes --n 64        # hashes, to diff against the Mac
-    .venv/bin/modal run llm/intgpu.py --gpu H100 --task decode --archive a.13k   # decode an archive made elsewhere
-    .venv/bin/modal run llm/intgpu.py --gpu H100 --task encode --file x.html     # encode here, decode elsewhere
+    .venv/bin/modal run reference/python/intgpu.py --gpu H100 --task hashes --n 64        # hashes, to diff against the Mac
+    .venv/bin/modal run reference/python/intgpu.py --gpu H100 --task decode --archive a.13k   # decode an archive made elsewhere
+    .venv/bin/modal run reference/python/intgpu.py --gpu H100 --task encode --file x.html     # encode here, decode elsewhere
 
 Matrix products run as float64 matmuls on exact integers: every partial sum is an integer below 2^53 (int8 x int16
 scale = 2^22 per weight, x 2^15 activation, summed over <= 4864 inputs is < 2^50; K, V are clipped to 2^22), so the
@@ -19,6 +19,17 @@ sums, max, and table gathers.
 """
 import hashlib, json, math, os, struct, sys, time
 from pathlib import Path
+
+def _spec_dir():
+    # spec/ beside this file (as Modal images lay it out), else the repository's top-level spec/
+    here = Path(__file__).resolve().parent
+    for d in (here / "spec", here.parent.parent / "spec"):
+        if d.is_dir():
+            return d
+    return here / "spec"
+
+
+SPEC = _spec_dir()
 
 G, TOTAL = 64, 1 << 28
 NA, NF, NS = 16 * 1024, 24 * 1024, 16 * 1024
@@ -1569,7 +1580,7 @@ if modal is not None:
              .env({"HF_HOME": "/cache"})
              .add_local_file(str(Path(__file__).parent / "bundle.py"), "/root/bundle.py")
              .add_local_file(str(Path(__file__).parent / "archive.py"), "/root/archive.py")
-             .add_local_file(str(Path(__file__).parent / "spec" / "models-v1.json"), "/root/spec/models-v1.json"))
+             .add_local_file(str(SPEC / "models-v1.json"), "/root/spec/models-v1.json"))
     app = modal.App("compress13k-int", image=image)
     hfvol = modal.Volume.from_name("compress13k-hf", create_if_missing=True)
     intvol = modal.Volume.from_name("compress13k-int", create_if_missing=True)
@@ -1737,7 +1748,7 @@ if modal is not None:
         if out and "text" in res and task == "decode":
             Path(out).write_bytes(res["text"].encode("utf-8"))
             print(f"wrote {out}")
-        with open(f"llm/int-{gpu}.log", "a") as f:
+        with open(f"reference/python/logs/int-{gpu}.log", "a") as f:
             f.write(f"--- {gpu} {task}{' fast' if fast else ''} {time.strftime('%F %T')}\n" + "\n".join(res["log"]) + "\n")
 
 

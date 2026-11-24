@@ -1,8 +1,8 @@
 """Run nollama / surprisal Go test binaries on a Modal GPU (cross-compiled on the Mac; no Go needed remotely).
 
-    GORUN_STAGE=<dir> modal run llm/gorun.py --gpu H100 --cmd "cd engine && ./engine.test -test.run TestIntTables -test.v"
+    GORUN_STAGE=<dir> modal run scripts/gorun.py --gpu H100 --cmd "cd engine && ./engine.test -test.run TestIntTables -test.v"
 
-<dir> (staged by llm/gostage.sh, which wipes it: write run.sh after) holds engine/engine.test, engine/testdata/..., surprisal/surprisal.test, llm/spec/vectors/... (see llm/gostage.sh).
+<dir> (staged by scripts/gostage.sh, which wipes it: write run.sh after) holds engine/engine.test, engine/testdata/..., surprisal/surprisal.test, spec/vectors/... (see scripts/gostage.sh).
 The converted models are in the Volume compress13k-int at /int (NOLLAMA_INTMODEL_DIR and SURPRISAL_MODELS point there).
 """
 import os

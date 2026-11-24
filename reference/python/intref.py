@@ -1,11 +1,11 @@
 """Integer-only Qwen2.5 inference: the reference (the spec) for a codec whose archives depend on the model alone.
 The full v1 definition (bundle format, archive container, coder, conformance vectors) is SPEC.md.
 
-    .venv/bin/python llm/intref.py tables spec/tables-v1.gguf                 # once: freeze the lookup tables
-    .venv/bin/python llm/intref.py build  <hf-model-dir> <model.gguf>       # convert once; the bundle IS the model
-    .venv/bin/python llm/intref.py score  <hf-model-dir> <model.gguf> <text> [variants]   # ideal sizes: float,f8,int
-    .venv/bin/python llm/intref.py encode <hf-model-dir> <model.gguf> <text> <archive>
-    .venv/bin/python llm/intref.py decode <hf-model-dir> <model.gguf> <archive> <text>
+    .venv/bin/python reference/python/intref.py tables spec/tables-v1.gguf                 # once: freeze the lookup tables
+    .venv/bin/python reference/python/intref.py build  <hf-model-dir> <model.gguf>       # convert once; the bundle IS the model
+    .venv/bin/python reference/python/intref.py score  <hf-model-dir> <model.gguf> <text> [variants]   # ideal sizes: float,f8,int
+    .venv/bin/python reference/python/intref.py encode <hf-model-dir> <model.gguf> <text> <archive>
+    .venv/bin/python reference/python/intref.py decode <hf-model-dir> <model.gguf> <archive> <text>
 
 Why: floating-point sums depend on the order of additions, and every GPU, library and kernel orders them differently,
 so float probabilities differ in the last bits from machine to machine and an arithmetic-coded archive only decodes on
@@ -52,6 +52,17 @@ which is exact (every partial sum is an integer below 2^53, checked), so it equa
 """
 import json, math, struct, sys, time
 from pathlib import Path
+
+def _spec_dir():
+    # spec/ beside this file (as Modal images lay it out), else the repository's top-level spec/
+    here = Path(__file__).resolve().parent
+    for d in (here / "spec", here.parent.parent / "spec"):
+        if d.is_dir():
+            return d
+    return here / "spec"
+
+
+SPEC = _spec_dir()
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -95,7 +106,7 @@ def quant(w):
     return q.reshape(o, i).astype(np.int8), s.astype(np.int16), E
 
 
-TABLES = Path(__file__).parent / "spec" / "tables-v1.gguf"
+TABLES = SPEC / "tables-v1.gguf"
 
 
 def make_tables(dst):

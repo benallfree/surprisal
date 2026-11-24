@@ -209,7 +209,7 @@ Same script, no B200-specific tuning (`llm/cuda-B200.log`):
 ## Archives that depend on the model only: integer inference (2026-11-22, afternoon)
 
 Float inference gives different last bits on every GPU and library (the B200 archives above differ from the H200's), so
-an arithmetic-coded archive only decodes on the hardware that made it. `llm/intref.py` defines a Qwen2.5 forward pass in
+an arithmetic-coded archive only decodes on the hardware that made it. `../reference/python/intref.py` defines a Qwen2.5 forward pass in
 integer arithmetic only, so any implementation on any hardware computes the same frequency table, bit for bit:
 
 - A fixed bundle built once from the bf16 weights (`intref.py build`, 491 MB for the 0.5B): int8 weights with an integer
@@ -217,7 +217,7 @@ integer arithmetic only, so any implementation on any hardware computes the same
 - Every step is integer and independent of order: integer sums, max, shifts, truncating division, `isqrt`, table lookups.
   Activations enter matmuls as 16-bit mantissas with one shared exponent; the residual stream is int64 at 2^-24;
   the KV cache is clipped to 2^22 so every sum stays below 2^53. Start token: the config's `bos_token_id`.
-- `intref.py` (numpy) is the spec. `llm/intgpu.py` is the same thing in PyTorch (any device) and, with `--fast`,
+- `intref.py` (numpy, in `../reference/python/`) is the spec. `../reference/python/intgpu.py` is the same thing in PyTorch (any device) and, with `--fast`,
   in Triton kernels replayed as CUDA graphs (about 10 launches per layer).
 
 **Size costs nothing.** On the 6 KB slice (ideal sizes, before the 4-byte header): float64 652.1 bytes, float64
@@ -231,7 +231,7 @@ bytes**, against 7,183 for the bf16 float codec on an H100/H200 and 7,184 on a B
   is byte-identical to the H100's archive (655 bytes).
 - The full file round-trips on an H100, and the archive is identical across three kernel versions.
 
-**Speed (0.5B, full file, `llm/int-H100.log`, `llm/int-H200.log`):**
+**Speed (0.5B, full file, `../reference/python/logs/int-H100.log`, `../reference/python/logs/int-H200.log`):**
 
 | Path | GPU | Compress | Decompress | tok/s |
 |---|---|---:|---:|---:|
@@ -408,10 +408,10 @@ That is 6.3× smaller than zip -9 and 4.2× smaller than tar + xz -9e (208,100).
 
 `SPEC.md` freezes the integer codec as version 1. It covers the rules, a model manifest (ids 1/2/3 = 0.5B/1.5B/7B,
 "good/better/best"), the converted model file (GGUF; at first a custom `.i13k`, replaced the same day), a 2-byte archive header plus a varint token count, segments
-of 32,768 tokens for long inputs, and test vectors in `llm/spec/vectors/`.
+of 32,768 tokens for long inputs, and test vectors in `../spec/vectors/`.
 
 - **Conversion is deterministic:** the exponent comes from frexp instead of `log2`, and the lookup tables are frozen
-  in `llm/spec/tables-v1.gguf`.
+  in `../spec/tables-v1.gguf`.
   - Bundles built on the Mac (arm64, from the mlx-community bf16 copies) and on Modal (x86 Linux, from the official
     Qwen repos at pinned revisions) have identical SHA-256s for all three models.
   - Every tensor equals the bundles used for all earlier measurements, so no earlier result changes.

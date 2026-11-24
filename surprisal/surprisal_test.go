@@ -8,11 +8,11 @@ import (
 	"time"
 )
 
-// The vectors in ../llm/spec/vectors come from the reference implementation (llm/intref.py) and the GPU path. The
+// The vectors in ../spec/vectors come from the reference implementation (reference/python/intref.py) and the GPU path. The
 // models must be installed (SURPRISAL_MODELS); tests skip the ones that are not.
 
 func vec(t *testing.T, name string) []byte {
-	b, err := os.ReadFile(filepath.Join("..", "llm", "spec", "vectors", name))
+	b, err := os.ReadFile(filepath.Join("..", "spec", "vectors", name))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,12 +94,12 @@ func TestFileSetPaths(t *testing.T) {
 }
 
 func TestManifestMatchesSpec(t *testing.T) {
-	spec, err := os.ReadFile(filepath.Join("..", "llm", "spec", "models-v1.json"))
+	spec, err := os.ReadFile(filepath.Join("..", "spec", "models-v1.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(spec, manifestJSON) {
-		t.Fatal("surprisal/models-v1.json differs from llm/spec/models-v1.json (copy it over)")
+		t.Fatal("surprisal/models-v1.json differs from spec/models-v1.json (copy it over)")
 	}
 }
 

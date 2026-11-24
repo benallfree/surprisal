@@ -2,7 +2,7 @@
 https://modal.com/apps/benallfree/main/ap-VxmUJ1wHs74a10WWSliGLo
 ✓ Created objects.
 ├── ✓ Uploaded 
-│   /Volumes/Code/repos/spikes/model-assisted-compression/llm/cudacodec.py
+│   <repo>/llm/cudacodec.py
 ├── ✓ Created Function run_l4.
 ├── ✓ Created Function run_h100.
 ├── ✓ Created Function run_h200.

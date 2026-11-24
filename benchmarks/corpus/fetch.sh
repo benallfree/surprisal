@@ -15,3 +15,5 @@ while read -r year slugs; do
   done
 done < slugs.txt
 echo "$(date +%T) done ok=$ok fail=$fail skip=$skip"
+# Check the download against the copy the published results came from (entries can be re-uploaded upstream):
+#   cd benchmarks/corpus && shasum -a 256 -c zips.sha256

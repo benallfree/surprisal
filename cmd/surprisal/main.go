@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/benallfree/compress13k/surprisal"
+	"github.com/benallfree/surprisal/surprisal"
 )
 
 const usage = `surprisal compresses files with a language model; any machine with surprisal unpacks them exactly.
@@ -27,12 +27,16 @@ Usage:
   surprisal -d [-o dir] [-f] <archive.13k>
   surprisal --setup good|better|best [--from <snapshot dir>]
   surprisal --list
+  surprisal --version
 
 Profiles: good (Qwen2.5-Coder-0.5B), better (1.5B), best (7B, the default; smallest archives, slowest).
 Models live in $SURPRISAL_MODELS, else nollama's models directory (%s).
 
 Flags:
 `
+
+// version is set at release builds (-ldflags "-X main.version=...").
+var version = "dev"
 
 func main() {
 	log.SetFlags(0)
@@ -46,11 +50,16 @@ func main() {
 	list := flag.Bool("list", false, "list the models and whether each is installed")
 	threads := flag.Int("threads", 0, "CPU threads (default: all CPUs)")
 	gpu := flag.String("gpu", "auto", "auto (a GPU when one works) or off (the CPU); both give the same archives")
+	showVersion := flag.Bool("version", false, "print the version")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, usage, surprisal.ModelsDir())
 		flag.PrintDefaults()
 	}
 	flag.Parse()
+	if *showVersion {
+		fmt.Println("surprisal", version)
+		return
+	}
 	var err error
 	switch {
 	case *setup != "":

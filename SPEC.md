@@ -1,4 +1,4 @@
-# compress13k integer codec, spec version 1
+# Surprisal integer codec, spec version 1
 
 An LLM-driven arithmetic coder whose archives depend only on the model, not on the hardware. Every step of the
 model's forward pass is integer arithmetic whose result does not depend on the order of operations, so any correct
@@ -13,8 +13,8 @@ The spec has two parts.
 - **The codec** (§1.1, §5–§7): the model manifest, the coder, the archive and file-set formats, and tokenization.
   Implemented by **surprisal** (`surprisal/`, `cmd/surprisal/`), which calls nollama for the model.
 
-Reference implementation of both: `llm/intref.py` (numpy, slow, authoritative). Also `llm/intgpu.py` (PyTorch, plain
-and Triton/CUDA). Conformance: `llm/spec/vectors/`.
+Reference implementation of both: `reference/python/intref.py` (numpy, slow, authoritative). Also `reference/python/intgpu.py` (PyTorch, plain
+and Triton/CUDA). Conformance: `spec/vectors/`.
 
 Compressed archives use the extension `.13k`; converted models are GGUF files.
 
@@ -26,7 +26,7 @@ Contents: [1 Models](#1-models) · [2 Arithmetic](#2-arithmetic) · [3 Forward p
 
 ### 1.1 Profiles and the manifest
 
-`llm/spec/models-v1.json` lists the models. An archive names its model by a one-byte id.
+`spec/models-v1.json` lists the models. An archive names its model by a one-byte id.
 
 | id | profile | source (official, pinned revision) | converted model | BJJ archive |
 |---:|---|---|---|---:|
@@ -61,7 +61,7 @@ are byte-identical.
 - **Biases:** `bqkv = rint(b · 2^24)` (int64), with q, k, v concatenated.
 - **Norm weights:** `g = rint(g · 2^16)` (int64), for `g1` (input_layernorm), `g2` (post_attention_layernorm) and
   `gf` (final norm).
-- **Tables** are copied from `llm/spec/tables-v1.gguf` (computed once and frozen, so no platform's libm is
+- **Tables** are copied from `spec/tables-v1.gguf` (computed once and frozen, so no platform's libm is
   involved):
   - `EXPA[i] = round(2^15 e^{−i/1024})`, i < 16,384;
   - `EXPF[i] = round(2^30 e^{−i/1024})`, i < 24,576;
@@ -204,7 +204,7 @@ Only the decoder's model must match; the encoder's choice of tokenization is fre
 
 ## 8. Conformance
 
-`llm/spec/vectors/vectors.json` indexes the test vectors:
+`spec/vectors/vectors.json` indexes the test vectors:
 
 - **Inputs:** `tiny.html` (400 bytes), `slice.html` (6,000 bytes), `bjj.html` (55,854 bytes).
 - **Archives:**

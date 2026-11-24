@@ -5,7 +5,7 @@
 {"repo": "HuggingFaceTB/SmolLM2-1.7B", "window": 8192, "load_s": 117.4, "files": {"1-readable.html": {"bytes": 6916, "tokens": 34420, "bpb": 0.8243, "score_s": 34.5}, "3-fully-minified.html": {"bytes": 7016, "tokens": 31597, "bpb": 1.0039, "score_s": 32.5}}, "decode_tok_s": 58.6, "peak_mem_gb": 6.37, "params_b": 1.711}
 10:01:28 start mlx-community/deepseek-coder-1.3b-base-mlx (window 16384)
     raise FileNotFoundError(f"No safetensors found in {model_path}")
-FileNotFoundError: No safetensors found in /Volumes/Code/repos/spikes/model-assisted-compression/llm/hf-cache/models--mlx-community--deepseek-coder-1.3b-base-mlx/snapshots/ac8b62bca65c97845a6cd0a359c3017c47201c8c
+FileNotFoundError: No safetensors found in <repo>/llm/hf-cache/models--mlx-community--deepseek-coder-1.3b-base-mlx/snapshots/ac8b62bca65c97845a6cd0a359c3017c47201c8c
 10:01:32 start mlx-community/Qwen2.5-Coder-3B-bf16 (window 32768)
 {"repo": "mlx-community/Qwen2.5-Coder-3B-bf16", "window": 32768, "load_s": 122.1, "files": {"1-readable.html": {"bytes": 5416, "tokens": 26528, "bpb": 0.6454, "score_s": 62.7}, "3-fully-minified.html": {"bytes": 5256, "tokens": 24126, "bpb": 0.7519, "score_s": 46.9}}, "decode_tok_s": 28.3, "peak_mem_gb": 10.51, "params_b": 3.086}
 10:05:39 start mlx-community/Llama-3.2-3B-bf16 (window 32768)

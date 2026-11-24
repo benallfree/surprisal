@@ -1,17 +1,28 @@
 """Build v1 model bundles on Modal from the official Qwen weights (cached in Volume compress13k-hf) and report each
 bundle's SHA-256 and the source revision, so they can be checked against builds made elsewhere.
 
-    .venv/bin/modal run llm/buildv1.py --sizes 0.5B,1.5B,7B
+    .venv/bin/modal run reference/python/buildv1.py --sizes 0.5B,1.5B,7B
 """
 import json, os, sys, time
 from pathlib import Path
+
+def _spec_dir():
+    # spec/ beside this file (as Modal images lay it out), else the repository's top-level spec/
+    here = Path(__file__).resolve().parent
+    for d in (here / "spec", here.parent.parent / "spec"):
+        if d.is_dir():
+            return d
+    return here / "spec"
+
+
+SPEC = _spec_dir()
 import modal
 
 here = Path(__file__).parent
 image = (modal.Image.debian_slim(python_version="3.12").pip_install("numpy")
          .add_local_file(str(here / "intref.py"), "/root/intref.py")
          .add_local_file(str(here / "bundle.py"), "/root/bundle.py")
-         .add_local_file(str(here / "spec" / "tables-v1.gguf"), "/root/spec/tables-v1.gguf"))
+         .add_local_file(str(SPEC / "tables-v1.gguf"), "/root/spec/tables-v1.gguf"))
 app = modal.App("compress13k-buildv1", image=image)
 hf = modal.Volume.from_name("compress13k-hf")
 iv = modal.Volume.from_name("compress13k-int")

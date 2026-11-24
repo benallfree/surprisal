@@ -11,9 +11,20 @@ Long inputs: the tokens are coded in segments of at most SEG = 32,768 tokens. Ea
 import json
 from pathlib import Path
 
+def _spec_dir():
+    # spec/ beside this file (as Modal images lay it out), else the repository's top-level spec/
+    here = Path(__file__).resolve().parent
+    for d in (here / "spec", here.parent.parent / "spec"):
+        if d.is_dir():
+            return d
+    return here / "spec"
+
+
+SPEC = _spec_dir()
+
 MAGIC_V1 = 0xA1
 SEG = 32768
-MANIFEST = Path(__file__).parent / "spec" / "models-v1.json"
+MANIFEST = SPEC / "models-v1.json"
 
 
 def varint(n):

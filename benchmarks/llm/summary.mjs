@@ -1,5 +1,5 @@
 // Merge LLM scores (llm/out/*.json) with the text/binary split costs (llm/split.json) and the main
-// results (results.json); write a section into README.md between <!-- llm:start --> and <!-- llm:end -->.
+// results (results.json); write a section into STUDY.md between <!-- llm:start --> and <!-- llm:end -->.
 //   node llm/summary.mjs
 import fs from 'node:fs'
 
@@ -43,9 +43,9 @@ for (const [name, f] of full) { const t = sum(f, slugs); md += `| ${name} | ${(t
 const fits = (f) => slugs.filter((s) => f(s) <= 13312).length
 md += `\n<!-- llm:end -->`
 
-const readme = fs.readFileSync(root + 'README.md', 'utf8')
+const readme = fs.readFileSync(root + 'STUDY.md', 'utf8')
 const out = readme.includes('<!-- llm:start -->')
   ? readme.replace(/<!-- llm:start -->[\s\S]*<!-- llm:end -->/, md)
   : readme.replace('## Results\n', md + '\n\n## Results\n')
-fs.writeFileSync(root + 'README.md', out)
+fs.writeFileSync(root + 'STUDY.md', out)
 console.log(md.replace(/<!--.*?-->/g, ''))

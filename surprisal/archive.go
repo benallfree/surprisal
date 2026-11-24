@@ -1,4 +1,4 @@
-package signal
+package surprisal
 
 import "errors"
 
@@ -37,13 +37,13 @@ func (h Header) bytes() []byte {
 // ReadHeader parses an archive's header and returns the coded body.
 func ReadHeader(a []byte) (Header, []byte, error) {
 	if len(a) < 3 || (a[0] != KindStream && a[0] != KindFiles) {
-		return Header{}, nil, errors.New("signal: not a .13k archive")
+		return Header{}, nil, errors.New("surprisal: not a .13k archive")
 	}
 	var v uint64
 	i, shift := 2, 0
 	for {
 		if i >= len(a) || shift > 56 {
-			return Header{}, nil, errors.New("signal: bad token count")
+			return Header{}, nil, errors.New("surprisal: bad token count")
 		}
 		b := a[i]
 		v |= uint64(b&0x7f) << shift

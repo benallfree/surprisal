@@ -1,4 +1,4 @@
-package signal
+package surprisal
 
 import (
 	"bytes"
@@ -39,17 +39,17 @@ func decodeFiles(b []byte) ([]File, error) {
 	for len(b) > 0 {
 		i := bytes.IndexByte(b, '\n')
 		if i < 0 {
-			return nil, errors.New("signal: bad file set (path)")
+			return nil, errors.New("surprisal: bad file set (path)")
 		}
 		p := string(b[:i])
 		b = b[i+1:]
 		j := bytes.IndexByte(b, '\n')
 		if j < 0 {
-			return nil, errors.New("signal: bad file set (length)")
+			return nil, errors.New("surprisal: bad file set (length)")
 		}
 		n, err := strconv.Atoi(string(b[:j]))
 		if err != nil || n < 0 || n > len(b)-j-1 {
-			return nil, errors.New("signal: bad file set (length)")
+			return nil, errors.New("surprisal: bad file set (length)")
 		}
 		if err := checkPath(p); err != nil {
 			return nil, err
@@ -64,7 +64,7 @@ func decodeFiles(b []byte) ([]File, error) {
 func checkPath(p string) error {
 	if p == "" || strings.ContainsAny(p, "\n\\\x00") || path.IsAbs(p) || path.Clean(p) != p ||
 		p == ".." || strings.HasPrefix(p, "../") {
-		return fmt.Errorf("signal: unsafe path %q in file set", p)
+		return fmt.Errorf("surprisal: unsafe path %q in file set", p)
 	}
 	return nil
 }

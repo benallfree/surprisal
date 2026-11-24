@@ -1,4 +1,4 @@
-package signal
+package surprisal
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 )
 
 // The vectors in ../llm/spec/vectors come from the reference implementation (llm/intref.py) and the GPU path. The
-// models must be installed (SIGNAL_MODELS); tests skip the ones that are not.
+// models must be installed (SURPRISAL_MODELS); tests skip the ones that are not.
 
 func vec(t *testing.T, name string) []byte {
 	b, err := os.ReadFile(filepath.Join("..", "llm", "spec", "vectors", name))
@@ -21,7 +21,7 @@ func vec(t *testing.T, name string) []byte {
 
 func openTest(t *testing.T, id int) *Codec {
 	m, _ := ModelByID(id)
-	gpu := os.Getenv("SIGNAL_TEST_GPU") // "off" tests the CPU path
+	gpu := os.Getenv("SURPRISAL_TEST_GPU") // "off" tests the CPU path
 	if !m.Present() {
 		t.Skipf("model %d not installed in %s", id, ModelsDir())
 	}
@@ -99,7 +99,7 @@ func TestManifestMatchesSpec(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(spec, manifestJSON) {
-		t.Fatal("signal/models-v1.json differs from llm/spec/models-v1.json (copy it over)")
+		t.Fatal("surprisal/models-v1.json differs from llm/spec/models-v1.json (copy it over)")
 	}
 }
 

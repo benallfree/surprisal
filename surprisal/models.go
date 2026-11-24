@@ -1,4 +1,4 @@
-package signal
+package surprisal
 
 import (
 	_ "embed"
@@ -62,9 +62,9 @@ func ModelByProfile(p string) (ModelInfo, bool) {
 	return ModelInfo{}, false
 }
 
-// ModelsDir is where converted models live: $SIGNAL_MODELS, else nollama's models directory (shared with nollama).
+// ModelsDir is where converted models live: $SURPRISAL_MODELS, else nollama's models directory (shared with nollama).
 func ModelsDir() string {
-	if d := os.Getenv("SIGNAL_MODELS"); d != "" {
+	if d := os.Getenv("SURPRISAL_MODELS"); d != "" {
 		return models.ExpandHome(d)
 	}
 	if d := os.Getenv("NOLLAMA_MODELS"); d != "" {
@@ -93,7 +93,7 @@ func (m ModelInfo) Setup(src string, logf func(format string, a ...any)) error {
 		return err
 	}
 	if src == "" {
-		src = filepath.Join(dir, "signal-src", filepath.Base(m.Source.Repo)+"@"+m.Source.Revision[:12])
+		src = filepath.Join(dir, "surprisal-src", filepath.Base(m.Source.Repo)+"@"+m.Source.Revision[:12])
 		defer os.RemoveAll(src)
 		for _, f := range m.Source.Files {
 			s := models.Source{Name: m.Source.Repo + "/" + f, Path: filepath.Join(src, f),
@@ -103,7 +103,7 @@ func (m ModelInfo) Setup(src string, logf func(format string, a ...any)) error {
 			}
 		}
 	}
-	tmp := filepath.Join(dir, fmt.Sprintf("signal-convert-%d.gguf", os.Getpid()))
+	tmp := filepath.Join(dir, fmt.Sprintf("surprisal-convert-%d.gguf", os.Getpid()))
 	defer os.Remove(tmp)
 	if err := engine.ConvertIntModel(src, tmp, func(format string, a ...any) { logf("convert: "+format, a...) }); err != nil {
 		return err
@@ -113,7 +113,7 @@ func (m ModelInfo) Setup(src string, logf func(format string, a ...any)) error {
 		return err
 	}
 	if h != m.Bundle.SHA256 {
-		return fmt.Errorf("signal: the converted %s has sha256 %s, not the manifest's %s", m.Bundle.File, h, m.Bundle.SHA256)
+		return fmt.Errorf("surprisal: the converted %s has sha256 %s, not the manifest's %s", m.Bundle.File, h, m.Bundle.SHA256)
 	}
 	return os.Rename(tmp, m.Path())
 }

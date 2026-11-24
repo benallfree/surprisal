@@ -1,8 +1,8 @@
-// Command signal compresses files with a language model; any machine with signal unpacks them exactly.
+// Command surprisal compresses files with a language model; any machine with surprisal unpacks them exactly.
 //
-//	signal -c /path/to/dir/**/*.cpp     # writes archive.13k unless -o is given
-//	signal -d foo.13k                   # writes ./foo/... unless -o is given
-//	signal --setup best                 # once: download Qwen2.5-Coder-7B and convert it (sha256 checked)
+//	surprisal -c /path/to/dir/**/*.cpp     # writes archive.13k unless -o is given
+//	surprisal -d foo.13k                   # writes ./foo/... unless -o is given
+//	surprisal --setup best                 # once: download Qwen2.5-Coder-7B and convert it (sha256 checked)
 package main
 
 import (
@@ -17,19 +17,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/benallfree/compress13k/signal"
+	"github.com/benallfree/compress13k/surprisal"
 )
 
-const usage = `signal compresses files with a language model; any machine with signal unpacks them exactly.
+const usage = `surprisal compresses files with a language model; any machine with surprisal unpacks them exactly.
 
 Usage:
-  signal -c [-o archive.13k] [--profile best] <files or directories>...
-  signal -d [-o dir] [-f] <archive.13k>
-  signal --setup good|better|best [--from <snapshot dir>]
-  signal --list
+  surprisal -c [-o archive.13k] [--profile best] <files or directories>...
+  surprisal -d [-o dir] [-f] <archive.13k>
+  surprisal --setup good|better|best [--from <snapshot dir>]
+  surprisal --list
 
 Profiles: good (Qwen2.5-Coder-0.5B), better (1.5B), best (7B, the default; smallest archives, slowest).
-Models live in $SIGNAL_MODELS, else nollama's models directory (%s).
+Models live in $SURPRISAL_MODELS, else nollama's models directory (%s).
 
 Flags:
 `
@@ -47,7 +47,7 @@ func main() {
 	threads := flag.Int("threads", 0, "CPU threads (default: all CPUs)")
 	gpu := flag.String("gpu", "auto", "auto (a GPU when one works) or off (the CPU); both give the same archives")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, usage, signal.ModelsDir())
+		fmt.Fprintf(os.Stderr, usage, surprisal.ModelsDir())
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -66,13 +66,13 @@ func main() {
 		os.Exit(2)
 	}
 	if err != nil {
-		log.Fatal("signal: ", err)
+		log.Fatal("surprisal: ", err)
 	}
 }
 
 func cmdList() {
-	for _, m := range signal.Models() {
-		state := "not installed (signal --setup " + m.Profile + ")"
+	for _, m := range surprisal.Models() {
+		state := "not installed (surprisal --setup " + m.Profile + ")"
 		if m.Present() {
 			state = "installed"
 		}
@@ -81,7 +81,7 @@ func cmdList() {
 }
 
 func cmdSetup(profile, from string) error {
-	m, ok := signal.ModelByProfile(profile)
+	m, ok := surprisal.ModelByProfile(profile)
 	if !ok {
 		return fmt.Errorf("unknown profile %q", profile)
 	}
@@ -122,7 +122,7 @@ func (p *progress) update(done, total int) {
 }
 
 // gather expands the arguments (directories recursively) into files named relative to their common directory.
-func gather(args []string) ([]signal.File, error) {
+func gather(args []string) ([]surprisal.File, error) {
 	var paths []string
 	for _, a := range args {
 		st, err := os.Stat(a)
@@ -164,7 +164,7 @@ func gather(args []string) ([]signal.File, error) {
 		}
 	}
 	seen := map[string]bool{}
-	var files []signal.File
+	var files []surprisal.File
 	for _, a := range abs {
 		rel, err := filepath.Rel(base, a)
 		if err != nil {
@@ -179,14 +179,14 @@ func gather(args []string) ([]signal.File, error) {
 		if err != nil {
 			return nil, err
 		}
-		files = append(files, signal.File{Path: rel, Data: data})
+		files = append(files, surprisal.File{Path: rel, Data: data})
 	}
 	sort.Slice(files, func(i, j int) bool { return files[i].Path < files[j].Path })
 	return files, nil
 }
 
 func cmdCompress(args []string, out, profile string, threads int, gpu string) error {
-	m, ok := signal.ModelByProfile(profile)
+	m, ok := surprisal.ModelByProfile(profile)
 	if !ok {
 		return fmt.Errorf("unknown profile %q", profile)
 	}
@@ -194,7 +194,7 @@ func cmdCompress(args []string, out, profile string, threads int, gpu string) er
 	if err != nil {
 		return err
 	}
-	c, err := signal.Open(m, threads, gpu)
+	c, err := surprisal.Open(m, threads, gpu)
 	if err != nil {
 		return err
 	}
@@ -225,15 +225,15 @@ func cmdDecompress(archive, out string, force bool, threads int, gpu string) err
 	if err != nil {
 		return err
 	}
-	h, _, err := signal.ReadHeader(a)
+	h, _, err := surprisal.ReadHeader(a)
 	if err != nil {
 		return err
 	}
-	m, ok := signal.ModelByID(h.Model)
+	m, ok := surprisal.ModelByID(h.Model)
 	if !ok {
-		return fmt.Errorf("the archive needs model %d, which this signal doesn't know (update signal)", h.Model)
+		return fmt.Errorf("the archive needs model %d, which this surprisal doesn't know (update surprisal)", h.Model)
 	}
-	c, err := signal.Open(m, threads, gpu)
+	c, err := surprisal.Open(m, threads, gpu)
 	if err != nil {
 		return err
 	}
@@ -256,14 +256,14 @@ func cmdDecompress(archive, out string, force bool, threads int, gpu string) err
 		}
 		return os.WriteFile(path, b, 0o644)
 	}
-	if h.Kind == signal.KindStream {
+	if h.Kind == surprisal.KindStream {
 		if err := write(out, data); err != nil {
 			return err
 		}
 		fmt.Fprintf(os.Stderr, "%s: %d bytes (%.1f s)\n", out, len(data), time.Since(p.start).Seconds())
 		return nil
 	}
-	files, err := signal.DecodeFiles(data)
+	files, err := surprisal.DecodeFiles(data)
 	if err != nil {
 		return err
 	}

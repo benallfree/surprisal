@@ -11,7 +11,7 @@ The spec has two parts.
   table. Implemented by nollama's `engine` package (pure Go, CPU, NEON kernels: `LoadIntModel`, `NewSession`/`Feed`,
   `ConvertIntModel`), which knows nothing about compression.
 - **The codec** (§1.1, §5–§7): the model manifest, the coder, the archive and file-set formats, and tokenization.
-  Implemented by **signal** (`signal/`, `cmd/signal/`), which calls nollama for the model.
+  Implemented by **surprisal** (`surprisal/`, `cmd/surprisal/`), which calls nollama for the model.
 
 Reference implementation of both: `llm/intref.py` (numpy, slow, authoritative). Also `llm/intgpu.py` (PyTorch, plain
 and Triton/CUDA). Conformance: `llm/spec/vectors/`.
@@ -184,7 +184,7 @@ rest     coder output  §5
 bytes.
 - **Paths** are relative and slash-separated, with no `..`, backslash, newline or NUL, and already clean.
   Decoders refuse anything else.
-- **Order:** signal sorts files by path and names them relative to their common directory.
+- **Order:** surprisal sorts files by path and names them relative to their common directory.
 - **Paths are coded too:** they go through the model like the contents, so later files are compressed in the context
   of earlier ones.
 

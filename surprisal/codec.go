@@ -1,8 +1,8 @@
-// Package signal compresses files with a language model driving an arithmetic coder. nollama runs the model in
+// Package surprisal compresses files with a language model driving an arithmetic coder. nollama runs the model in
 // integer arithmetic (engine.IntModel), so every machine computes the same next-token counts and decodes exactly what
 // any other machine encoded. This package holds the codec: tokenization policy, coder, archive format, file sets and
 // the model manifest (SPEC.md).
-package signal
+package surprisal
 
 import (
 	"bytes"
@@ -22,7 +22,7 @@ type Codec struct {
 // threads <= 0: all CPUs.
 func Open(info ModelInfo, threads int, gpu string) (*Codec, error) {
 	if !info.Present() {
-		return nil, fmt.Errorf("signal: model %d (%s, %s) is not installed in %s: run signal --setup %s", info.ID,
+		return nil, fmt.Errorf("surprisal: model %d (%s, %s) is not installed in %s: run surprisal --setup %s", info.ID,
 			info.Profile, info.Source.Repo, ModelsDir(), info.Profile)
 	}
 	m, err := engine.LoadIntModelOptions(info.Path(), engine.IntOptions{Threads: threads, GPU: gpu})
@@ -134,7 +134,7 @@ func (c *Codec) Decompress(a []byte, progress Progress) (Header, []byte, error) 
 		return h, nil, err
 	}
 	if h.Model != c.Info.ID {
-		return h, nil, fmt.Errorf("signal: the archive needs model %d, this is model %d", h.Model, c.Info.ID)
+		return h, nil, fmt.Errorf("surprisal: the archive needs model %d, this is model %d", h.Model, c.Info.ID)
 	}
 	dec := newDecoder(body)
 	ids := make([]int, 0, h.Tokens)

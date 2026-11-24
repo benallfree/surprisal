@@ -1,4 +1,4 @@
-package signal
+package surprisal
 
 import "sort"
 

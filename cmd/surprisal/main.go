@@ -13,6 +13,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"time"
@@ -35,8 +36,18 @@ Models live in $SURPRISAL_MODELS, else nollama's models directory (%s).
 Flags:
 `
 
-// version is set at release builds (-ldflags "-X main.version=...").
+// version is set at release builds (-ldflags "-X main.version=..."); otherwise it is the module version Go recorded
+// (the tag for go install, the git tag or pseudo-version for a build in a checkout), or "dev" when there is none.
 var version = "dev"
+
+func init() {
+	if version != "dev" {
+		return
+	}
+	if bi, ok := debug.ReadBuildInfo(); ok && bi.Main.Version != "" && bi.Main.Version != "(devel)" {
+		version = strings.TrimPrefix(bi.Main.Version, "v")
+	}
+}
 
 func main() {
 	log.SetFlags(0)

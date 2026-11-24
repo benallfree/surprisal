@@ -71,23 +71,30 @@ available, here is the compatibility matrix:
 
 ## Benchmarks
 
-Compressed size in bytes, smaller is better. 🟩 marks the smallest in each row.
+One game, BJJ (a 3D jiu-jitsu game), packed each way a js13k entrant might pack it before compressing. Each column
+adds a step to the one before it. Compressed size in bytes, smaller is better. 🟩 marks the smallest in each column.
 
-| file | unpacked | zip | 7z | Brotli | Surprisal |
-|---|---:|---:|---:|---:|---:|
-| js13k 2025: kittens-crossing | 17,069 | 12,626 | 12,962 | 12,322 | 🟩 **11,815** |
-| js13k 2025: miami-mice | 19,876 | 12,450 | 12,593 | 11,808 | 🟩 **10,491** |
-| js13k 2025: non-mewtonian-cat | 12,159 | 9,076 | 9,368 | 8,817 | 🟩 **8,539** |
-| js13k 2025: tower-of-terror | 42,384 | 9,857 | 8,329 | 7,730 | 🟩 **1,356** |
-| js13k 2025: wake-the-cat | 36,088 | 9,289 | 10,231 | 9,640 | 🟩 **2,734** |
-| BJJ | 55,854 | 19,395 | 20,516 | 19,723 | 🟩 **4,970** |
+| | unpacked | HTML minified | + terser | + Roadroller |
+|---|---:|---:|---:|---:|
+| no compression | 67,056 | 66,984 | 55,854 | 27,673 |
+| zip | 21,780 | 21,745 | 19,395 | 18,867 |
+| 7z | 23,642 | 23,613 | 20,516 | 19,305 |
+| Brotli | 22,758 | 22,732 | 19,723 | 18,427 |
+| Surprisal | 🟩 **5,025** | 🟩 **5,027** | 🟩 **4,929** | 🟩 **17,300** |
 
-zip is the smallest legal zip per game (every 7-Zip method and Zopfli), 7z is `7z -mx=9`, Brotli is `-q11 -w24`, and
-Surprisal is `-9`. The js13k games are from the 2025 contest, which the models never trained on. BJJ is a fully
-minified 3D game ([spec/vectors/bjj.html](spec/vectors/bjj.html)).
+- The classic compressors need the whole pipeline: the best real js13k build (minify, Roadroller, zip) is 18,867
+  bytes.
+- Surprisal compresses the readable source to 5,025 bytes, a quarter of that, with no packing at all. Minifying saves
+  it only 2%.
+- Roadroller is a compressor itself, so its output looks like noise to the model. Under Surprisal you'd ship the
+  source unpacked.
 
-The full table, which grows as more files are measured, is [benchmarks/SIZES.md](benchmarks/SIZES.md). How to run
-it yourself, and the original js13k study, are in [benchmarks/](benchmarks/).
+zip is the smallest legal zip (every 7-Zip method and Zopfli), 7z is `7z -mx=9`, Brotli is `-q11 -w24`, and Surprisal
+is `-9`. The builds and the script that measures them are in [benchmarks/bjj-case/](benchmarks/bjj-case/).
+
+[benchmarks/SIZES.md](benchmarks/SIZES.md) also has the 2025 js13k games as their authors submitted them (already
+minified, some with Roadroller). How to run it yourself, and the original js13k study, are in
+[benchmarks/](benchmarks/).
 
 ## History
 
@@ -96,8 +103,10 @@ why not embrace AI, use it to its fullest, and give it a challenge worthy of it:
 13 kilobytes?
 
 Surprisal is my proposal to the js13k project: pick a model, freeze it, and make it the official js13k compression
-format, refreshed with a new model every year. On the js13k games in the [benchmarks](#benchmarks), Surprisal's
-archives are a third smaller than the best zip in total, so the same 13,312 bytes hold that much more game.
+format, refreshed with a new model every year. On 2025 js13k games as their authors submitted them
+([benchmarks/SIZES.md](benchmarks/SIZES.md)), Surprisal's archives are a third smaller than the best zip in total. On
+readable source it does far better: the [benchmarks](#benchmarks) game drops from 18,867 bytes (fully packed and
+zipped) to 5,025 (unpacked, Surprisal).
 
 ## Models
 

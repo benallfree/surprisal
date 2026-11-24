@@ -5,8 +5,8 @@ Surprisal started as a question about [js13k](https://js13kgames.com), the game 
 language model? This folder holds that study, the corpus it ran on, and a runner that measures surprisal itself on
 the same games.
 
-- [SIZES.md](SIZES.md): the running table of compressed sizes (zip, 7z, Brotli, Surprisal), one row per file
-  measured.
+- [SIZES.md](SIZES.md): compressed sizes (zip, 7z, Brotli, Surprisal): one game through every packing step, and the
+  2025 js13k games as submitted.
 - [STUDY.md](STUDY.md): the study. 1,163 real entries from 2020–2025, every legal zip method, xz, Brotli, zstd,
   trained dictionaries, a hand-built context-mixing model and several language models, compared game by game.
 - [TIMING.md](TIMING.md): how fast arithmetic coding with a language model can go, from the first MLX prototype on a
@@ -59,7 +59,7 @@ installed and skipped otherwise.
 | [bench.mjs](bench.mjs), [report.mjs](report.mjs), [codec.mjs](codec.mjs), [zipread.mjs](zipread.mjs) | the classic-compressor and context-mixing benchmark (Node 20+; writes `results.json`, `results.md` and the tables in STUDY.md) |
 | [time_classic.mjs](time_classic.mjs), [timing-classic.json](timing-classic.json) | timings for the classic methods |
 | [llm/](llm/) | the language-model arms of the study (MLX on a Mac, plus the CUDA float experiments), with their logs |
-| [bjj-case/](bjj-case/) | one large readable game in five builds, readable to Roadroller-packed, used as a case study |
+| [bjj-case/](bjj-case/) | one large readable game in six builds, readable to Roadroller-packed, and [matrix.sh](bjj-case/matrix.sh), which measures them for SIZES.md |
 | [lasso-selfextract/](lasso-selfextract/) | the first experiment: a self-extracting page with the decoder counted against the limit |
 | [ollama-spike/](ollama-spike/) | an early comparison of scoring through nollama and Ollama |
 

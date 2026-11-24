@@ -24,64 +24,71 @@
     {
       "file": "m1-tiny.13k",
       "model": 1,
+      "level": 1,
       "input": "tiny.html",
       "bytes": 39,
       "tokens": 124,
-      "sha256": "cab8ea5362ca461929dc6a483816ab5ec19812ab68953578b8a620d73a81fe05",
+      "sha256": "f53768535ac177483f2ec85789c105ef2a7deb8a0c41c673b4aabeea658b03c1",
       "how": "encoded by the numpy spec (intref.py) on the Mac; decoded on an H100"
     },
     {
       "file": "m1-slice.13k",
       "model": 1,
+      "level": 1,
       "input": "slice.html",
       "bytes": 655,
       "tokens": 2341,
-      "sha256": "ff8534eb9248f55109b7cc5bd7e94d99417e7aa9529af157bf97d00dce092f1a",
+      "sha256": "b66e1173911ca4cb2a425ab81944bdc09900cb9408cbe1037d4a5733429ec6ef",
       "how": "encoded on an H100 (step by step); byte-identical to the numpy spec encode"
     },
     {
       "file": "m1-bjj.13k",
       "model": 1,
+      "level": 1,
       "input": "bjj.html",
       "bytes": 7186,
       "tokens": 24126,
-      "sha256": "e80e6ce1eccea8a904627281e8989a827b038fca4092f362ee17c5aed4781419",
+      "sha256": "46911f1fea483ee8ac86fc7d400fdb406856e9265744986ea75f9c204d0ea72b",
       "how": "H100 step by step and batched agree; round-trips"
     },
     {
       "file": "m2-bjj.13k",
       "model": 2,
+      "level": 4,
       "input": "bjj.html",
       "bytes": 5856,
       "tokens": 24126,
-      "sha256": "60fab9e1e1db0692d371758676beafee6978c741e199f4da8a5ad94586e46496",
+      "sha256": "4ae59b9a06802ab90aab43503504fe16a3924c21163cca01bff1c988bb49cd12",
       "how": "H100 batched and step by step agree; round-trips"
     },
     {
       "file": "m3-tiny.13k",
       "model": 3,
+      "level": 7,
       "input": "tiny.html",
       "bytes": 35,
       "tokens": 124,
-      "sha256": "2e25d9729c240db785bb933f720fdbe3f340137478be59fcea254554085393b9",
+      "sha256": "0be0291bffdacbc577c9b2a987bdd1db6faac573841bc588cc1e34fb1825aaad",
       "how": "encoded on an H100; the pure-Go nollama implementation on a Mac produces the same bytes"
     },
     {
       "file": "m3-bjj.13k",
       "model": 3,
+      "level": 7,
       "input": "bjj.html",
       "bytes": 4970,
       "tokens": 24126,
-      "sha256": "13b6063cc7cc9a77a9e4bdc3ac72c0579cfaeb908981980e096668174f9aabb2",
+      "sha256": "0da318cff02634ac9814ff1de7615d93ebde0af75b2974864a226565d888fb2d",
       "how": "H100 batched encode, step-by-step decode round-trips; bundle built from the official Qwen weights"
     },
     {
       "file": "m1-bjj3.13k",
       "model": 1,
+      "level": 1,
       "input": "bjj.html three times, concatenated (167,562 bytes)",
       "bytes": 16945,
       "tokens": 72378,
-      "sha256": "6eda153358ef7fc9b6f3699740f0f321d5e12ac155fcb737b392bc1be62afd44",
+      "sha256": "5450e2861b9a944965a6be633c1e5646cfd629bd46165e538d93efa197c67bb5",
       "how": "H100 batched encode, step-by-step decode round-trips; 3 segments (long-input rule)"
     }
   ],

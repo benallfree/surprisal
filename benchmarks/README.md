@@ -25,20 +25,20 @@ benchmarks/corpus/fetch.sh
 (cd benchmarks/corpus && shasum -a 256 -c --quiet zips.sha256)
 ```
 
-Then, from the repository root, with a model installed (`surprisal --setup good`):
+Then, from the repository root, with the level's model installed (any `surprisal -c1` run installs the 0.5B):
 
 ```bash
-go run ./benchmarks/run -profile good -year 2025
+go run ./benchmarks/run -level 1 -year 2025
 ```
 
 It compresses each game's files exactly as `surprisal -c` would and writes a markdown table to
-`benchmarks/out/surprisal-<profile>-<year>.md` (and stdout): totals for surprisal next to the submitted zips, the best
+`benchmarks/out/surprisal-c<level>-<year>.md` (and stdout): totals for surprisal next to the submitted zips, the best
 legal zip per game, Brotli with and without a trained dictionary and the trained context-mixing model (those come from
 `results.json`, which `bench.mjs` wrote), the median ratio to the best zip, and a row per game. Flags:
 
 | flag | default | |
 |---|---|---|
-| `-profile` | `good` | `good` (0.5B), `better` (1.5B) or `best` (7B) |
+| `-level` | `1` | compression level, as `surprisal -c<level>`: 1-3 (0.5B), 4-6 (1.5B), 7-9 (7B) |
 | `-year` | `2025` | the corpus year; 2025 is the held-out test year of the study |
 | `-limit` | all | only the first N games |
 | `-games` | all | comma-separated slugs |

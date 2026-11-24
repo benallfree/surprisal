@@ -12,31 +12,51 @@ import (
 	"github.com/benallfree/nollama/engine"
 )
 
-// Codec compresses and decompresses with one model.
+// Codec compresses and decompresses at one compression level: 0 stores the bytes, 1-9 code them with the level's
+// model.
 type Codec struct {
-	Info  ModelInfo
-	Model *engine.IntModel
+	Level int
+	Info  ModelInfo        // levels 1-9
+	Model *engine.IntModel // levels 1-9
 }
 
-// Open loads a model's converted file, on a GPU when one works (gpu "auto" or "") or the CPU ("off").
-// threads <= 0: all CPUs.
-func Open(info ModelInfo, threads int, gpu string) (*Codec, error) {
+// Open makes a codec for a compression level (0-9). For levels 1-9 it loads the level's model, which must be
+// installed (ModelInfo.Install), on a GPU when one works (gpu "auto" or "") or the CPU ("off"). threads <= 0: all
+// CPUs.
+func Open(level, threads int, gpu string) (*Codec, error) {
+	if level == 0 {
+		return &Codec{}, nil
+	}
+	info, ok := ModelForLevel(level)
+	if !ok {
+		return nil, fmt.Errorf("surprisal: compression level %d isn't 0-9", level)
+	}
 	if !info.Present() {
-		return nil, fmt.Errorf("surprisal: model %d (%s, %s) is not installed in %s: run surprisal --setup %s", info.ID,
-			info.Profile, info.Source.Repo, ModelsDir(), info.Profile)
+		return nil, fmt.Errorf("surprisal: level %d needs %s (%s), which is not installed in %s", level, info.Name,
+			info.Source.Repo, ModelsDir())
 	}
 	m, err := engine.LoadIntModelOptions(info.Path(), engine.IntOptions{Threads: threads, GPU: gpu})
 	if err != nil {
 		return nil, err
 	}
-	return &Codec{Info: info, Model: m}, nil
+	return &Codec{Level: level, Info: info, Model: m}, nil
 }
 
 // Close releases the model.
-func (c *Codec) Close() error { return c.Model.Close() }
+func (c *Codec) Close() error {
+	if c.Model == nil {
+		return nil
+	}
+	return c.Model.Close()
+}
 
 // Device names where the model runs.
-func (c *Codec) Device() string { return c.Model.Device() }
+func (c *Codec) Device() string {
+	if c.Model == nil {
+		return "no model"
+	}
+	return c.Model.Device()
+}
 
 // Progress, if set, gets the tokens done and the total.
 type Progress func(done, total int)
@@ -89,6 +109,9 @@ func (c *Codec) tokenize(b []byte) []int {
 
 // Compress codes data as an archive of the given kind (KindStream or KindFiles).
 func (c *Codec) Compress(kind int, data []byte, progress Progress) ([]byte, error) {
+	if c.Level == 0 {
+		return append(Header{Kind: kind, Version: Version}.bytes(), data...), nil
+	}
 	ids := c.tokenize(data)
 	n := len(ids)
 	enc := newEncoder()
@@ -124,17 +147,21 @@ func (c *Codec) Compress(kind int, data []byte, progress Progress) ([]byte, erro
 			}
 		}
 	}
-	return append(Header{Kind: kind, Model: c.Info.ID, Tokens: n}.bytes(), enc.finish()...), nil
+	return append(Header{Kind: kind, Version: Version, Level: c.Level, Tokens: n}.bytes(), enc.finish()...), nil
 }
 
-// Decompress decodes an archive made with this codec's model.
+// Decompress decodes an archive made at a level that uses this codec's model (any codec decodes level 0).
 func (c *Codec) Decompress(a []byte, progress Progress) (Header, []byte, error) {
 	h, body, err := ReadHeader(a)
 	if err != nil {
 		return h, nil, err
 	}
-	if h.Model != c.Info.ID {
-		return h, nil, fmt.Errorf("surprisal: the archive needs model %d, this is model %d", h.Model, c.Info.ID)
+	if h.Level == 0 {
+		return h, body, nil
+	}
+	if m, _ := ModelForLevel(h.Level); c.Model == nil || m.ID != c.Info.ID {
+		return h, nil, fmt.Errorf("surprisal: the archive is level %d, which needs %s; this codec has %s", h.Level,
+			m.Name, c.Info.Name)
 	}
 	dec := newDecoder(body)
 	ids := make([]int, 0, h.Tokens)

@@ -24,15 +24,22 @@ Contents: [1 Models](#1-models) · [2 Arithmetic](#2-arithmetic) · [3 Forward p
 
 ## 1. Models
 
-### 1.1 Profiles and the manifest
+### 1.1 Levels and the manifest
 
-`spec/models-v1.json` lists the models. An archive names its model by a one-byte id.
+`spec/models-v1.json` lists the models and the compression levels. An archive records its header version and level
+(§6); the manifest of that version maps the level to the exact model, so an archive always names the model that
+decodes it.
 
-| id | profile | source (official, pinned revision) | converted model | BJJ archive |
-|---:|---|---|---|---:|
-| 1 | good | `Qwen/Qwen2.5-Coder-0.5B` @ `8123ea2e` | `qwen2.5-coder-0.5b-int-v1.gguf`, 520 MB | 7,186 |
-| 2 | better | `Qwen/Qwen2.5-Coder-1.5B` @ `df3ce67c` | `qwen2.5-coder-1.5b-int-v1.gguf`, 1.6 GB | 5,856 |
-| 3 | best | `Qwen/Qwen2.5-Coder-7B` @ `0396a761` | `qwen2.5-coder-7b-int-v1.gguf`, 7.9 GB | 4,970 |
+| level | id | source (official, pinned revision) | converted model | BJJ archive |
+|---|---:|---|---|---:|
+| 0 | – | none: the bytes are stored uncoded | – | 55,856 |
+| 1–3 | 1 | `Qwen/Qwen2.5-Coder-0.5B` @ `8123ea2e` | `qwen2.5-coder-0.5b-int-v1.gguf`, 520 MB | 7,186 |
+| 4–6 | 2 | `Qwen/Qwen2.5-Coder-1.5B` @ `df3ce67c` | `qwen2.5-coder-1.5b-int-v1.gguf`, 1.6 GB | 5,856 |
+| 7–9 | 3 | `Qwen/Qwen2.5-Coder-7B` @ `0396a761` | `qwen2.5-coder-7b-int-v1.gguf`, 7.9 GB | 4,970 |
+
+A version's level table never changes. A new mapping (another model at some level, say) is a new header version
+with its own manifest, and decoders keep every earlier table. A decoder refuses an archive whose version it doesn't
+know, rather than guess.
 
 The converted model is a modified copy of the official one: the same weights, rounded to integers (§1.2). Each
 entry has its SHA-256, its size and download URLs. Ids are permanent: an id is never reused or deleted,
@@ -175,10 +182,17 @@ Witten-Neal-Cleary, 32-bit: TOP = 2^32 − 1, HALF = 2^31, QTR = 2^30.
 ```
 byte 0   kind          0xA1: a stream (the decoded bytes are one unnamed blob)
                        0xA2: a file set (the decoded bytes are a container of named files, below)
-byte 1   model id      §1.1
+byte 1   version/level high nibble: the header version (1, the levels in spec/models-v1.json, §1.1)
+                       low nibble: the compression level, 0-9
+then, levels 1-9:
 varint   n             token count, unsigned LEB128
 rest     coder output  §5
+or, level 0:
+rest     the decoded bytes, uncoded
 ```
+
+Decoders refuse any other version or a level above 9. Archives from before header versions (surprisal 0.0.1-alpha.1)
+had the model id in byte 1, so they read as version 0 and are refused.
 
 **File set:** the decoded bytes are, for each file, its path, `\n`, its length in bytes (decimal), `\n`, then its
 bytes.
@@ -194,7 +208,7 @@ segments.
 
 ## 7. Text
 
-v1 codes UTF-8 text with the Qwen2.5 tokenizer, which is the same for every profile.
+v1 codes UTF-8 text with the Qwen2.5 tokenizer, which is the same for every model.
 
 - **Decoder:** maps token ids back to bytes (byte-level BPE decode, no clean-up of tokenization spaces).
 - **Encoder:** may use any token sequence that decodes to exactly the input bytes. The reference tries the standard
@@ -210,12 +224,13 @@ Only the decoder's model must match; the encoder's choice of tokenization is fre
 - **Archives:**
   - `m1-tiny.13k`: made by the numpy spec on a Mac, decoded on an H100;
   - `m1-slice.13k`: byte-identical between the numpy spec and the GPU;
-  - `m1-bjj.13k`, `m2-bjj.13k`, `m3-bjj.13k`: the full file for each profile, made on an H100 by the batched and
+  - `m1-bjj.13k`, `m2-bjj.13k`, `m3-bjj.13k`: the full file for each model, made on an H100 by the batched and
     step-by-step paths, which agree, and round-tripped;
   - `m1-bjj3.13k`: `bjj.html` three times (72,378 tokens, three segments), testing the long-input rule;
   - `m3-tiny.13k`: the 7B on `tiny.html`, made on an H100 and reproduced byte for byte by nollama in Go on a Mac.
 
-  An implementation must decode each to its input, and should reproduce each byte for byte when encoding.
+  Each is made at the first level of its model (1, 4 or 7; vectors.json gives the level). An implementation must
+  decode each to its input, and should reproduce each byte for byte when encoding.
 - **Table hashes:**
   - `m1-slice-tables.txt`: 300 positions;
   - `m2-tiny-tables.txt`: 30 positions.

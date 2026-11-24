@@ -10,13 +10,16 @@ archive usually only decodes on the hardware that made it. Surprisal's forward p
 spec v1): an archive made on a Mac's GPU decodes bit-for-bit on an NVIDIA GPU or a plain CPU, and the other way round.
 
 ```bash
-surprisal --setup good
-surprisal -c -o game.13k --profile good src/
+surprisal -c1 -o game.13k src/
 surprisal -d game.13k
 ```
 
-> **Alpha.** The archive format (spec v1) is frozen: archives made now will keep decoding. The command line and the Go
-> API may still change.
+Every archive records its header version and compression level, which together name the exact model that decodes
+it. Surprisal either knows that model (and downloads it the first time) or says it can't unpack the archive and that
+a newer surprisal is needed. It never guesses.
+
+> **Alpha.** The command line and the Go API may still change. Archives from 0.0.1-alpha.1 predate the version in
+> the header and won't unpack with later releases.
 
 ## Install
 
@@ -32,18 +35,14 @@ Or download a binary from the [releases](https://github.com/benallfree/surprisal
 go install github.com/benallfree/surprisal/cmd/surprisal@latest
 ```
 
-Then install a model. `--setup` downloads the official Qwen2.5-Coder weights from Hugging Face and converts them to the
-integer format (deterministically: every machine produces the same file, checked against the SHA-256 in
-[spec/models-v1.json](spec/models-v1.json)):
-
-```bash
-surprisal --setup good
-```
+There is no separate model install. The first time a level needs its model, surprisal downloads the official
+Qwen2.5-Coder weights from Hugging Face and converts them to the integer format. The conversion is deterministic:
+every machine produces the same file, checked against the SHA-256 in [spec/models-v1.json](spec/models-v1.json).
 
 ## Usage
 
 ```bash
-surprisal -c -o archive.13k [--profile best] <files or directories>...
+surprisal -c[0-9] [-o archive.13k] <files or directories>...
 ```
 
 ```bash
@@ -54,16 +53,21 @@ surprisal -d [-o dir] [-f] archive.13k
 surprisal --list
 ```
 
-The archive records which model made it, so `-d` needs no profile. `--gpu off` forces the CPU (same archives, slower).
+`-c0` stores without a model, `-c1` to `-c9` code with a model (see below), and `-c` alone is `-c9`. `-d` reads the
+level from the archive. `--list` shows which models are installed. `--gpu off` forces the CPU (same archives, slower).
 Models live in `$SURPRISAL_MODELS`, or in nollama's models directory by default.
 
-## Models
+## Levels
 
-| profile | model | bundle | BJJ file (55,854 bytes) |
+| level | model | download, once | BJJ file (55,854 bytes) |
 |---|---|---:|---:|
-| `good` | Qwen2.5-Coder-0.5B | 0.5 GB | 7,186 bytes |
-| `better` | Qwen2.5-Coder-1.5B | 1.5 GB | 5,856 bytes |
-| `best` (default) | Qwen2.5-Coder-7B | 7.3 GB | 4,970 bytes |
+| `-c0` | none (stored) | – | 55,856 bytes |
+| `-c1` to `-c3` | Qwen2.5-Coder-0.5B | 0.5 GB | 7,186 bytes |
+| `-c4` to `-c6` | Qwen2.5-Coder-1.5B | 1.5 GB | 5,856 bytes |
+| `-c7` to `-c9` (default) | Qwen2.5-Coder-7B | 7.3 GB | 4,970 bytes |
+
+Levels within a group code the same way today; only the level byte in the header differs. The table for header version 1 is fixed: a later release that
+uses a new model at some level writes a new header version and still unpacks version 1.
 
 For comparison, on the same file: `brotli -q11` 19,723 bytes, `xz -9e` 20,448, `zstd -19` 21,278, `gzip -9` 22,390.
 The BJJ file is a fully minified 3D game (HTML and JavaScript, [spec/vectors/bjj.html](spec/vectors/bjj.html)).
@@ -167,7 +171,7 @@ within a few bytes (7,185 vs 7,183 on the BJJ file). [benchmarks/](benchmarks/) 
 runner that measures surprisal itself on the same games:
 
 ```bash
-go run ./benchmarks/run -profile good -year 2025
+go run ./benchmarks/run -level 1 -year 2025
 ```
 
 ## How it works

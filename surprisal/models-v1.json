@@ -2,11 +2,23 @@
   "format": 1,
   "spec": "SPEC.md, version 1",
   "note": "Ids are permanent: never reuse or delete one, so old archives keep decoding. urls: where the converted model can be downloaded (filled in once hosted); anyone can also rebuild it from the source revision with `intref.py build` and check the sha256.",
+  "levels": [
+    0,
+    1,
+    1,
+    1,
+    2,
+    2,
+    2,
+    3,
+    3,
+    3
+  ],
+  "levels_note": "Compression levels 0-9 (surprisal -c0 ... -c9) for archive header version 1: levels[n] is the model id for level n; 0 stores the bytes uncoded. This table never changes; a new mapping is a new manifest version.",
   "models": [
     {
       "id": 1,
       "name": "qwen2.5-coder-0.5b-int-v1",
-      "profile": "good",
       "source": {
         "repo": "Qwen/Qwen2.5-Coder-0.5B",
         "revision": "8123ea2e9354afb7ffcc6c8641d1b2f5ecf18301",
@@ -27,7 +39,6 @@
     {
       "id": 2,
       "name": "qwen2.5-coder-1.5b-int-v1",
-      "profile": "better",
       "source": {
         "repo": "Qwen/Qwen2.5-Coder-1.5B",
         "revision": "df3ce67c0e24480f20468b6ef2894622d69eb73b",
@@ -48,7 +59,6 @@
     {
       "id": 3,
       "name": "qwen2.5-coder-7b-int-v1",
-      "profile": "best",
       "source": {
         "repo": "Qwen/Qwen2.5-Coder-7B",
         "revision": "0396a76181e127dfc13e5c5ec48a8cee09938b02",

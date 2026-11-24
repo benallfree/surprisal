@@ -19,13 +19,14 @@ func vec(t *testing.T, name string) []byte {
 	return b
 }
 
+// openTest opens the codec for the first level that uses model id (the vectors are made at that level).
 func openTest(t *testing.T, id int) *Codec {
 	m, _ := ModelByID(id)
 	gpu := os.Getenv("SURPRISAL_TEST_GPU") // "off" tests the CPU path
 	if !m.Present() {
 		t.Skipf("model %d not installed in %s", id, ModelsDir())
 	}
-	c, err := Open(m, 0, gpu)
+	c, err := Open(LevelsFor(id)[0], 0, gpu)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,6 +81,46 @@ func TestFileSet(t *testing.T) {
 		}
 	}
 	t.Logf("file set: %d files, %d bytes -> %d bytes", len(fs), len(b), len(a))
+}
+
+func TestStore(t *testing.T) {
+	c, err := Open(0, 0, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fs := []File{{"a.txt", []byte("hello")}, {"b/c.bin", []byte{0, 0xff}}}
+	a, err := c.CompressFiles(fs, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(a[:2], []byte{KindFiles, Version << 4}) {
+		t.Fatalf("header % x", a[:2])
+	}
+	h, b, err := c.Decompress(a, nil)
+	if err != nil || h.Level != 0 {
+		t.Fatal(err, h)
+	}
+	got, err := DecodeFiles(b)
+	if err != nil || len(got) != 2 || string(got[0].Data) != "hello" {
+		t.Fatalf("store round trip: %v %v", err, got)
+	}
+}
+
+func TestLevels(t *testing.T) {
+	want := map[int]int{1: 1, 2: 1, 3: 1, 4: 2, 5: 2, 6: 2, 7: 3, 8: 3, 9: 3}
+	for lv, id := range want {
+		if m, ok := ModelForLevel(lv); !ok || m.ID != id {
+			t.Errorf("level %d: model %d, want %d", lv, m.ID, id)
+		}
+	}
+	for _, lv := range []int{0, 10, -1} {
+		if _, ok := ModelForLevel(lv); ok {
+			t.Errorf("level %d has a model", lv)
+		}
+	}
+	if _, _, err := ReadHeader([]byte{KindStream, 0x21, 0}); err == nil {
+		t.Error("header version 2 accepted")
+	}
 }
 
 func TestFileSetPaths(t *testing.T) {

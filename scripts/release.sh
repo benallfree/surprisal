@@ -62,9 +62,9 @@ class Surprisal < Formula
 
   def caveats
     <<~EOS
-      Install a model before the first use (downloads the official weights and converts them):
-        surprisal --setup good     # Qwen2.5-Coder-0.5B, 0.5 GB
-        surprisal --setup best     # Qwen2.5-Coder-7B, 7.3 GB, the default profile
+      The first use of a level downloads its model's official weights and converts them (once):
+        surprisal -c1 ...    # levels 1-3: Qwen2.5-Coder-0.5B, 0.5 GB
+        surprisal -c9 ...    # levels 7-9: Qwen2.5-Coder-7B, 7.3 GB (the default)
     EOS
   end
 

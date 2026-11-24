@@ -1,8 +1,7 @@
 // Command surprisal compresses files with a language model; any machine with surprisal unpacks them exactly.
 //
-//	surprisal -c /path/to/dir/**/*.cpp     # writes archive.13k unless -o is given
+//	surprisal -c9 /path/to/dir             # writes archive.13k unless -o is given; -c0 ... -c9 pick the level
 //	surprisal -d foo.13k                   # writes ./foo/... unless -o is given
-//	surprisal --setup best                 # once: download Qwen2.5-Coder-7B and convert it (sha256 checked)
 package main
 
 import (
@@ -24,13 +23,14 @@ import (
 const usage = `surprisal compresses files with a language model; any machine with surprisal unpacks them exactly.
 
 Usage:
-  surprisal -c [-o archive.13k] [--profile best] <files or directories>...
+  surprisal -c[0-9] [-o archive.13k] <files or directories>...
   surprisal -d [-o dir] [-f] <archive.13k>
-  surprisal --setup good|better|best [--from <snapshot dir>]
   surprisal --list
   surprisal --version
 
-Profiles: good (Qwen2.5-Coder-0.5B), better (1.5B), best (7B, the default; smallest archives, slowest).
+Levels: -c0 stores without a model; -c1 to -c3 use Qwen2.5-Coder-0.5B, -c4 to -c6 the 1.5B, -c7 to -c9 the 7B
+(smallest archives, slowest). -c alone is -c9. The archive records its level and header version, so -d needs
+neither. A level's model is downloaded from Hugging Face and converted the first time it's needed.
 Models live in $SURPRISAL_MODELS, else nollama's models directory (%s).
 
 Flags:
@@ -55,10 +55,8 @@ func main() {
 	decompress := flag.Bool("d", false, "decompress an archive")
 	out := flag.String("o", "", "output: the archive (-c, default archive.13k) or the directory (-d, default the archive's name)")
 	force := flag.Bool("f", false, "overwrite existing files")
-	profile := flag.String("profile", "best", "good, better or best")
-	setup := flag.String("setup", "", "download and convert a profile's model: good, better or best")
-	from := flag.String("from", "", "with --setup: convert this local copy of the official weights instead of downloading")
-	list := flag.Bool("list", false, "list the models and whether each is installed")
+	level := flag.Int("level", 9, "compression level 0-9 (-c5 is -c -level 5)")
+	list := flag.Bool("list", false, "list the levels and whether each one's model is installed")
 	threads := flag.Int("threads", 0, "CPU threads (default: all CPUs)")
 	gpu := flag.String("gpu", "auto", "auto (a GPU when one works) or off (the CPU); both give the same archives")
 	showVersion := flag.Bool("version", false, "print the version")
@@ -66,6 +64,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, usage, surprisal.ModelsDir())
 		flag.PrintDefaults()
 	}
+	os.Args = append(os.Args[:1], expandLevel(os.Args[1:])...)
 	flag.Parse()
 	if *showVersion {
 		fmt.Println("surprisal", version)
@@ -73,12 +72,10 @@ func main() {
 	}
 	var err error
 	switch {
-	case *setup != "":
-		err = cmdSetup(*setup, *from)
 	case *list:
 		cmdList()
 	case *compress && !*decompress:
-		err = cmdCompress(flag.Args(), *out, *profile, *threads, *gpu)
+		err = cmdCompress(flag.Args(), *out, *level, *threads, *gpu)
 	case *decompress && !*compress && flag.NArg() == 1:
 		err = cmdDecompress(flag.Arg(0), *out, *force, *threads, *gpu)
 	default:
@@ -86,28 +83,58 @@ func main() {
 		os.Exit(2)
 	}
 	if err != nil {
-		log.Fatal("surprisal: ", err)
+		log.Fatal("surprisal: ", strings.TrimPrefix(err.Error(), "surprisal: "))
 	}
+}
+
+// expandLevel turns -c<N> (or --c<N>) into -c -level=<N>, so the levels read like gzip's.
+func expandLevel(args []string) []string {
+	var out []string
+	for i, a := range args {
+		if a == "--" {
+			return append(out, args[i:]...)
+		}
+		if t := strings.TrimPrefix(strings.TrimPrefix(a, "-"), "-"); t != a && len(t) == 2 && t[0] == 'c' && t[1] >= '0' && t[1] <= '9' {
+			out = append(out, "-c", "-level="+t[1:])
+			continue
+		}
+		out = append(out, a)
+	}
+	return out
 }
 
 func cmdList() {
+	fmt.Println("level 0      store, no model")
 	for _, m := range surprisal.Models() {
-		state := "not installed (surprisal --setup " + m.Profile + ")"
+		lv := surprisal.LevelsFor(m.ID)
+		if len(lv) == 0 {
+			continue
+		}
+		state := "not installed (downloaded on first use)"
 		if m.Present() {
 			state = "installed"
 		}
-		fmt.Printf("%d  %-6s  %-24s  %5.1f GB  %s\n", m.ID, m.Profile, m.Source.Repo, float64(m.Bundle.Bytes)/1e9, state)
+		fmt.Printf("level %d-%d    %-24s  %4.1f GB  %s\n", lv[0], lv[len(lv)-1], m.Source.Repo, float64(m.Bundle.Bytes)/1e9, state)
 	}
 }
 
-func cmdSetup(profile, from string) error {
-	m, ok := surprisal.ModelByProfile(profile)
-	if !ok {
-		return fmt.Errorf("unknown profile %q", profile)
+// ensure installs a level's model the first time it's needed.
+func ensure(level int) error {
+	if level == 0 {
+		return nil
 	}
+	m, ok := surprisal.ModelForLevel(level)
+	if !ok {
+		return fmt.Errorf("compression level %d isn't 0-9", level)
+	}
+	if m.Present() {
+		return nil
+	}
+	fmt.Fprintf(os.Stderr, "level %d uses %s, not installed yet: downloading %s from Hugging Face and converting it (once, %.1f GB in %s)\n",
+		level, m.Name, m.Source.Repo, float64(m.Bundle.Bytes)/1e9, surprisal.ModelsDir())
 	t0 := time.Now()
 	var last time.Time
-	err := m.Setup(from, func(format string, a ...any) {
+	err := m.Install(func(format string, a ...any) {
 		if time.Since(last) > 500*time.Millisecond {
 			last = time.Now()
 			fmt.Fprintf(os.Stderr, "\r"+format+"            ", a...)
@@ -117,7 +144,7 @@ func cmdSetup(profile, from string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%s (%s): installed, sha256 checked, %.0f s\n", m.Path(), m.Profile, time.Since(t0).Seconds())
+	fmt.Fprintf(os.Stderr, "%s: installed, sha256 checked, %.0f s\n", m.Path(), time.Since(t0).Seconds())
 	return nil
 }
 
@@ -205,21 +232,22 @@ func gather(args []string) ([]surprisal.File, error) {
 	return files, nil
 }
 
-func cmdCompress(args []string, out, profile string, threads int, gpu string) error {
-	m, ok := surprisal.ModelByProfile(profile)
-	if !ok {
-		return fmt.Errorf("unknown profile %q", profile)
-	}
+func cmdCompress(args []string, out string, level, threads int, gpu string) error {
 	files, err := gather(args)
 	if err != nil {
 		return err
 	}
-	c, err := surprisal.Open(m, threads, gpu)
+	if err := ensure(level); err != nil {
+		return err
+	}
+	c, err := surprisal.Open(level, threads, gpu)
 	if err != nil {
 		return err
 	}
 	defer c.Close()
-	fmt.Fprintf(os.Stderr, "%s on %s\n", m.Name, c.Device())
+	if level > 0 {
+		fmt.Fprintf(os.Stderr, "level %d: %s on %s\n", level, c.Info.Name, c.Device())
+	}
 	if out == "" {
 		out = "archive.13k"
 	}
@@ -235,7 +263,7 @@ func cmdCompress(args []string, out, profile string, threads int, gpu string) er
 	for _, f := range files {
 		in += len(f.Data)
 	}
-	fmt.Fprintf(os.Stderr, "%s: %d files, %d -> %d bytes (%s, %.1f s)\n", out, len(files), in, len(a), m.Profile,
+	fmt.Fprintf(os.Stderr, "%s: %d files, %d -> %d bytes (level %d, %.1f s)\n", out, len(files), in, len(a), level,
 		time.Since(p.start).Seconds())
 	return nil
 }
@@ -249,16 +277,17 @@ func cmdDecompress(archive, out string, force bool, threads int, gpu string) err
 	if err != nil {
 		return err
 	}
-	m, ok := surprisal.ModelByID(h.Model)
-	if !ok {
-		return fmt.Errorf("the archive needs model %d, which this surprisal doesn't know (update surprisal)", h.Model)
+	if err := ensure(h.Level); err != nil {
+		return err
 	}
-	c, err := surprisal.Open(m, threads, gpu)
+	c, err := surprisal.Open(h.Level, threads, gpu)
 	if err != nil {
 		return err
 	}
 	defer c.Close()
-	fmt.Fprintf(os.Stderr, "%s on %s\n", m.Name, c.Device())
+	if h.Level > 0 {
+		fmt.Fprintf(os.Stderr, "level %d: %s on %s\n", h.Level, c.Info.Name, c.Device())
+	}
 	if out == "" {
 		out = strings.TrimSuffix(filepath.Base(archive), ".13k")
 	}

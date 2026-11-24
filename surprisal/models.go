@@ -16,10 +16,9 @@ var manifestJSON []byte
 
 // ModelInfo is a manifest entry: the model an archive names by id, where it comes from, and its converted file.
 type ModelInfo struct {
-	ID      int    `json:"id"`
-	Name    string `json:"name"`
-	Profile string `json:"profile"`
-	Source  struct {
+	ID     int    `json:"id"`
+	Name   string `json:"name"`
+	Source struct {
 		Repo     string   `json:"repo"`
 		Revision string   `json:"revision"`
 		Files    []string `json:"files"`
@@ -31,18 +30,23 @@ type ModelInfo struct {
 	} `json:"bundle"`
 }
 
-// Models lists the manifest (ids are permanent).
-func Models() []ModelInfo {
-	var d struct {
-		Models []ModelInfo `json:"models"`
-	}
+type manifest struct {
+	Models []ModelInfo `json:"models"`
+	Levels []int       `json:"levels"`
+}
+
+func loadManifest() manifest {
+	var d manifest
 	if err := json.Unmarshal(manifestJSON, &d); err != nil {
 		panic(err)
 	}
-	return d.Models
+	return d
 }
 
-// ModelByID finds an archive's model.
+// Models lists the manifest (ids are permanent).
+func Models() []ModelInfo { return loadManifest().Models }
+
+// ModelByID finds a model by its manifest id.
 func ModelByID(id int) (ModelInfo, bool) {
 	for _, m := range Models() {
 		if m.ID == id {
@@ -52,14 +56,24 @@ func ModelByID(id int) (ModelInfo, bool) {
 	return ModelInfo{}, false
 }
 
-// ModelByProfile finds a profile's model (good, better, best).
-func ModelByProfile(p string) (ModelInfo, bool) {
-	for _, m := range Models() {
-		if m.Profile == p {
-			return m, true
+// ModelForLevel finds the model a compression level (1-9) uses under header version 1. Level 0 stores and has none.
+func ModelForLevel(level int) (ModelInfo, bool) {
+	l := loadManifest().Levels
+	if level < 1 || level >= len(l) {
+		return ModelInfo{}, false
+	}
+	return ModelByID(l[level])
+}
+
+// LevelsFor lists the levels that use a model.
+func LevelsFor(id int) []int {
+	var out []int
+	for lv, m := range loadManifest().Levels {
+		if lv > 0 && m == id {
+			out = append(out, lv)
 		}
 	}
-	return ModelInfo{}, false
+	return out
 }
 
 // ModelsDir is where converted models live: $SURPRISAL_MODELS, else nollama's models directory (shared with nollama).
@@ -82,9 +96,9 @@ func (m ModelInfo) Present() bool {
 	return err == nil
 }
 
-// Setup makes the converted model: it downloads the official weights at the pinned revision (unless src names a
-// local copy), converts them with nollama, and installs the file only if its SHA-256 is the manifest's.
-func (m ModelInfo) Setup(src string, logf func(format string, a ...any)) error {
+// Install makes the converted model: it downloads the official weights at the pinned revision from Hugging Face,
+// converts them with nollama, and installs the file only if its SHA-256 is the manifest's.
+func (m ModelInfo) Install(logf func(format string, a ...any)) error {
 	if logf == nil {
 		logf = func(string, ...any) {}
 	}
@@ -92,15 +106,14 @@ func (m ModelInfo) Setup(src string, logf func(format string, a ...any)) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	if src == "" {
-		src = filepath.Join(dir, "surprisal-src", filepath.Base(m.Source.Repo)+"@"+m.Source.Revision[:12])
-		defer os.RemoveAll(src)
-		for _, f := range m.Source.Files {
-			s := models.Source{Name: m.Source.Repo + "/" + f, Path: filepath.Join(src, f),
-				URL: "https://huggingface.co/" + m.Source.Repo + "/resolve/" + m.Source.Revision + "/" + f}
-			if err := models.Fetch(s, nil, func(done, total int64) { logf("download %s: %d/%d MB", f, done>>20, total>>20) }); err != nil {
-				return err
-			}
+	src := filepath.Join(dir, "surprisal-src", filepath.Base(m.Source.Repo)+"@"+m.Source.Revision[:12])
+	defer os.Remove(filepath.Dir(src)) // the surprisal-src folder, if nothing else is in it
+	defer os.RemoveAll(src)
+	for _, f := range m.Source.Files {
+		s := models.Source{Name: m.Source.Repo + "/" + f, Path: filepath.Join(src, f),
+			URL: "https://huggingface.co/" + m.Source.Repo + "/resolve/" + m.Source.Revision + "/" + f}
+		if err := models.Fetch(s, nil, func(done, total int64) { logf("download %s: %d/%d MB", f, done>>20, total>>20) }); err != nil {
+			return err
 		}
 	}
 	tmp := filepath.Join(dir, fmt.Sprintf("surprisal-convert-%d.gguf", os.Getpid()))

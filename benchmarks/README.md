@@ -5,6 +5,8 @@ Surprisal started as a question about [js13k](https://js13kgames.com), the game 
 language model? This folder holds that study, the corpus it ran on, and a runner that measures surprisal itself on
 the same games.
 
+- [SIZES.md](SIZES.md): the running table of compressed sizes (zip, 7z, Brotli, Surprisal), one row per file
+  measured.
 - [STUDY.md](STUDY.md): the study. 1,163 real entries from 2020–2025, every legal zip method, xz, Brotli, zstd,
   trained dictionaries, a hand-built context-mixing model and several language models, compared game by game.
 - [TIMING.md](TIMING.md): how fast arithmetic coding with a language model can go, from the first MLX prototype on a
@@ -25,20 +27,20 @@ benchmarks/corpus/fetch.sh
 (cd benchmarks/corpus && shasum -a 256 -c --quiet zips.sha256)
 ```
 
-Then, from the repository root, with the level's model installed (any `surprisal -c1` run installs the 0.5B):
+Then, from the repository root, with the level's model installed (any `surprisal -1` run installs the 0.5B):
 
 ```bash
 go run ./benchmarks/run -level 1 -year 2025
 ```
 
-It compresses each game's files exactly as `surprisal -c` would and writes a markdown table to
+It compresses each game's files exactly as `surprisal` would and writes a markdown table to
 `benchmarks/out/surprisal-c<level>-<year>.md` (and stdout): totals for surprisal next to the submitted zips, the best
 legal zip per game, Brotli with and without a trained dictionary and the trained context-mixing model (those come from
 `results.json`, which `bench.mjs` wrote), the median ratio to the best zip, and a row per game. Flags:
 
 | flag | default | |
 |---|---|---|
-| `-level` | `1` | compression level, as `surprisal -c<level>`: 1-3 (0.5B), 4-6 (1.5B), 7-9 (7B) |
+| `-level` | `1` | compression level, as `surprisal -<level>`: 1-3 (0.5B), 4-6 (1.5B), 7-9 (7B) |
 | `-year` | `2025` | the corpus year; 2025 is the held-out test year of the study |
 | `-limit` | all | only the first N games |
 | `-games` | all | comma-separated slugs |

@@ -1,25 +1,38 @@
 # Surprisal
 
-Surprisal is a lossless compressor that uses a language model as its predictor. At each step the model gives a
-probability for every possible next token, and an arithmetic coder spends about −log₂ p bits on the token that actually
-comes next, so text the model finds unsurprising costs almost nothing. The decompressor runs the same model and
-replays the same predictions.
+Surprisal is a lossless compressor that uses a language model as its compression engine.
 
-The catch with neural compressors is that floating-point inference differs between GPUs, drivers and kernels, so an
-archive usually only decodes on the hardware that made it. Surprisal's forward pass is **integer-only** ([SPEC.md](SPEC.md),
-spec v1): an archive made on a Mac's GPU decodes bit-for-bit on an NVIDIA GPU or a plain CPU, and the other way round.
+Every binary release of Surprisal runs on the CPU. If a GPU is available, Surprisal uses it (see
+[supported platforms](#supported-platforms)). Archives are the same either way: one made on a Mac's GPU unpacks on an
+NVIDIA GPU or a plain CPU, and the other way round.
+
+## Usage
 
 ```bash
-surprisal -c1 -o game.13k src/
-surprisal -d game.13k
+surprisal src/
+surprisal src.13k
 ```
 
-Every archive records its header version and compression level, which together name the exact model that decodes
-it. Surprisal either knows that model (and downloads it the first time) or says it can't unpack the archive and that
-a newer surprisal is needed. It never guesses.
+```bash
+surprisal [-0 ... -9] [--compare] [-o out.13k] <files or directories>...
+```
 
-> **Alpha.** The command line and the Go API may still change. Archives from 0.0.1-alpha.1 predate the version in
-> the header and won't unpack with later releases.
+```bash
+surprisal [-o dir] [-f] archive.13k
+```
+
+```bash
+surprisal --list
+```
+
+Surprisal works out what to do from its arguments: one argument ending in `.13k` is unpacked, and anything else is
+compressed into one archive (`<name>.13k` for a single input, `archive.13k` for several). `-1` to `-9` pick the level
+(see [levels](#levels)); the default is `-1`, and `-0` stores without a model. Unpacking reads the level from the
+archive, and won't overwrite existing files without `-f`. Compressing prints the archive's size, its ratio and change
+from the original, and how long it took; `--compare` adds the same for zip, gzip, xz, 7z and Brotli on the same input
+(with the `brew install` for any that's missing). `--list` shows which models are installed. `--gpu off` forces the
+CPU (same archives, slower). Surprisal downloads the model a level needs the first time you use it and keeps it in
+`~/.surprisal`; set `SURPRISAL_HOME` to keep models somewhere else.
 
 ## Install
 
@@ -35,171 +48,100 @@ Or download a binary from the [releases](https://github.com/benallfree/surprisal
 go install github.com/benallfree/surprisal/cmd/surprisal@latest
 ```
 
-There is no separate model install. The first time a level needs its model, surprisal downloads the official
-Qwen2.5-Coder weights from Hugging Face and converts them to the integer format. The conversion is deterministic:
-every machine produces the same file, checked against the SHA-256 in [spec/models-v1.json](spec/models-v1.json).
-
-## Usage
-
-```bash
-surprisal -c[0-9] [-o archive.13k] <files or directories>...
-```
-
-```bash
-surprisal -d [-o dir] [-f] archive.13k
-```
-
-```bash
-surprisal --list
-```
-
-`-c0` stores without a model, `-c1` to `-c9` code with a model (see below), and `-c` alone is `-c9`. `-d` reads the
-level from the archive. `--list` shows which models are installed. `--gpu off` forces the CPU (same archives, slower).
-Models live in `$SURPRISAL_MODELS`, or in nollama's models directory by default.
-
 ## Levels
 
-| level | model | download, once | BJJ file (55,854 bytes) |
-|---|---|---:|---:|
-| `-c0` | none (stored) | – | 55,856 bytes |
-| `-c1` to `-c3` | Qwen2.5-Coder-0.5B | 0.5 GB | 7,186 bytes |
-| `-c4` to `-c6` | Qwen2.5-Coder-1.5B | 1.5 GB | 5,856 bytes |
-| `-c7` to `-c9` (default) | Qwen2.5-Coder-7B | 7.3 GB | 4,970 bytes |
-
-Levels within a group code the same way today; only the level byte in the header differs. The table for header version 1 is fixed: a later release that
-uses a new model at some level writes a new header version and still unpacks version 1.
-
-For comparison, on the same file: `brotli -q11` 19,723 bytes, `xz -9e` 20,448, `zstd -19` 21,278, `gzip -9` 22,390.
-The BJJ file is a fully minified 3D game (HTML and JavaScript, [spec/vectors/bjj.html](spec/vectors/bjj.html)).
+| level | model | size |
+|---|---|---:|
+| `-0` | none (stored) | – |
+| `-1` (default) to `-3` | `qwen2.5-coder-0.5b-int-v1` | 0.5 GB |
+| `-4` to `-6` | `qwen2.5-coder-1.5b-int-v1` | 1.6 GB |
+| `-7` to `-9` | `qwen2.5-coder-7b-int-v1` | 7.9 GB |
 
 ## Supported platforms
 
-| OS | architecture | GPU backend | status |
-|---|---|---|---|
-| macOS | Apple Silicon | Metal | tested (M1 Max) |
-| Linux | x86-64 | CUDA, compute capability 7.5+ (int8 tensor cores on 8.0+) | tested (H100, H200) |
-| Linux | ARM64 | CUDA | builds; untested |
-| Windows | x86-64 | CUDA | builds; untested |
-| macOS | Intel | none (CPU) | builds; untested |
-| any of the above | | CPU (`--gpu off`, also the fallback when no GPU works) | tested (M1 Max: about 50 tokens/s decoding with the 0.5B model) |
+Every release binary (macOS, Linux and Windows; x86-64 and ARM64) runs on the CPU. Additionally, if a GPU is
+available, here is the compatibility matrix:
 
-Every backend produces the same archives. The binaries are pure Go (no cgo): CUDA and Metal are loaded at run time, so
-one binary runs with or without a GPU driver installed.
+| OS | architecture | GPU backend |
+|---|---|---|
+| macOS | Apple Silicon | Metal |
+| Linux | x86-64 | CUDA, compute capability 7.5+ (int8 tensor cores on 8.0+) |
+| Linux | ARM64 | CUDA |
+| Windows | x86-64 | CUDA |
 
-## Speed
+## Benchmarks
 
-Wall time on the BJJ file (55,854 bytes, 24,126 tokens) with each model of spec v1. Every archive and every decode is
-byte-identical across both implementations and both machines. Python is the reference implementation, [`intref.py`](reference/python/intref.py) (numpy) on the Mac and
-[`intgpu.py`](reference/python/intgpu.py) (Triton) on the H100; surprisal is this repository's CLI with [nollama](https://github.com/benallfree/nollama) (Metal on the Mac, CUDA on the H100, both from the same kernel source). Compression runs every
-position at once (batched); decompression has to go one token at a time.
+Compressed size in bytes, smaller is better. 🟩 marks the smallest in each row.
 
-<!-- speed-table: keep updated when either implementation gets faster -->
-<table>
-<tr><th>model</th><th>M1 Max (Mac)</th><th>H100</th></tr>
-<tr><td><b>0.5B</b></td><td>
+| file | unpacked | zip | 7z | Brotli | Surprisal |
+|---|---:|---:|---:|---:|---:|
+| js13k 2025: kittens-crossing | 17,069 | 12,626 | 12,962 | 12,322 | 🟩 **11,815** |
+| js13k 2025: miami-mice | 19,876 | 12,450 | 12,593 | 11,808 | 🟩 **10,491** |
+| js13k 2025: non-mewtonian-cat | 12,159 | 9,076 | 9,368 | 8,817 | 🟩 **8,539** |
+| js13k 2025: tower-of-terror | 42,384 | 9,857 | 8,329 | 7,730 | 🟩 **1,356** |
+| js13k 2025: wake-the-cat | 36,088 | 9,289 | 10,231 | 9,640 | 🟩 **2,734** |
+| BJJ | 55,854 | 19,395 | 20,516 | 19,723 | 🟩 **4,970** |
 
-<table>
-<tr><th></th><th>compress</th><th>decompress</th></tr>
-<tr><td>Python</td><td align="right">~58 min*</td><td align="right">~58 min*</td></tr>
-<tr><td>surprisal</td><td align="right">53 s</td><td align="right">3 min 52 s</td></tr>
-</table>
+zip is the smallest legal zip per game (every 7-Zip method and Zopfli), 7z is `7z -mx=9`, Brotli is `-q11 -w24`, and
+Surprisal is `-9`. The js13k games are from the 2025 contest, which the models never trained on. BJJ is a fully
+minified 3D game ([spec/vectors/bjj.html](spec/vectors/bjj.html)).
 
-</td><td>
+The full table, which grows as more files are measured, is [benchmarks/SIZES.md](benchmarks/SIZES.md). How to run
+it yourself, and the original js13k study, are in [benchmarks/](benchmarks/).
 
-<table>
-<tr><th></th><th>compress</th><th>decompress</th></tr>
-<tr><td>Python</td><td align="right">2.0 s</td><td align="right">30.0 s</td></tr>
-<tr><td>surprisal</td><td align="right">1.9 s</td><td align="right">29.4 s</td></tr>
-</table>
+## History
 
-</td></tr>
-<tr><td><b>1.5B</b></td><td>
+The last [js13k](https://js13kgames.com) contest got overrun with AI-made games. Rather than try to ban AI games,
+why not embrace AI, use it to its fullest, and give it a challenge worthy of it: how great a game can you truly fit in
+13 kilobytes?
 
-<table>
-<tr><th></th><th>compress</th><th>decompress</th></tr>
-<tr><td>Python</td><td align="right">~2.9 h*</td><td align="right">~2.9 h*</td></tr>
-<tr><td>surprisal</td><td align="right">2 min 10 s</td><td align="right">7 min 31 s</td></tr>
-</table>
+Surprisal is my proposal to the js13k project: pick a model, freeze it, and make it the official js13k compression
+format, refreshed with a new model every year. On the js13k games in the [benchmarks](#benchmarks), Surprisal's
+archives are a third smaller than the best zip in total, so the same 13,312 bytes hold that much more game.
 
-</td><td>
+## Models
 
-<table>
-<tr><th></th><th>compress</th><th>decompress</th></tr>
-<tr><td>Python</td><td align="right">3.8 s</td><td align="right">54.4 s</td></tr>
-<tr><td>surprisal</td><td align="right">3.4 s</td><td align="right">54.5 s</td></tr>
-</table>
+Surprisal doesn't run the Qwen2.5-Coder models as they're published. It runs its own models, built from the
+Qwen2.5-Coder base models and converted to integer arithmetic: `qwen2.5-coder-0.5b-int-v1`, `-1.5b-int-v1` and
+`-7b-int-v1`.
 
-</td></tr>
-<tr><td><b>7B</b></td><td>
+**Why integers.** An ordinary (floating-point) model computes with numbers that round after every operation, and the
+result depends on the order the operations run in. GPUs, drivers and kernels each sum in their own order, so the same
+model on two machines gives slightly different probabilities. A chat assistant never notices. A compressor does: the
+decompressor has to reproduce every probability the compressor used, bit for bit, or the archive comes out as
+garbage. A floating-point compressor's archives usually only unpack on the hardware that made them.
 
-<table>
-<tr><th></th><th>compress</th><th>decompress</th></tr>
-<tr><td>Python</td><td align="right">~3.5 days*</td><td align="right">~3.5 days*</td></tr>
-<tr><td>surprisal</td><td align="right">7 min 30 s</td><td align="right">22 min 37 s</td></tr>
-</table>
+An integer model does all its arithmetic in whole numbers, which are exact, so the order doesn't matter and every
+machine gets the same answer. To get there, each base model is converted once: weights to 8-bit integers with 16-bit
+scales, activations to block floating point (integers with a shared exponent), and nonlinear functions such as softmax
+and SiLU to lookup tables. The integer models compress within a few bytes of the floating-point originals (7,185 vs
+7,183 bytes on the BJJ file with the 0.5B). [SPEC.md](SPEC.md) defines the conversion exactly.
 
-</td><td>
+**Where they come from.** The models are hosted on [Hugging Face](https://huggingface.co/benallfree). Surprisal
+downloads the model a level needs the first time you use that level, into `~/.surprisal` (or `$SURPRISAL_HOME` if
+you set it), and checks it against the SHA-256 in [spec/models-v1.json](spec/models-v1.json). You don't
+have to trust the hosted files: the conversion is deterministic, and if no hosted copy can be reached, Surprisal
+downloads the Qwen base model at its pinned revision and builds the same file locally.
 
-<table>
-<tr><th></th><th>compress</th><th>decompress</th></tr>
-<tr><td>Python</td><td align="right">9.3 s</td><td align="right">2 min 3 s</td></tr>
-<tr><td>surprisal</td><td align="right">8.3 s</td><td align="right">2 min 0 s</td></tr>
-</table>
-
-</td></tr>
-</table>
-
-\* Estimated from the numpy reference's speed over the first 300, 120 and 30 tokens (6.9, 2.3 and 0.08 tok/s); later
-tokens are slower, and the 7B doesn't fit in memory and swaps. surprisal's H100 runs: [`scripts/gostage.sh`](scripts/gostage.sh) cross-compiles the
-tests and the CLI, [`scripts/gorun.py`](scripts/gorun.py) runs them on Modal; H100 decompression times vary by about 10% between runs.
-
-
-## Compression
-
-How much smaller than the alternatives, in total over the 197 games of js13k 2025 (games the models never trained on):
-
-| method | vs best legal zip per game |
-|---|---:|
-| best legal zip per game (every 7-Zip method, Zopfli) | 0.0% |
-| Brotli -q11 | −5.3% |
-| Brotli with a dictionary trained on 2020–2024 entries | −13.6% |
-| context mixing, trained on 2020–2024 entries | −18.6% |
-| Qwen2.5-Coder-0.5B, off the shelf (text), context mixing (binary assets) | −37.0% |
-
-The language-model row was measured with the float model in the original study; the integer model matches its sizes to
-within a few bytes (7,185 vs 7,183 on the BJJ file). [benchmarks/](benchmarks/) has the full study, the corpus and a
-runner that measures surprisal itself on the same games:
-
-```bash
-go run ./benchmarks/run -level 1 -year 2025
-```
+Model ids are permanent. A later release that adds a model gives it a new id and keeps unpacking archives made with the
+old ones.
 
 ## How it works
 
-- **Model:** Qwen2.5-Coder base models, converted once to int8 weights with int16 scales, block-floating-point
-  activations and lookup tables for the nonlinearities ([SPEC.md](SPEC.md)). Every operation is exact integer arithmetic,
-  so the order a GPU sums in can't change the result.
+At each step the model gives a probability for every possible next token, and an arithmetic coder spends about
+−log₂ p bits on the token that actually comes next, so text the model finds unsurprising costs almost nothing. The
+decompressor runs the same model and replays the same predictions.
+
 - **Coder:** a 32-bit arithmetic coder over the model's integer frequency table for each next token.
 - **Compression** knows every token in advance, so it runs all positions in large batches (tensor-core GEMMs and
   attention on NVIDIA GPUs). **Decompression** has to go one token at a time; on CUDA the next step is queued before the
   host reads the token, so the GPU never waits for the coder.
 - **Engine:** [nollama](https://github.com/benallfree/nollama), a pure-Go inference engine, runs the integer model on
-  Metal, CUDA or the CPU.
-
-## Repository
-
-| path | |
-|---|---|
-| [cmd/surprisal](cmd/surprisal) | the command-line tool |
-| [surprisal/](surprisal/) | the Go package: model manifest, arithmetic coder, archive and file-list formats |
-| [SPEC.md](SPEC.md), [spec/](spec/) | spec v1: the integer model, conversion, archive format, frozen tables and test vectors |
-| [reference/python/](reference/python/) | the reference implementations of spec v1 (numpy, PyTorch and Triton/CUDA) |
-| [benchmarks/](benchmarks/) | the js13k study, its corpus, timings and the surprisal benchmark runner |
-| [scripts/](scripts/) | cross-compiling the tests and running them on cloud GPUs (Modal) |
-
-Tests: `go test ./...` runs the archive, coder and spec-vector tests; the vector tests need the models installed
-(`SURPRISAL_MODELS`) and skip the ones that aren't.
+  Metal, CUDA or the CPU. The binaries are pure Go (no cgo): CUDA and Metal load at run time, so one binary runs with or
+  without a GPU driver installed.
+- **Archive:** each archive records the format version and the compression level, which together name the exact model
+  that unpacks it.
 
 ## License
 
-MIT ([LICENSE.md](LICENSE.md)). The Qwen2.5-Coder models are Apache 2.0, from Alibaba's Qwen team.
+MIT ([LICENSE.md](LICENSE.md)). The Qwen2.5-Coder base models are Apache 2.0, from Alibaba's Qwen team.

@@ -3,7 +3,7 @@
     GORUN_STAGE=<dir> modal run scripts/gorun.py --gpu H100 --cmd "cd engine && ./engine.test -test.run TestIntTables -test.v"
 
 <dir> (staged by scripts/gostage.sh, which wipes it: write run.sh after) holds engine/engine.test, engine/testdata/..., surprisal/surprisal.test, spec/vectors/... (see scripts/gostage.sh).
-The converted models are in the Volume compress13k-int at /int (NOLLAMA_INTMODEL_DIR and SURPRISAL_MODELS point there).
+The converted models are in the Volume compress13k-int at /int (NOLLAMA_INTMODEL_DIR and SURPRISAL_HOME point there).
 """
 import os
 import subprocess
@@ -21,7 +21,7 @@ if STAGE:
 
 
 def body(cmd):
-    env = dict(os.environ, NOLLAMA_INTMODEL_DIR="/int", SURPRISAL_MODELS="/int")
+    env = dict(os.environ, NOLLAMA_INTMODEL_DIR="/int", SURPRISAL_HOME="/int")
     print(f"{time.strftime('%T')} $ {cmd}", flush=True)
     subprocess.run(["bash", "-c", "nvidia-smi -L; chmod +x /work/*/*.test; " + cmd], cwd="/work", env=env, check=False,
                    stdout=sys.stdout, stderr=subprocess.STDOUT)

@@ -1,4 +1,4 @@
-// Command run benchmarks surprisal on the js13k corpus: it compresses each game's files (as `surprisal -c` would)
+// Command run benchmarks surprisal on the js13k corpus: it compresses each game's files (as `surprisal` would)
 // and writes a markdown table next to the other methods' sizes from results.json (bench.mjs).
 //
 //	go run ./benchmarks/run [-year 2025] [-level 1] [-limit 10] [-verify] [-out benchmarks/out/surprisal-c1.md]
@@ -49,7 +49,7 @@ type row struct {
 func main() {
 	dir := flag.String("dir", "benchmarks", "the benchmarks directory (corpus/zips, results.json)")
 	year := flag.Int("year", 2025, "the corpus year to run (2025 is the held-out test year)")
-	level := flag.Int("level", 1, "compression level, as surprisal -c<level>: 1-3 (0.5B), 4-6 (1.5B) or 7-9 (7B)")
+	level := flag.Int("level", 1, "compression level, as surprisal -<level>: 1-3 (0.5B), 4-6 (1.5B) or 7-9 (7B)")
 	limit := flag.Int("limit", 0, "run only the first N games (0: all)")
 	only := flag.String("games", "", "comma-separated slugs to run (default: every game of the year)")
 	verify := flag.Bool("verify", false, "also decompress each archive and compare (doubles the time)")
@@ -69,7 +69,7 @@ func run(dir string, year int, level int, limit int, only string, verify bool, o
 		return fmt.Errorf("level %d isn't 1-9", level)
 	}
 	if !m.Present() {
-		return fmt.Errorf("model %s isn't installed: compress anything with surprisal -c%d once to install it", m.Name, level)
+		return fmt.Errorf("model %s isn't installed: compress anything with surprisal -%d once to install it", m.Name, level)
 	}
 	zipDir := filepath.Join(dir, "corpus", "zips", fmt.Sprint(year))
 	names, err := filepath.Glob(filepath.Join(zipDir, "*.zip"))
@@ -264,7 +264,7 @@ func pct(a, b int) string {
 // report: totals for every method over the games that have a baseline, then (perGame) one row per game.
 func report(m surprisal.ModelInfo, level int, device string, year int, rows []row, skipped int, took time.Duration, perGame bool) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "### surprisal -c%d (%s) on the js13k %d games\n\n", level, m.Name, year)
+	fmt.Fprintf(&b, "### surprisal -%d (%s) on the js13k %d games\n\n", level, m.Name, year)
 	in, arch := 0, 0
 	secs := 0.0
 	for _, r := range rows {
@@ -285,7 +285,7 @@ func report(m surprisal.ModelInfo, level int, device string, year int, rows []ro
 		{"brotli -q11", func(r row) int { return r.base.Brotli }},
 		{"brotli + trained dict", func(r row) int { return r.base.BrotliDict }},
 		{"context mixing, trained on 2020-24", func(r row) int { return r.base.M5 }},
-		{fmt.Sprintf("**surprisal -c%d**", level), func(r row) int { return r.archive }},
+		{fmt.Sprintf("**surprisal -%d**", level), func(r row) int { return r.archive }},
 	}
 	var based []row
 	for _, r := range rows {
@@ -320,7 +320,7 @@ func report(m surprisal.ModelInfo, level int, device string, year int, rows []ro
 		fmt.Fprintf(&b, "\nMedian archive / best legal zip: %.3f. Smaller than every other method on %d of %d games.\n",
 			ratios[len(ratios)/2], wins, len(based))
 	} else {
-		fmt.Fprintf(&b, "| method | total KiB |\n|---|---:|\n| unpacked | %s |\n| **surprisal -c%d** | %s |\n", kib(in), level, kib(arch))
+		fmt.Fprintf(&b, "| method | total KiB |\n|---|---:|\n| unpacked | %s |\n| **surprisal -%d** | %s |\n", kib(in), level, kib(arch))
 	}
 	if perGame {
 		fmt.Fprintf(&b, "\n| game | files | unpacked | best legal zip | brotli + dict | surprisal | vs best zip | s |\n")

@@ -62,9 +62,9 @@ class Surprisal < Formula
 
   def caveats
     <<~EOS
-      The first use of a level downloads its model's official weights and converts them (once):
-        surprisal -c1 ...    # levels 1-3: Qwen2.5-Coder-0.5B, 0.5 GB
-        surprisal -c9 ...    # levels 7-9: Qwen2.5-Coder-7B, 7.3 GB (the default)
+      The first use of a level downloads its model into ~/.surprisal (once):
+        surprisal -1 ...     # levels 1-3 (-1 is the default): 0.5 GB
+        surprisal -9 ...     # levels 7-9: 7.9 GB
     EOS
   end
 

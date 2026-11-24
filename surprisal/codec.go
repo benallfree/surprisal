@@ -32,8 +32,8 @@ func Open(level, threads int, gpu string) (*Codec, error) {
 		return nil, fmt.Errorf("surprisal: compression level %d isn't 0-9", level)
 	}
 	if !info.Present() {
-		return nil, fmt.Errorf("surprisal: level %d needs %s (%s), which is not installed in %s", level, info.Name,
-			info.Source.Repo, ModelsDir())
+		return nil, fmt.Errorf("surprisal: level %d needs %s, which is not installed in %s", level, info.Name,
+			ModelsDir())
 	}
 	m, err := engine.LoadIntModelOptions(info.Path(), engine.IntOptions{Threads: threads, GPU: gpu})
 	if err != nil {

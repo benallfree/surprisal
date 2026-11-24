@@ -35,7 +35,7 @@ benchmarks/ollama-spike/real/
 benchmarks/ollama-spike/nollama-src/
 benchmarks/ollama-spike/codec/nlcodec
 
-# converted integer models (SURPRISAL_MODELS) if kept in the tree
+# converted integer models (SURPRISAL_HOME) if kept in the tree
 models/
 go.work
 go.work.sum

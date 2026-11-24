@@ -28,6 +28,7 @@ type ModelInfo struct {
 		SHA256 string `json:"sha256"`
 		Bytes  int64  `json:"bytes"`
 	} `json:"bundle"`
+	URLs []string `json:"urls"` // where the converted file is hosted, tried in order before converting locally
 }
 
 type manifest struct {
@@ -76,15 +77,15 @@ func LevelsFor(id int) []int {
 	return out
 }
 
-// ModelsDir is where converted models live: $SURPRISAL_MODELS, else nollama's models directory (shared with nollama).
+// ModelsDir is where converted models live: $SURPRISAL_HOME, else ~/.surprisal.
 func ModelsDir() string {
-	if d := os.Getenv("SURPRISAL_MODELS"); d != "" {
+	if d := os.Getenv("SURPRISAL_HOME"); d != "" {
 		return models.ExpandHome(d)
 	}
-	if d := os.Getenv("NOLLAMA_MODELS"); d != "" {
-		return models.ExpandHome(d)
+	if h, err := os.UserHomeDir(); err == nil {
+		return filepath.Join(h, ".surprisal")
 	}
-	return models.DefaultDir()
+	return ".surprisal"
 }
 
 // Path is where the model's converted file lives.
@@ -96,23 +97,45 @@ func (m ModelInfo) Present() bool {
 	return err == nil
 }
 
-// Install makes the converted model: it downloads the official weights at the pinned revision from Hugging Face,
-// converts them with nollama, and installs the file only if its SHA-256 is the manifest's.
-func (m ModelInfo) Install(logf func(format string, a ...any)) error {
+// Install installs the converted model. It downloads the converted file from the manifest's URLs when it has any;
+// when none works, it downloads the official weights at the pinned revision from Hugging Face and converts them with
+// nollama. Either way the file is installed only if its SHA-256 is the manifest's. logf gets messages (a URL that
+// failed, the fallback, the conversion's steps); progress, when set, gets each download's file name, bytes done and
+// total (0 when unknown).
+func (m ModelInfo) Install(logf func(format string, a ...any), progress func(file string, done, total int64)) error {
 	if logf == nil {
 		logf = func(string, ...any) {}
+	}
+	if progress == nil {
+		progress = func(string, int64, int64) {}
 	}
 	dir := ModelsDir()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
+	for _, u := range m.URLs {
+		s := models.Source{Name: m.Name, Path: m.Path(), URL: u, SHA256: m.Bundle.SHA256, Size: m.Bundle.Bytes}
+		err := models.Fetch(s, nil, func(done, total int64) { progress(m.Bundle.File, done, total) })
+		if err == nil {
+			return nil
+		}
+		logf("%v", err)
+	}
+	if len(m.URLs) > 0 {
+		logf("no hosted copy of %s worked; building it from %s instead", m.Name, m.Source.Repo)
+	}
+	return m.convert(dir, logf, progress)
+}
+
+// convert builds the converted model from the official weights.
+func (m ModelInfo) convert(dir string, logf func(format string, a ...any), progress func(string, int64, int64)) error {
 	src := filepath.Join(dir, "surprisal-src", filepath.Base(m.Source.Repo)+"@"+m.Source.Revision[:12])
 	defer os.Remove(filepath.Dir(src)) // the surprisal-src folder, if nothing else is in it
 	defer os.RemoveAll(src)
 	for _, f := range m.Source.Files {
 		s := models.Source{Name: m.Source.Repo + "/" + f, Path: filepath.Join(src, f),
 			URL: "https://huggingface.co/" + m.Source.Repo + "/resolve/" + m.Source.Revision + "/" + f}
-		if err := models.Fetch(s, nil, func(done, total int64) { logf("download %s: %d/%d MB", f, done>>20, total>>20) }); err != nil {
+		if err := models.Fetch(s, nil, func(done, total int64) { progress(f, done, total) }); err != nil {
 			return err
 		}
 	}

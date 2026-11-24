@@ -9,7 +9,7 @@ import (
 )
 
 // The vectors in ../spec/vectors come from the reference implementation (reference/python/intref.py) and the GPU path. The
-// models must be installed (SURPRISAL_MODELS); tests skip the ones that are not.
+// models must be installed (SURPRISAL_HOME, default ~/.surprisal); tests skip the ones that are not.
 
 func vec(t *testing.T, name string) []byte {
 	b, err := os.ReadFile(filepath.Join("..", "spec", "vectors", name))

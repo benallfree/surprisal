@@ -57,7 +57,7 @@ func main() {
 	out := flag.String("o", "", "output: the archive when compressing, the directory when unpacking (default: the input's name)")
 	force := flag.Bool("f", false, "overwrite existing files")
 	list := flag.Bool("list", false, "list the levels and whether each one's model is installed")
-	compare := flag.Bool("compare", false, "when compressing, also compress with zip, gzip, xz, 7z and Brotli and show their sizes")
+	compare := flag.Bool("compare", false, "when compressing, also compress with each zip method, 7z (LZMA2 and PPMd), gzip, xz and Brotli and show their sizes")
 	threads := flag.Int("threads", 0, "CPU threads (default: all CPUs)")
 	gpu := flag.String("gpu", "auto", "auto (a GPU when one works) or off (the CPU); both give the same archives")
 	showVersion := flag.Bool("version", false, "print the version")

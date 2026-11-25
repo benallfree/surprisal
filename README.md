@@ -29,8 +29,9 @@ Surprisal works out what to do from its arguments: one argument ending in `.13k`
 compressed into one archive (`<name>.13k` for a single input, `archive.13k` for several). `-1` to `-9` pick the level
 (see [levels](#levels)); the default is `-1`, and `-0` stores without a model. Unpacking reads the level from the
 archive, and won't overwrite existing files without `-f`. Compressing prints the archive's size, its ratio and change
-from the original, and how long it took; `--compare` adds the same for zip, gzip, xz, 7z and Brotli on the same input
-(with the `brew install` for any that's missing). `--list` shows which models are installed. `--gpu off` forces the
+from the original, and how long it took; `--compare` adds the same for each zip method (Deflate, Deflate via Zopfli,
+Deflate64, BZip2, LZMA, PPMd), 7z (LZMA2 and PPMd), gzip, xz and Brotli on the same input (with the `brew install` for
+any that's missing). `--list` shows which models are installed. `--gpu off` forces the
 CPU (same archives, slower). Surprisal downloads the model a level needs the first time you use it and keeps it in
 `~/.surprisal`; set `SURPRISAL_HOME` to keep models somewhere else.
 
@@ -77,20 +78,30 @@ adds a step to the one before it. Compressed size in bytes, smaller is better. �
 | | unpacked | HTML minified | + terser | + Roadroller |
 |---|---:|---:|---:|---:|
 | no compression | 67,056 | 66,984 | 55,854 | 27,673 |
-| zip | 21,780 | 21,745 | 19,395 | 18,867 |
-| 7z | 23,642 | 23,613 | 20,516 | 19,305 |
+| zip Deflate ✓ | 24,987 | 24,950 | 21,841 | 19,126 |
+| zip Deflate (Zopfli) ✓ | 24,872 | 24,835 | 21,768 | 18,867 |
+| zip Deflate64 | 24,706 | 24,675 | 21,685 | 19,126 |
+| zip BZip2 | 24,566 | 24,522 | 21,588 | 19,673 |
+| zip LZMA | 23,673 | 23,645 | 20,548 | 19,337 |
+| zip PPMd | 21,780 | 21,745 | 19,395 | 19,813 |
+| 7z LZMA2 | 23,642 | 23,613 | 20,516 | 19,305 |
+| 7z PPMd | 22,678 | 22,643 | 20,270 | 19,775 |
 | Brotli | 22,758 | 22,732 | 19,723 | 18,427 |
 | Surprisal | 🟩 **5,025** | 🟩 **5,027** | 🟩 **4,929** | 🟩 **17,300** |
 
-- The classic compressors need the whole pipeline: the best real js13k build (minify, Roadroller, zip) is 18,867
-  bytes.
+✓ js13k accepts only Deflate zips, so those two rows are the ones an entry can actually ship.
+
+- The best real js13k build, minified, Roadroller-packed and zipped with Zopfli, is 18,867 bytes.
 - Surprisal compresses the readable source to 5,025 bytes, a quarter of that, with no packing at all. Minifying saves
   it only 2%.
 - Roadroller is a compressor itself, so its output looks like noise to the model. Under Surprisal you'd ship the
   source unpacked.
+- PPMd, a byte-level context model, is the strongest classic method on text, which is why it beats Brotli on the
+  unpacked builds. Brotli beats every Deflate zip.
 
-zip is the smallest legal zip (every 7-Zip method and Zopfli), 7z is `7z -mx=9`, Brotli is `-q11 -w24`, and Surprisal
-is `-9`. The builds and the script that measures them are in [benchmarks/bjj-case/](benchmarks/bjj-case/).
+Every row is what `surprisal --compare` prints: the zip and 7z rows are 7-Zip at `-mx=9`, Zopfli is `advzip -4`, and
+Brotli is `-q11 -w24`. Surprisal is `-9`. The builds and the script that measures them are in
+[benchmarks/bjj-case/](benchmarks/bjj-case/).
 
 [benchmarks/SIZES.md](benchmarks/SIZES.md) also has the 2025 js13k games as their authors submitted them (already
 minified, some with Roadroller). How to run it yourself, and the original js13k study, are in
@@ -104,7 +115,8 @@ why not embrace AI, use it to its fullest, and give it a challenge worthy of it:
 
 Surprisal is my proposal to the js13k project: pick a model, freeze it, and make it the official js13k compression
 format, refreshed with a new model every year. On 2025 js13k games as their authors submitted them
-([benchmarks/SIZES.md](benchmarks/SIZES.md)), Surprisal's archives are a third smaller than the best zip in total. On
+([benchmarks/SIZES.md](benchmarks/SIZES.md)), Surprisal's archives are more than a third smaller in total than the best
+Deflate zip, the kind js13k accepts. On
 readable source it does far better: the [benchmarks](#benchmarks) game drops from 18,867 bytes (fully packed and
 zipped) to 5,025 (unpacked, Surprisal).
 

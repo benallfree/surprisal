@@ -20,19 +20,34 @@ type classic struct {
 	brew    string
 	archive bool
 	args    func(cmd string) []string // stream: the arguments; archive: the arguments before the file list
-	out     string                    // archive: the archive's file name in dir
+	out     string                    // archive: the archive's file name in dir, unique per row
 }
 
+// sevenZip runs 7-Zip quietly at -mx=9 with extra switches, writing out.
+func sevenZip(label, out string, extra ...string) classic {
+	return classic{label: label, cmds: []string{"7zz", "7z"}, brew: "sevenzip", archive: true, out: out,
+		args: func(string) []string {
+			return append(append([]string{"a", "-mx=9", "-bd", "-bso0", "-bsp0"}, extra...), out)
+		}}
+}
+
+// Each zip compression method gets its own row: js13k accepts only Deflate zips, so the Deflate rows are the ones an
+// entry can ship. Zopfli writes ordinary Deflate, just smaller.
 var classics = []classic{
-	{label: "zip -9", cmds: []string{"zip"}, brew: "zip", archive: true, out: "out.zip",
-		args: func(string) []string { return []string{"-9", "-q", "-X", "out.zip"} }},
+	sevenZip("zip Deflate", "deflate.zip", "-tzip", "-mm=Deflate"),
+	{label: "zip Deflate (Zopfli)", cmds: []string{"advzip"}, brew: "advancecomp", archive: true, out: "zopfli.zip",
+		args: func(string) []string { return []string{"-a", "-4", "-q", "zopfli.zip"} }},
+	sevenZip("zip Deflate64", "deflate64.zip", "-tzip", "-mm=Deflate64"),
+	sevenZip("zip BZip2", "bzip2.zip", "-tzip", "-mm=BZip2"),
+	sevenZip("zip LZMA", "lzma.zip", "-tzip", "-mm=LZMA"),
+	sevenZip("zip PPMd", "ppmd.zip", "-tzip", "-mm=PPMd"),
+	sevenZip("7z LZMA2", "lzma2.7z", "-t7z"),
+	sevenZip("7z PPMd", "ppmd.7z", "-t7z", "-m0=PPMd"),
 	{label: "gzip -9", cmds: []string{"gzip"}, brew: "gzip",
 		args: func(string) []string { return []string{"-9", "-c"} }},
 	{label: "xz -9e", cmds: []string{"xz"}, brew: "xz",
 		args: func(string) []string { return []string{"-9e", "-c"} }},
-	{label: "7z -mx=9", cmds: []string{"7zz", "7z"}, brew: "sevenzip", archive: true, out: "out.7z",
-		args: func(string) []string { return []string{"a", "-t7z", "-mx=9", "-bd", "-bso0", "-bsp0", "out.7z"} }},
-	{label: "brotli -q11", cmds: []string{"brotli"}, brew: "brotli",
+	{label: "Brotli", cmds: []string{"brotli"}, brew: "brotli",
 		args: func(string) []string { return []string{"-q", "11", "-w", "24", "-c"} }},
 }
 
@@ -84,11 +99,13 @@ func compareRows(files []surprisal.File) ([]row, error) {
 				rows = append(rows, row{label: c.label, note: fmt.Sprintf("(failed: %v %s)", err, bytes.TrimSpace(out))})
 				continue
 			}
-			fi, err := os.Stat(filepath.Join(dir, c.out))
+			p := filepath.Join(dir, c.out)
+			fi, err := os.Stat(p)
 			if err != nil {
 				return nil, err
 			}
 			size = int(fi.Size())
+			os.Remove(p) // keep the next archive tool from picking it up
 		} else {
 			x := exec.Command(cmd, c.args(cmd)...)
 			x.Stdin = bytes.NewReader(joined)
@@ -120,18 +137,22 @@ func printSizes(orig int, rows []row) {
 			best = i
 		}
 	}
-	fmt.Printf("%-14s %9s\n", "original", commas(orig))
+	w := len("original")
+	for _, r := range rows {
+		w = max(w, len(r.label))
+	}
+	fmt.Printf("%-*s %9s\n", w, "original", commas(orig))
 	for i, r := range rows {
 		if r.note != "" {
-			fmt.Printf("%-14s %s\n", r.label, r.note)
+			fmt.Printf("%-*s %s\n", w, r.label, r.note)
 			continue
 		}
 		mark := ""
 		if i == best && len(rows) > 1 {
 			mark = "  smallest"
 		}
-		fmt.Printf("%-14s %9s  %6s  %-9s %8s%s\n", r.label, commas(r.size), ratio(r.size, orig), "("+pctChange(r.size, orig)+")",
-			wall(r.took), mark)
+		fmt.Printf("%-*s %9s  %6s  %-9s %8s%s\n", w, r.label, commas(r.size), ratio(r.size, orig),
+			"("+pctChange(r.size, orig)+")", wall(r.took), mark)
 	}
 }
 

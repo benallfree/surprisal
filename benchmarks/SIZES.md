@@ -24,7 +24,7 @@ method. Each column adds a step to the one before it. The builds are in [bjj-cas
 | 7z LZMA2 | 23,642 | 23,613 | 20,516 | 19,305 |
 | 7z PPMd | 22,678 | 22,643 | 20,270 | 19,775 |
 | Brotli | 22,758 | 22,732 | 19,723 | 18,427 |
-| Surprisal `-9` | 🟩 **5,025** | 🟩 **5,027** | 🟩 **4,929** | 🟩 **17,300** |
+| Surprisal `-9` | 🟩 **5,025** | 🟩 **5,026** | 🟩 **4,930** | 🟩 **17,301** |
 
 | column | build |
 |---|---|
@@ -35,10 +35,11 @@ method. Each column adds a step to the one before it. The builds are in [bjj-cas
 
 The best build js13k would accept is Roadroller plus a Zopfli zip: 18,867 bytes. Surprisal does a quarter of that on
 the readable source. Roadroller is itself a context-mixing compressor, so its output looks like noise to a language
-model: Surprisal goes from 4,929 bytes to 17,300.
+model: Surprisal goes from 4,930 bytes to 17,301.
 
-Measured 2026-11-24 with [bjj-case/matrix.sh](bjj-case/matrix.sh), every Surprisal archive unpacked and compared
-byte for byte. Each build is stored as `index.html`, so every archive carries the same file name.
+Measured with [bjj-case/matrix.sh](bjj-case/matrix.sh) on 2026-11-24, every Surprisal archive unpacked and compared
+byte for byte; the Surprisal row re-measured 2026-11-25 with 0.0.1-alpha.2's `surprisal -9 --compare` (sizes only).
+Each build is stored as `index.html`, so every archive carries the same file name.
 
 ## js13k games as submitted
 

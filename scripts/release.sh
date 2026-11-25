@@ -8,8 +8,9 @@ set -e
 V=${1:?usage: scripts/release.sh <version, e.g. 0.0.1-alpha.1>}
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
+export GOWORK=off # build against go.mod's pinned nollama, as go install does
 rm -rf dist && mkdir -p dist
-for t in darwin/arm64 darwin/amd64 linux/amd64 linux/arm64 windows/amd64; do
+for t in darwin/arm64 darwin/amd64 linux/amd64 linux/arm64 windows/amd64 windows/arm64; do
 	os=${t%/*} arch=${t#*/} ext=
 	[ "$os" = windows ] && ext=.exe
 	d=surprisal_${V}_${os}_${arch}

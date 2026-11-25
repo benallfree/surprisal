@@ -1,9 +1,20 @@
 # Surprisal 0.0.1-alpha.2
 
-Compression levels are now a real speed-to-size spectrum, and GPU compression is faster at every level.
+Compression levels are now a real speed-to-size spectrum, models download on their own, and GPU compression is faster at
+every level.
 
 ## What's new
 
+- **Models download on first use.** The converted models are hosted on Hugging Face
+  ([benallfree](https://huggingface.co/benallfree)); the first use of a level downloads its model into `~/.surprisal`
+  (or `$SURPRISAL_HOME`), with a progress bar, and checks it against the SHA-256 in `spec/models-v1.json`. If no hosted
+  copy can be reached, Surprisal builds it locally from the Qwen base model as before. `--setup`, `--profile` and
+  `SURPRISAL_MODELS` are gone.
+- **A simpler command line.** No `-c`/`-d`: one argument ending in `.13k` unpacks, anything else compresses (one input
+  becomes `<name>.13k`). `-0` to `-9` pick the level instead of a profile (`-0` stores without a model), and unpacking
+  reads the level from the archive. Compressing prints the archive's size, ratio, change from the original and time;
+  `--compare` adds each zip method (Deflate, Zopfli, Deflate64, BZip2, LZMA, PPMd), 7z (LZMA2, PPMd), gzip, xz and
+  Brotli on the same input.
 - **Levels -1 to -9 trade speed for size.** Each level is a model and an attention window: how far back the model
   looks within a segment (plus the segment's first 16 tokens). -3, -6 and -9 use full attention, -1/-2 and -4/-5 a
   2,048- or 4,096-token window, -7/-8 a 4,096- or 8,192-token one. -1 stays the default and is now the fast one; -9
@@ -24,7 +35,22 @@ Compression levels are now a real speed-to-size spectrum, and GPU compression is
 ## Format
 
 Archives from 0.0.1-alpha.1 don't unpack with this release (the header changed, and the arithmetic with it). The
-converted models are unchanged: the same files and SHA-256s.
+header now records its version and the level, and an unknown version is refused. The converted models are unchanged:
+the same files and SHA-256s.
+
+## Downloads
+
+| Platform | Archive |
+|---|---|
+| macOS, Apple Silicon (Metal) | `surprisal_0.0.1-alpha.2_darwin_arm64.tar.gz` |
+| macOS, Intel (CPU) | `surprisal_0.0.1-alpha.2_darwin_amd64.tar.gz` |
+| Linux x86-64 (CUDA or CPU) | `surprisal_0.0.1-alpha.2_linux_amd64.tar.gz` |
+| Linux ARM64 (CUDA or CPU; untested) | `surprisal_0.0.1-alpha.2_linux_arm64.tar.gz` |
+| Windows x86-64 (CUDA or CPU; untested) | `surprisal_0.0.1-alpha.2_windows_amd64.zip` |
+| Windows ARM64 (CPU; untested, new) | `surprisal_0.0.1-alpha.2_windows_arm64.zip` |
+
+`checksums.txt` has the SHA-256 of each. Homebrew: `brew install benallfree/tap/surprisal`. Go:
+`go install github.com/benallfree/surprisal/cmd/surprisal@v0.0.1-alpha.2`.
 
 ## Known limits
 
@@ -33,7 +59,7 @@ converted models are unchanged: the same files and SHA-256s.
   through long files: -1 decodes all of BJJ at 118 tok/s on average.
 - Checked on an NVIDIA A16 (compute 8.6, tensor cores): every vector decodes and re-encodes byte for byte, including
   BJJ at levels 1, 3, 4, 6 and 9, the same archives the Mac's GPU and CPU write.
-- Windows and Linux ARM64 builds compile but haven't been run on real hardware yet.
+- Windows (x86-64 and ARM64) and Linux ARM64 builds compile but haven't been run on real hardware yet.
 
 # Surprisal 0.0.1-alpha.1
 

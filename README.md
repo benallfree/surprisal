@@ -102,7 +102,7 @@ adds a step to the one before it. Compressed size in bytes, smaller is better. �
 | 7z LZMA2 | 23,642 | 23,613 | 20,516 | 19,305 |
 | 7z PPMd | 22,678 | 22,643 | 20,270 | 19,775 |
 | Brotli | 22,758 | 22,732 | 19,723 | 18,427 |
-| Surprisal | 🟩 **5,025** | 🟩 **5,027** | 🟩 **4,929** | 🟩 **17,300** |
+| Surprisal | 🟩 **5,025** | 🟩 **5,026** | 🟩 **4,930** | 🟩 **17,301** |
 
 ✓ js13k accepts only Deflate zips, so those two rows are the ones an entry can actually ship.
 

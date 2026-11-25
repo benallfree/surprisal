@@ -1,4 +1,4 @@
-# Surprisal integer codec, spec version 1
+# Surprisal integer codec
 
 An LLM-driven arithmetic coder whose archives depend only on the model, not on the hardware. Every step of the
 model's forward pass is integer arithmetic whose result does not depend on the order of operations, so any correct
@@ -13,8 +13,9 @@ The spec has two parts.
 - **The codec** (§1.1, §5–§7): the model manifest, the coder, the archive and file-set formats, and tokenization.
   Implemented by **surprisal** (`surprisal/`, `cmd/surprisal/`), which calls nollama for the model.
 
-Reference implementation of both: `reference/python/intref.py` (numpy, slow, authoritative). Also `reference/python/intgpu.py` (PyTorch, plain
-and Triton/CUDA). Conformance: `spec/vectors/`.
+Reference implementation of both: `reference/python/intref.py` (numpy, slow, authoritative). Also
+`reference/python/intgpu.py` (PyTorch, plain and Triton/CUDA), not yet updated to this arithmetic. Conformance:
+`spec/vectors/`.
 
 Compressed archives use the extension `.13k`; converted models are GGUF files.
 
@@ -30,12 +31,30 @@ Contents: [1 Models](#1-models) · [2 Arithmetic](#2-arithmetic) · [3 Forward p
 (§6); the manifest of that version maps the level to the exact model, so an archive always names the model that
 decodes it.
 
-| level | id | source (official, pinned revision) | converted model | BJJ archive |
-|---|---:|---|---|---:|
-| 0 | – | none: the bytes are stored uncoded | – | 55,856 |
-| 1–3 | 1 | `Qwen/Qwen2.5-Coder-0.5B` @ `8123ea2e` | `qwen2.5-coder-0.5b-int-v1.gguf`, 520 MB | 7,186 |
-| 4–6 | 2 | `Qwen/Qwen2.5-Coder-1.5B` @ `df3ce67c` | `qwen2.5-coder-1.5b-int-v1.gguf`, 1.6 GB | 5,856 |
-| 7–9 | 3 | `Qwen/Qwen2.5-Coder-7B` @ `0396a761` | `qwen2.5-coder-7b-int-v1.gguf`, 7.9 GB | 4,970 |
+Each level names a model and an attention window (§3.2.5): within a model, a smaller window is faster and gives
+bigger archives. Level 9 is the largest model with full attention: the smallest archives, whatever the speed.
+
+| id | source (official, pinned revision) | converted model |
+|---:|---|---|
+| 1 | `Qwen/Qwen2.5-Coder-0.5B` @ `8123ea2e` | `qwen2.5-coder-0.5b-int-v1.gguf`, 520 MB |
+| 2 | `Qwen/Qwen2.5-Coder-1.5B` @ `df3ce67c` | `qwen2.5-coder-1.5b-int-v1.gguf`, 1.6 GB |
+| 3 | `Qwen/Qwen2.5-Coder-7B` @ `0396a761` | `qwen2.5-coder-7b-int-v1.gguf`, 7.9 GB |
+
+| level | model id | window | BJJ archive |
+|---|---:|---:|---:|
+| 0 | – | none: the bytes are stored uncoded | 55,856 |
+| 1 | 1 | 2,048 | 7,932 |
+| 2 | 1 | 4,096 | 7,614 |
+| 3 | 1 | full | 7,185 |
+| 4 | 2 | 2,048 | 6,736 |
+| 5 | 2 | 4,096 | 6,390 |
+| 6 | 2 | full | 5,855 |
+| 7 | 3 | 4,096 | 5,506 |
+| 8 | 3 | 8,192 | 5,209 |
+| 9 | 3 | full | 4,944 |
+
+The manifest gives each level's model (`levels`), its window (`windows`, 0 = full attention) and the sink (`sink`,
+16): with a window w, each position attends to the last w positions of its segment and the first 16.
 
 A version's level table never changes. A new mapping (another model at some level, say) is a new header version
 with its own manifest, and decoders keep every earlier table. A decoder refuses an archive whose version it doesn't
@@ -118,9 +137,11 @@ bounds below keep every intermediate within int64.
   for n ≤ 0. Moving a value from exponent f to exponent t is `rshift(x, t − f)`.
 - `tdiv(a, b)` = division truncating toward zero (b > 0).
 - `bitlen(v)` = the number of bits of v ≥ 0 (bitlen(0) = 0).
-- `blockf(x, e)`: sh = max(0, bitlen(max|x|) − 15); m = clip(rshift(x, sh), −32767, 32767); exponent e + sh. A
-  vector of 16-bit mantissas with one shared exponent.
-- `matvec(W, (m, e))`: `acc[j] = Σ_g s[j,g] · Σ_{k∈g} q[j,k]·m[k]` (|acc| < 2^52), at exponent `E + e`.
+- `bfp_b(x, e)`: sh = max(0, bitlen(max|x|) − (b − 1)); m = clip(rshift(x, sh), −(2^(b−1) − 1), 2^(b−1) − 1);
+  exponent e + sh. A vector of b-bit mantissas with one shared exponent.
+- `blockf(x, e)` = `bfp_12(x, e)`: every vector that enters a matrix product has 12-bit mantissas.
+- `matvec(W, (m, e))`: `acc[j] = Σ_g s[j,g] · Σ_{k∈g} q[j,k]·m[k]` (|acc| < 2^48), at exponent `E + e`. With
+  |q| ≤ 127 and |m| ≤ 2047, every partial sum of a 64-group is an integer below 2^24 (§9).
 
 ## 3. Forward pass
 
@@ -139,11 +160,14 @@ fed is the start token `bos_token_id` (151643).
       - Each head is hd values.
    3. **rope** on each q and k head with c = ROPE_C[p], s = ROPE_S[p]. With x1, x2 = the first and second halves of
       the head: (rshift(x1·c − x2·s, 14), rshift(x2·c + x1·s, 14)).
-   4. **Cache:** K[p] = clip(rshift(k, 12), ±(2^22−1)), V[p] = clip(rshift(v, 12), ±(2^22−1)), both at e = −12.
-   5. **Attention**, for each q head i, using kv head ⌊i / grp⌋ and keys t = 0..p:
+   4. **Cache**, for each kv head's vector k (and v): c = clip(rshift(k, 12), ±(2^22−1)) at e = −12; then
+      (m, sk) = bfp_16(c, 0) and K[p] = m · 2^sk (still e = −12). Values the same with bfp_12: V[p] = m · 2^sv.
+      A key is a 16-bit mantissa and a shift, a value a 12-bit one.
+   5. **Attention**, for each q head i, using kv head ⌊i / grp⌋ and the keys t that position p sees: all t ≤ p, or,
+      at a level with a window w > 0, those with t < 16 (the sink) or t > p − w.
       - SC = round(2^16 / √hd), which is 8192 for hd 64 and 5793 for hd 128.
-      - (mq, sh) = blockf(q_i · SC); score_t = rshift(mq · K_t, 42 − sh) (e = −10).
-      - M = max_t score_t; w_t = EXPA[min(M − score_t, 16383)]; Z = Σ w_t; O = Σ w_t · V_t.
+      - (mq, sh) = bfp_12(q_i · SC); score_t = rshift(mq · K_t, 42 − sh) (e = −10).
+      - M = max_t score_t; w_t = EXPA[min(M − score_t, 16383)]; Z = Σ w_t; O = Σ w_t · V_t (over the keys seen).
       - o_i = sign(O) · ⌊|O| · 2^12 / Z⌋ (e = −24), computed as hi = |O| // Z, rem = |O| − hi·Z,
         o = (hi << 12) + (rem << 12) // Z.
    6. **Output projection:** h += rshift(matvec(Wo, blockf(o, −24)), −24 − (E+e)), with o = the heads concatenated.
@@ -208,7 +232,7 @@ segments.
 
 ## 7. Text
 
-v1 codes UTF-8 text with the Qwen2.5 tokenizer, which is the same for every model.
+Surprisal codes UTF-8 text with the Qwen2.5 tokenizer, which is the same for every model.
 
 - **Decoder:** maps token ids back to bytes (byte-level BPE decode, no clean-up of tokenization spaces).
 - **Encoder:** may use any token sequence that decodes to exactly the input bytes. The reference tries the standard
@@ -221,19 +245,18 @@ Only the decoder's model must match; the encoder's choice of tokenization is fre
 `spec/vectors/vectors.json` indexes the test vectors:
 
 - **Inputs:** `tiny.html` (400 bytes), `slice.html` (6,000 bytes), `bjj.html` (55,854 bytes).
-- **Archives:**
-  - `m1-tiny.13k`: made by the numpy spec on a Mac, decoded on an H100;
-  - `m1-slice.13k`: byte-identical between the numpy spec and the GPU;
-  - `m1-bjj.13k`, `m2-bjj.13k`, `m3-bjj.13k`: the full file for each model, made on an H100 by the batched and
-    step-by-step paths, which agree, and round-tripped;
-  - `m1-bjj3.13k`: `bjj.html` three times (72,378 tokens, three segments), testing the long-input rule;
-  - `m3-tiny.13k`: the 7B on `tiny.html`, made on an H100 and reproduced byte for byte by nollama in Go on a Mac.
+- **Archives**, each named for its level (vectors.json gives the input, token count and SHA-256):
+  - `l1-tiny.13k`, `l1-slice.13k`: level 1 (0.5B, window 2,048; the slice's 2,341 tokens reach past the window);
+    decoded and re-encoded byte for byte on Metal and on the CPU;
+  - `l1-bjj.13k`, `l3-bjj.13k`: the full file at level 1 (window) and level 3 (full attention);
+  - `l1-bjj3.13k`: `bjj.html` three times (72,378 tokens, three segments), testing the long-input rule;
+  - `l4-bjj.13k`, `l6-bjj.13k`: the 1.5B, window 2,048 and full attention;
+  - `l7-tiny.13k`: the 7B on `tiny.html`, Metal and the CPU; `l9-bjj.13k`: the 7B on the full file, full attention.
 
-  Each is made at the first level of its model (1, 4 or 7; vectors.json gives the level). An implementation must
-  decode each to its input, and should reproduce each byte for byte when encoding.
-- **Table hashes:**
-  - `m1-slice-tables.txt`: 300 positions;
-  - `m2-tiny-tables.txt`: 30 positions.
+  An implementation must decode each to its input, and should reproduce each byte for byte when encoding.
+- **Table hashes**, from the numpy reference (`intref.py idhashes`), full attention:
+  - `m1-slice-tables.txt`: the 0.5B, 300 positions;
+  - `m2-tiny-tables.txt`: the 1.5B, 30 positions.
 
   Line "k h": h = the first 16 hex digits of the SHA-256 of the int64 little-endian cumulative table produced after
   feeding position k. These pinpoint the first position where an implementation diverges.
@@ -247,8 +270,16 @@ What may differ between implementations, and the traps found so far:
   - float64 products and sums of integers whose partial sums stay below 2^53;
   - float64 `floor(x·2^−n + 1/2)` for a score x < 2^44;
   - a float64 square-root estimate followed by an exact integer correction.
+- **A matrix product's 64-group sums are exact in float32.** With int8 weights and 12-bit activations, every product
+  and every partial sum of a group is an integer below 2^24, so float32 (and half-precision operands, which hold
+  every value exactly) give the exact group sum in any order; scale it by s[j,g] in integers. GPUs can run the
+  matrix products on their float units (or fp16-in, fp32-accumulate tensor cores).
+- **A score needs one 32-bit multiply per term.** A 12-bit query mantissa times a 16-bit key mantissa is below 2^26,
+  so 32 such products fit an int32; keep each key as its mantissa and shift and use
+  rshift((mq · m) · 2^sk, n) = rshift(mq · m, n − sk).
 - **int8 tensor cores** can compute the products exactly. Split each operand into signed or offset bytes, sum in
   int32 (below 2^31), and recombine with shifts.
+- **A window skips work.** Keys a position doesn't see contribute nothing: skip whole blocks of them.
 - **The batched (prefill) form computes exactly the same tables as the step-by-step form.** Compression can process
   all positions of a segment as matrix-matrix work.
 - **Read before reset.** A kernel that reads a value and then zeroes it in the same program must make sure every

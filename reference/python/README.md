@@ -1,13 +1,14 @@
 # Reference implementations (Python)
 
-These define spec v1 ([../../SPEC.md](../../SPEC.md)) and produced its test vectors ([../../spec/vectors/](../../spec/vectors/)).
+These define the spec ([../../SPEC.md](../../SPEC.md)). `intref.py` produced the table vectors in
+[../../spec/vectors/](../../spec/vectors/) (`idhashes`), which the Go implementation reproduces on the CPU and the GPU.
 The Go implementation in this repository must give the same tables and the same archives, byte for byte; the vector
 tests check that.
 
 | file | what it is |
 |---|---|
 | [intref.py](intref.py) | **the spec in code**: the integer forward pass in numpy. Slow (a few tokens per second for the 0.5B model) and authoritative. Also builds the frozen tables (`spec/tables-v1.gguf`) and converts models. |
-| [intgpu.py](intgpu.py) | the same forward pass in PyTorch (any device), and with `--fast` a Triton/CUDA path with CUDA graphs and int8 tensor-core attention: the fast reference the Go CUDA kernels were ported from. Runs on Modal. |
+| [intgpu.py](intgpu.py) | the same forward pass in PyTorch (any device), and with `--fast` a Triton/CUDA path with CUDA graphs and int8 tensor-core attention: the fast reference the Go CUDA kernels were ported from. Runs on Modal. **Not updated for 0.0.1-alpha.2**: it still computes the alpha.1 arithmetic (16-bit activations, full-width keys and values, no windows). |
 | [bundle.py](bundle.py) | reads and writes model bundles (GGUF v3, SPEC.md §1.3). |
 | [archive.py](archive.py) | the `.13k` archive header and segments (SPEC.md §3). |
 | [buildv1.py](buildv1.py) | builds the v1 bundles on Modal from the official Qwen weights and reports their SHA-256. |

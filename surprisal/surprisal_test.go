@@ -2,8 +2,11 @@ package surprisal
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -19,14 +22,14 @@ func vec(t *testing.T, name string) []byte {
 	return b
 }
 
-// openTest opens the codec for the first level that uses model id (the vectors are made at that level).
-func openTest(t *testing.T, id int) *Codec {
-	m, _ := ModelByID(id)
+// openTest opens the codec for a level (the vectors name theirs).
+func openTest(t *testing.T, level int) *Codec {
+	m, _ := ModelForLevel(level)
 	gpu := os.Getenv("SURPRISAL_TEST_GPU") // "off" tests the CPU path
 	if !m.Present() {
-		t.Skipf("model %d not installed in %s", id, ModelsDir())
+		t.Skipf("level %d's model not installed in %s", level, ModelsDir())
 	}
-	c, err := Open(LevelsFor(id)[0], 0, gpu)
+	c, err := Open(level, 0, gpu)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,9 +37,18 @@ func openTest(t *testing.T, id int) *Codec {
 	return c
 }
 
-func checkVector(t *testing.T, id int, input, archive string) {
-	c := openTest(t, id)
-	want, a := vec(t, input), vec(t, archive)
+// vecInput reads a vector input; "bjj3" is bjj.html three times (three segments).
+func vecInput(t *testing.T, name string) []byte {
+	if name == "bjj3" {
+		b := vec(t, "bjj.html")
+		return bytes.Repeat(b, 3)
+	}
+	return vec(t, name)
+}
+
+func checkVector(t *testing.T, level int, input, archive string) {
+	c := openTest(t, level)
+	want, a := vecInput(t, input), vec(t, archive)
 	t0 := time.Now()
 	h, got, err := c.Decompress(a, nil)
 	if err != nil {
@@ -51,9 +63,61 @@ func checkVector(t *testing.T, id int, input, archive string) {
 	}
 }
 
-func TestVectorTiny(t *testing.T)   { checkVector(t, 1, "tiny.html", "m1-tiny.13k") }
-func TestVectorSlice(t *testing.T)  { checkVector(t, 1, "slice.html", "m1-slice.13k") }
-func TestVector7BTiny(t *testing.T) { checkVector(t, 3, "tiny.html", "m3-tiny.13k") }
+func TestVectorTiny(t *testing.T)   { checkVector(t, 1, "tiny.html", "l1-tiny.13k") }
+func TestVectorSlice(t *testing.T)  { checkVector(t, 1, "slice.html", "l1-slice.13k") }
+func TestVector7BTiny(t *testing.T) { checkVector(t, 7, "tiny.html", "l7-tiny.13k") }
+
+// TestVectorBJJL1 decodes the whole BJJ vector at level 1 (minutes; SURPRISAL_TEST_LONG=1).
+func TestVectorBJJL1(t *testing.T) {
+	if os.Getenv("SURPRISAL_TEST_LONG") == "" {
+		t.Skip("set SURPRISAL_TEST_LONG=1")
+	}
+	checkVector(t, 1, "bjj.html", "l1-bjj.13k")
+}
+
+// vectorSet is spec/vectors' archives: file, level, input.
+var vectorSet = []struct {
+	file  string
+	level int
+	input string
+}{
+	{"l1-tiny.13k", 1, "tiny.html"},
+	{"l1-slice.13k", 1, "slice.html"},
+	{"l1-bjj.13k", 1, "bjj.html"},
+	{"l3-bjj.13k", 3, "bjj.html"},
+	{"l1-bjj3.13k", 1, "bjj3"},
+	{"l4-bjj.13k", 4, "bjj.html"},
+	{"l6-bjj.13k", 6, "bjj.html"},
+	{"l7-tiny.13k", 7, "tiny.html"},
+	{"l9-bjj.13k", 9, "bjj.html"},
+}
+
+// TestMakeVectors (SURPRISAL_MAKE_VECTORS=1) writes spec/vectors' archives, those whose level's model is installed,
+// and prints each one's size, token count and SHA-256 for vectors.json. SURPRISAL_MAKE_ONLY=l1-bjj.13k,... limits it.
+func TestMakeVectors(t *testing.T) {
+	if os.Getenv("SURPRISAL_MAKE_VECTORS") == "" {
+		t.Skip("set SURPRISAL_MAKE_VECTORS=1")
+	}
+	only := os.Getenv("SURPRISAL_MAKE_ONLY")
+	for _, v := range vectorSet {
+		if only != "" && !strings.Contains(","+only+",", ","+v.file+",") {
+			continue
+		}
+		c := openTest(t, v.level)
+		t0 := time.Now()
+		a, err := c.Compress(KindStream, vecInput(t, v.input), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join("..", "spec", "vectors", v.file), a, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		h, _, _ := ReadHeader(a)
+		sum := sha256.Sum256(a)
+		fmt.Printf("VECTOR %s level %d input %s: %d bytes, %d tokens, sha256 %x, %s, %v\n", v.file, v.level, v.input,
+			len(a), h.Tokens, sum, c.Device(), time.Since(t0).Round(time.Millisecond))
+	}
+}
 
 func TestFileSet(t *testing.T) {
 	c := openTest(t, 1)
@@ -108,9 +172,13 @@ func TestStore(t *testing.T) {
 
 func TestLevels(t *testing.T) {
 	want := map[int]int{1: 1, 2: 1, 3: 1, 4: 2, 5: 2, 6: 2, 7: 3, 8: 3, 9: 3}
+	win := map[int]int{1: 2048, 2: 4096, 3: 0, 4: 2048, 5: 4096, 6: 0, 7: 4096, 8: 8192, 9: 0}
 	for lv, id := range want {
 		if m, ok := ModelForLevel(lv); !ok || m.ID != id {
 			t.Errorf("level %d: model %d, want %d", lv, m.ID, id)
+		}
+		if w, sk := LevelWindow(lv); w != win[lv] || (w > 0 && sk != 16) {
+			t.Errorf("level %d: window %d sink %d, want %d", lv, w, sk, win[lv])
 		}
 	}
 	for _, lv := range []int{0, 10, -1} {
@@ -145,9 +213,9 @@ func TestManifestMatchesSpec(t *testing.T) {
 }
 
 // checkCompress: compressing gives the vector byte for byte (compression only: decoding the long vectors takes minutes).
-func checkCompress(t *testing.T, id int, input, archive string) {
-	c := openTest(t, id)
-	want, a := vec(t, input), vec(t, archive)
+func checkCompress(t *testing.T, level int, input, archive string) {
+	c := openTest(t, level)
+	want, a := vecInput(t, input), vec(t, archive)
 	t0 := time.Now()
 	p, err := c.Compress(KindStream, want, nil)
 	if err != nil {
@@ -159,9 +227,12 @@ func checkCompress(t *testing.T, id int, input, archive string) {
 	t.Logf("%s on %s: %d bytes -> %d, byte-identical, %v", input, c.Device(), len(want), len(p), time.Since(t0).Round(time.Millisecond))
 }
 
-func TestCompressBJJ05B(t *testing.T) { checkCompress(t, 1, "bjj.html", "m1-bjj.13k") }
-func TestCompressBJJ15B(t *testing.T) { checkCompress(t, 2, "bjj.html", "m2-bjj.13k") }
-func TestCompressBJJ7B(t *testing.T)  { checkCompress(t, 3, "bjj.html", "m3-bjj.13k") }
+func TestCompressBJJL1(t *testing.T)  { checkCompress(t, 1, "bjj.html", "l1-bjj.13k") }
+func TestCompressBJJL3(t *testing.T)  { checkCompress(t, 3, "bjj.html", "l3-bjj.13k") }
+func TestCompressBJJ3L1(t *testing.T) { checkCompress(t, 1, "bjj3", "l1-bjj3.13k") }
+func TestCompressBJJL4(t *testing.T)  { checkCompress(t, 4, "bjj.html", "l4-bjj.13k") }
+func TestCompressBJJL6(t *testing.T)  { checkCompress(t, 6, "bjj.html", "l6-bjj.13k") }
+func TestCompressBJJL9(t *testing.T)  { checkCompress(t, 9, "bjj.html", "l9-bjj.13k") }
 
 // TestTokenizeBJJTime: how long compression's tokenizing (with its round-trip check) takes on bjj.html.
 func TestTokenizeBJJTime(t *testing.T) {

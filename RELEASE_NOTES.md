@@ -1,3 +1,40 @@
+# Surprisal 0.0.1-alpha.2
+
+Compression levels are now a real speed-to-size spectrum, and GPU compression is faster at every level.
+
+## What's new
+
+- **Levels -1 to -9 trade speed for size.** Each level is a model and an attention window: how far back the model
+  looks within a segment (plus the segment's first 16 tokens). -3, -6 and -9 use full attention, -1/-2 and -4/-5 a
+  2,048- or 4,096-token window, -7/-8 a 4,096- or 8,192-token one. -1 stays the default and is now the fast one; -9
+  makes the smallest archives. On BJJ, -1 compresses at 1,176 tok/s (3.7x alpha.1's level 1) for an archive 10%
+  bigger than -3's. A window also forgets repeats further back than its length: BJJ three times over is 23,827 bytes
+  at -1, against 16,945 with alpha.1's full attention. See the README's level table.
+- **Faster GPU compression at every level.** The integer arithmetic changed (SPEC.md): activations entering a matrix
+  product have 12-bit mantissas, attention queries 12 bits, cached keys 16 bits and values 12 bits, each vector with
+  its own exponent. The batched matrix products then run exactly in float, and each attention score term takes one
+  32-bit multiply. On an M1 Max, full-attention compression of BJJ (24,126 tokens) goes from 320 to 542 tok/s with
+  the 0.5B (-3), 165 to 198 with the 1.5B (-6) and 48 to 78 with the 7B (-9). The archives stay the same size or
+  shrink: 7,186 to 7,185 bytes, 5,856 to 5,855, 4,970 to 4,944.
+- **Fixes:** the progress line's speed and time left now follow the recent rate (the average since the start was
+  wrong within each segment); tokenizing a long run with no spaces took quadratic time (a 16 KB run of letters 2.9
+  s, now 7 ms); on Macs, 7B runs commit shorter GPU command buffers so macOS's watchdog doesn't kill them, a launch with too many threads per
+  group is an error instead of silently wrong output, and a zero divisor can't hang the GPU.
+
+## Format
+
+Archives from 0.0.1-alpha.1 don't unpack with this release (the header changed, and the arithmetic with it). The
+converted models are unchanged: the same files and SHA-256s.
+
+## Known limits
+
+- Decompression still runs one token at a time and its per-token cost didn't change (about 107 tok/s at the start
+  of a file with the 0.5B, 61 with the 1.5B, about 20 with the 7B on an M1 Max). Windowed levels keep that speed
+  through long files: -1 decodes all of BJJ at 118 tok/s on average.
+- Checked on an NVIDIA A16 (compute 8.6, tensor cores): every vector decodes and re-encodes byte for byte, including
+  BJJ at levels 1, 3, 4, 6 and 9, the same archives the Mac's GPU and CPU write.
+- Windows and Linux ARM64 builds compile but haven't been run on real hardware yet.
+
 # Surprisal 0.0.1-alpha.1
 
 The first public build of Surprisal, a lossless compressor that uses a language model to predict the next token and

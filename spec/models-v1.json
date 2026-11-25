@@ -15,6 +15,20 @@
     3
   ],
   "levels_note": "Compression levels 0-9 (surprisal -0 ... -9) for archive header version 1: levels[n] is the model id for level n; 0 stores the bytes uncoded. This table never changes; a new mapping is a new manifest version.",
+  "windows": [
+    0,
+    2048,
+    4096,
+    0,
+    2048,
+    4096,
+    0,
+    4096,
+    8192,
+    0
+  ],
+  "sink": 16,
+  "windows_note": "The attention window of each level (SPEC.md \u00a73): windows[n] > 0 means each position attends to the last windows[n] positions of its segment (itself included) and the first sink positions; 0 means every earlier position (full attention). Within a model, a smaller window is faster and gives bigger archives.",
   "models": [
     {
       "id": 1,

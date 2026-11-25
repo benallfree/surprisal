@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/benallfree/nollama/catalog"
 	"github.com/benallfree/nollama/engine"
-	"github.com/benallfree/nollama/models"
 )
 
 //go:embed models-v1.json
@@ -32,8 +32,10 @@ type ModelInfo struct {
 }
 
 type manifest struct {
-	Models []ModelInfo `json:"models"`
-	Levels []int       `json:"levels"`
+	Models  []ModelInfo `json:"models"`
+	Levels  []int       `json:"levels"`
+	Windows []int       `json:"windows"`
+	Sink    int         `json:"sink"`
 }
 
 func loadManifest() manifest {
@@ -66,6 +68,16 @@ func ModelForLevel(level int) (ModelInfo, bool) {
 	return ModelByID(l[level])
 }
 
+// LevelWindow is a level's attention window: each position attends to the last window positions of its segment and
+// the first sink; window 0 means full attention (SPEC.md §3).
+func LevelWindow(level int) (window, sink int) {
+	d := loadManifest()
+	if level < 1 || level >= len(d.Windows) || d.Windows[level] == 0 {
+		return 0, 0
+	}
+	return d.Windows[level], d.Sink
+}
+
 // LevelsFor lists the levels that use a model.
 func LevelsFor(id int) []int {
 	var out []int
@@ -80,7 +92,7 @@ func LevelsFor(id int) []int {
 // ModelsDir is where converted models live: $SURPRISAL_HOME, else ~/.surprisal.
 func ModelsDir() string {
 	if d := os.Getenv("SURPRISAL_HOME"); d != "" {
-		return models.ExpandHome(d)
+		return catalog.ExpandHome(d)
 	}
 	if h, err := os.UserHomeDir(); err == nil {
 		return filepath.Join(h, ".surprisal")
@@ -114,8 +126,8 @@ func (m ModelInfo) Install(logf func(format string, a ...any), progress func(fil
 		return err
 	}
 	for _, u := range m.URLs {
-		s := models.Source{Name: m.Name, Path: m.Path(), URL: u, SHA256: m.Bundle.SHA256, Size: m.Bundle.Bytes}
-		err := models.Fetch(s, nil, func(done, total int64) { progress(m.Bundle.File, done, total) })
+		s := catalog.Source{Name: m.Name, Path: m.Path(), URL: u, SHA256: m.Bundle.SHA256, Size: m.Bundle.Bytes}
+		err := catalog.Fetch(s, nil, func(done, total int64) { progress(m.Bundle.File, done, total) })
 		if err == nil {
 			return nil
 		}
@@ -133,9 +145,9 @@ func (m ModelInfo) convert(dir string, logf func(format string, a ...any), progr
 	defer os.Remove(filepath.Dir(src)) // the surprisal-src folder, if nothing else is in it
 	defer os.RemoveAll(src)
 	for _, f := range m.Source.Files {
-		s := models.Source{Name: m.Source.Repo + "/" + f, Path: filepath.Join(src, f),
+		s := catalog.Source{Name: m.Source.Repo + "/" + f, Path: filepath.Join(src, f),
 			URL: "https://huggingface.co/" + m.Source.Repo + "/resolve/" + m.Source.Revision + "/" + f}
-		if err := models.Fetch(s, nil, func(done, total int64) { progress(f, done, total) }); err != nil {
+		if err := catalog.Fetch(s, nil, func(done, total int64) { progress(f, done, total) }); err != nil {
 			return err
 		}
 	}

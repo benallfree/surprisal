@@ -31,8 +31,9 @@ Usage:
 One argument ending in .13k is unpacked; anything else is compressed into one archive (<name>.13k for a single
 input, archive.13k for several).
 
-Levels: -0 stores without a model; -1 (the default) to -3 use the 0.5B model, -4 to -6 the 1.5B, -7 to -9 the 7B
-(smallest archives, slowest). The archive records its level, so unpacking doesn't need it. A level's model is
+Levels: -0 stores without a model; -1 (the default) to -3 use the 0.5B model, -4 to -6 the 1.5B, -7 to -9 the 7B.
+Within a model, a lower level attends to a shorter window of the text: faster, slightly bigger archives. -9 gives
+the smallest archives, slowest. The archive records its level, so unpacking doesn't need it. A level's model is
 downloaded the first time it's needed.
 Models live in $SURPRISAL_HOME, else ~/.surprisal (%s).
 
@@ -125,17 +126,21 @@ func isArchive(path string) bool {
 }
 
 func cmdList() {
-	fmt.Println("level 0      store, no model")
-	for _, m := range surprisal.Models() {
-		lv := surprisal.LevelsFor(m.ID)
-		if len(lv) == 0 {
+	fmt.Println("level 0  store, no model")
+	for lv := 1; lv <= 9; lv++ {
+		m, ok := surprisal.ModelForLevel(lv)
+		if !ok {
 			continue
 		}
 		state := "not installed (downloaded on first use)"
 		if m.Present() {
 			state = "installed"
 		}
-		fmt.Printf("level %d-%d    %-26s  %4.1f GB  %s\n", lv[0], lv[len(lv)-1], m.Name, float64(m.Bundle.Bytes)/1e9, state)
+		win := "full context"
+		if w, _ := surprisal.LevelWindow(lv); w > 0 {
+			win = fmt.Sprintf("window %d", w)
+		}
+		fmt.Printf("level %d  %-26s  %4.1f GB  %-12s  %s\n", lv, m.Name, float64(m.Bundle.Bytes)/1e9, win, state)
 	}
 }
 
@@ -263,16 +268,38 @@ type progress struct {
 	what  string
 	start time.Time
 	last  time.Time
+	hist  []progressMark // recent updates, for the current rate
 }
+
+type progressMark struct {
+	t    time.Time
+	done int
+}
+
+// progressSpan is how far back the rate looks: speed changes within a run (attention costs more later in a segment,
+// and drops back at each new segment), so the average since the start would be wrong for the time left.
+const progressSpan = 10 * time.Second
 
 func (p *progress) update(done, total int) {
 	now := time.Now()
+	if len(p.hist) == 0 {
+		p.hist = append(p.hist, progressMark{p.start, 0})
+	}
+	p.hist = append(p.hist, progressMark{now, done})
+	for len(p.hist) > 2 && now.Sub(p.hist[1].t) >= progressSpan {
+		p.hist = p.hist[1:]
+	}
 	if done < total && now.Sub(p.last) < time.Second {
 		return
 	}
 	p.last = now
-	rate := float64(done) / max(now.Sub(p.start).Seconds(), 1e-9)
+	h := p.hist[0]
+	rate := float64(done-h.done) / max(now.Sub(h.t).Seconds(), 1e-9)
 	left := time.Duration(float64(total-done)/max(rate, 1e-9)) * time.Second
+	if done == total {
+		rate = float64(done) / max(now.Sub(p.start).Seconds(), 1e-9) // the whole run's average
+		left = 0
+	}
 	fmt.Fprintf(os.Stderr, "\r%s: %d/%d tokens, %.1f tok/s, %s left    ", p.what, done, total, rate, left.Round(time.Second))
 	if done == total {
 		fmt.Fprintln(os.Stderr)

@@ -4,8 +4,9 @@ The full v1 definition (bundle format, archive container, coder, conformance vec
     .venv/bin/python reference/python/intref.py tables spec/tables-v1.gguf                 # once: freeze the lookup tables
     .venv/bin/python reference/python/intref.py build  <hf-model-dir> <model.gguf>       # convert once; the bundle IS the model
     .venv/bin/python reference/python/intref.py score  <hf-model-dir> <model.gguf> <text> [variants]   # ideal sizes: float,f8,int
-    .venv/bin/python reference/python/intref.py encode <hf-model-dir> <model.gguf> <text> <archive>
+    .venv/bin/python reference/python/intref.py encode <hf-model-dir> <model.gguf> <text> <archive> [level]
     .venv/bin/python reference/python/intref.py decode <hf-model-dir> <model.gguf> <archive> <text>
+    .venv/bin/python reference/python/intref.py idhashes <model.gguf> <ids.json> <n> [win sink]   # table hashes
 
 Why: floating-point sums depend on the order of additions, and every GPU, library and kernel orders them differently,
 so float probabilities differ in the last bits from machine to machine and an arithmetic-coded archive only decodes on
@@ -23,20 +24,23 @@ The bundle (built once, from the bf16 weights, with float math; after that it is
 
 Number formats: every integer vector has an exponent e, value = int * 2^e. The residual stream h is e = -24 (int64).
 rshift(x, n) = (x + 2^(n-1)) >> n for n > 0 (arithmetic shift: round half up), x << -n for n <= 0.
-tdiv = division truncating toward zero. blockf(x): sh = max(0, bitlen(max|x|) - 15), m = clip(rshift(x, sh), +-32767),
-exponent += sh (a 16-bit mantissa vector with one shared exponent).
+tdiv = division truncating toward zero. bfp_b(x): sh = max(0, bitlen(max|x|) - (b - 1)), m = clip(rshift(x, sh),
++-(2^(b-1) - 1)), exponent += sh (a b-bit mantissa vector with one shared exponent). blockf = bfp_12: every activation
+that enters a matrix product has 12-bit mantissas, so with int8 weights each 64-term group sum is an integer below 2^24
+(exact in float32, in any order).
 
 Ops (D = hidden, per token):
 - matvec(W, (m, e)): acc[j] = sum_g s[j,g] * sum_{k in g} q[j,k] m[k]   (exact int64; < 2^50), exponent E + e.
 - rmsnorm(h, g): sh = max(0, bitlen(max|h|) - 20); x = rshift(h, sh); ms = sum(x^2) // D + (2^(48-2sh)) // 10^6;
   r = max(1, isqrt(ms)); y = tdiv(x * g * 2^14, r) (e = -30); return blockf(y).
 - layer: (m,e) = rmsnorm(h, g1); qkv = rshift(matvec, to e=-24) + b; rope on q, k:
-  (x1*c - x2*s, x2*c + x1*s) >> 14 (rshift); cache K, V = clip(rshift(k or v, 12), +-(2^22-1)) (e = -12; keeps sums below 2^53 and lets a fast
-  implementation split K, V into three signed bytes).
-  attention per q head: (mq, eq) = blockf(q_head * SC); score_t = rshift(mq . K_t, 42 - sh) (e = -10), where
+  (x1*c - x2*s, x2*c + x1*s) >> 14 (rshift); cache K, V: c = clip(rshift(k or v, 12), +-(2^22-1)) (e = -12), then
+  per kv head vector K = bfp_16(c), V = bfp_12(c), stored as mantissa << shift (still e = -12).
+  attention per q head: (mq, eq) = bfp_12(q_head * SC); score_t = rshift(mq . K_t, 42 - sh) (e = -10), where
   SC = round(2^16 / sqrt(head_dim)) (2^13 for head_dim 64, where this equals blockf(q) with shift 29 - sh) and sh is
   the head's blockf shift. (Scaling before the rounding keeps every score a power-of-two rounding of an exact
   integer below 2^44, which float64 computes exactly.)
+  The keys t of position p are all t <= p, or with an attention window (win > 0) only t < sink and t > p - win.
   M = max score; w_t = EXPA[min(M - score_t, len-1)]; Z = sum w; O = sum w_t V_t;
   o = sign(O) * (|O| * 2^12 // Z)  (computed as hi/remainder so nothing overflows; e = -24).
   h += rshift(matvec(Wo, blockf(o)), to -24).
@@ -185,9 +189,25 @@ def bitlen(v):
     return int(v).bit_length()
 
 
+AQ, QQ, KQ, VQ = 12, 12, 16, 12  # mantissa bits: activations, queries, cached keys, cached values
+
+
+def bfp(x, e, b):
+    sh = max(0, bitlen(np.abs(x).max()) - (b - 1))
+    lim = (1 << (b - 1)) - 1
+    return np.clip(rshift(x, sh), -lim, lim), e + sh
+
+
 def blockf(x, e):
-    sh = max(0, bitlen(np.abs(x).max()) - 15)
-    return np.clip(rshift(x, sh), -32767, 32767), e + sh
+    return bfp(x, e, AQ)
+
+
+def cache_vec(x, b):
+    """A key or value vector (e = -24) as the cache holds it: clip(rshift(x, 12)), rounded to b-bit mantissas with
+    one exponent, kept at e = -12 (mantissa << shift)."""
+    c = np.clip(rshift(x, 12), -(2**22 - 1), 2**22 - 1)
+    m, sh = bfp(c, 0, b)
+    return m << sh
 
 
 def tdiv(a, b):
@@ -202,20 +222,22 @@ def exact_mm(a, b, bound):
 
 
 class IntModel:
-    def __init__(self, bundle, maxlen):
+    def __init__(self, bundle, maxlen, win=0, sink=0):
+        self.win, self.sink = win, sink
         z = bndl.load(bundle)
         cfg = json.loads(bytes(z["cfg"]).decode())
         self.D, self.I, self.L = cfg["hidden_size"], cfg["intermediate_size"], cfg["num_hidden_layers"]
         self.nq, self.nkv = cfg["num_attention_heads"], cfg["num_key_value_heads"]
         self.hd = self.D // self.nq
         self.V = cfg["vocab_size"]
+        self.bos = cfg["bos_token_id"]
         self.SC = att_scale(self.hd)
 
         def mat(n):
             q, s = z[n + ".q"], z[n + ".s"]
             o, i = q.shape
             wp = (q.astype(np.float64).reshape(o, i // G, G) * s.astype(np.float64)[:, :, None]).reshape(o, i)
-            return wp, int(z[n + ".E"]), int(np.abs(s).max()) * 127 * 32767 * i
+            return wp, int(z[n + ".E"]), int(np.abs(s).max()) * 127 * ((1 << (AQ - 1)) - 1) * i
 
         self.emb_q, self.emb_s = z["emb.q"], z["emb.s"].astype(I64)
         self.emb = mat("emb")
@@ -254,12 +276,16 @@ class IntModel:
     def attn(self, l, q, T):
         grp, hd = self.nq // self.nkv, self.hd
         out = np.empty((self.nq, hd), I64)
+        keys = np.arange(T)
+        if self.win > 0 and T - self.win > self.sink:  # the window: the first sink keys and the last win
+            keys = np.concatenate([np.arange(self.sink), np.arange(T - self.win, T)])
         for j in range(self.nkv):
-            K, Vv = self.K[l, j, :T], self.Vc[l, j, :T]
+            K, Vv = self.K[l, j, keys], self.Vc[l, j, keys]
             qs = q[j * grp : (j + 1) * grp] * self.SC  # the score scale folded into q before its blockf
-            sh = np.array([max(0, bitlen(np.abs(r).max()) - 15) for r in qs], dtype=I64)
-            mq = np.clip(rshift_arr(qs, sh[:, None]), -32767, 32767)
-            acc = exact_mm(K, mq.T, int(np.abs(K).max()) * 32767 * hd)  # [T, grp]
+            sh = np.array([max(0, bitlen(np.abs(r).max()) - (QQ - 1)) for r in qs], dtype=I64)
+            lim = (1 << (QQ - 1)) - 1
+            mq = np.clip(rshift_arr(qs, sh[:, None]), -lim, lim)
+            acc = exact_mm(K, mq.T, int(np.abs(K).max()) * lim * hd)  # [T, grp]
             # q e = -24 + sh, K e = -12, times 2^-3 -> e = -39 + sh; to e = -10
             s = rshift_arr(acc, (42 - sh)[None, :])
             d = s.max(axis=0)[None, :] - s
@@ -284,9 +310,9 @@ class IntModel:
             q = self.rope(x[: nq * hd].reshape(nq, hd), pos)
             k = self.rope(x[nq * hd : (nq + nkv) * hd].reshape(nkv, hd), pos)
             v = x[(nq + nkv) * hd :].reshape(nkv, hd)
-            lim = 2**22 - 1
-            self.K[l, :, pos] = np.clip(rshift(k, 12), -lim, lim)
-            self.Vc[l, :, pos] = np.clip(rshift(v, 12), -lim, lim)
+            for j in range(nkv):
+                self.K[l, j, pos] = cache_vec(k[j], KQ)
+                self.Vc[l, j, pos] = cache_vec(v[j], VQ)
             o = self.attn(l, q, pos + 1).reshape(-1)
             h = h + self.matvec(Ly["o"], blockf(o, -24), -24)
             gu = self.matvec(Ly["gu"], self.norm(h, Ly["g2"]), -16)
@@ -436,6 +462,15 @@ if __name__ == "__main__":
         for k, t in enumerate(ids):
             print(k, hashlib.sha256(m.step(prev).astype("<i8").tobytes()).hexdigest()[:16], flush=True)
             prev = t
+    elif mode == "idhashes":  # the same from token ids (a JSON list), no tokenizer: idhashes <model.gguf> <ids.json> N [win sink]
+        import hashlib
+        bundle, ids = sys.argv[2], json.loads(Path(sys.argv[3]).read_text())[: int(sys.argv[4])]
+        win, sink = (int(sys.argv[5]), int(sys.argv[6])) if len(sys.argv) > 6 else (0, 0)
+        m = IntModel(bundle, len(ids) + 1, win, sink)
+        prev = m.bos
+        for k, t in enumerate(ids):
+            print(k, hashlib.sha256(m.step(prev).astype("<i8").tobytes()).hexdigest()[:16], flush=True)
+            prev = t
     elif mode in ("encode", "decode"):
         sys.path.insert(0, str(Path(__file__).parent))
         from segcodec import Encoder, Decoder
@@ -447,20 +482,23 @@ if __name__ == "__main__":
             text = Path(a).read_bytes().decode("utf-8")
             ids = encode_text(hf, text)
             enc = Encoder()
-            m = IntModel(bundle, min(len(ids), archive.SEG) + 1)
+            level = int(sys.argv[6]) if len(sys.argv) > 6 else archive.first_level(archive.model_id_for(bundle))
+            assert archive.model_of(level) == archive.model_id_for(bundle), f"level {level} needs another model"
+            m = IntModel(bundle, min(len(ids), archive.SEG) + 1, *archive.window(level))
             for s0, s1 in archive.segments(len(ids)):  # each segment: a fresh context from the start token
                 m.pos, prev = 0, start
                 for t in ids[s0:s1]:
                     enc.code(m.step(prev), t)
                     prev = t
-            data = archive.pack(archive.model_id_for(bundle), len(ids), enc.finish())
+            data = archive.pack(level, len(ids), enc.finish())
             Path(b).write_bytes(data)
             print(f"encode: {len(text.encode())} -> {len(data)} bytes, {len(ids)} tokens, {time.time() - t0:.0f}s", flush=True)
         else:
             data = Path(a).read_bytes()
-            mid, n, body = archive.unpack(data)
+            level, n, body = archive.unpack(data)
+            mid = archive.model_of(level)
             assert mid == archive.model_id_for(bundle), f"archive needs model id {mid}"
-            m, dec, ids = IntModel(bundle, min(n, archive.SEG) + 1), Decoder(body), []
+            m, dec, ids = IntModel(bundle, min(n, archive.SEG) + 1, *archive.window(level)), Decoder(body), []
             for s0, s1 in archive.segments(n):
                 m.pos, prev = 0, start
                 for _ in range(s1 - s0):

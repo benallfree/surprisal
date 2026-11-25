@@ -22,74 +22,94 @@
   ],
   "archives": [
     {
-      "file": "m1-tiny.13k",
+      "file": "l1-tiny.13k",
       "model": 1,
       "level": 1,
       "input": "tiny.html",
       "bytes": 39,
       "tokens": 124,
-      "sha256": "f53768535ac177483f2ec85789c105ef2a7deb8a0c41c673b4aabeea658b03c1",
-      "how": "encoded by the numpy spec (intref.py) on the Mac; decoded on an H100"
+      "sha256": "acc720457d0e721505fece09427a9f03712c488a0760683403ffea677baa5952",
+      "how": "Metal batched encode; decoded step by step on Metal and on the CPU"
     },
     {
-      "file": "m1-slice.13k",
+      "file": "l1-slice.13k",
       "model": 1,
       "level": 1,
       "input": "slice.html",
-      "bytes": 655,
+      "bytes": 656,
       "tokens": 2341,
-      "sha256": "b66e1173911ca4cb2a425ab81944bdc09900cb9408cbe1037d4a5733429ec6ef",
-      "how": "encoded on an H100 (step by step); byte-identical to the numpy spec encode"
+      "sha256": "2914c50ec7a67d88f6451f1bc407a9bc1dcea344d140fa94c2816616b6ad1c2a",
+      "how": "Metal batched encode; decoded step by step on Metal and on the CPU (window 2,048 active past position 2,064)"
     },
     {
-      "file": "m1-bjj.13k",
+      "file": "l1-bjj.13k",
       "model": 1,
       "level": 1,
       "input": "bjj.html",
-      "bytes": 7186,
+      "bytes": 7932,
       "tokens": 24126,
-      "sha256": "46911f1fea483ee8ac86fc7d400fdb406856e9265744986ea75f9c204d0ea72b",
-      "how": "H100 step by step and batched agree; round-trips"
+      "sha256": "12114cf5509c6956c92b86a0061cccacb04b82bd5127dcbde4baccce40c10abd",
+      "how": "Metal batched encode, step-by-step decode round-trips; the CPU encodes the same bytes"
     },
     {
-      "file": "m2-bjj.13k",
+      "file": "l3-bjj.13k",
+      "model": 1,
+      "level": 3,
+      "input": "bjj.html",
+      "bytes": 7185,
+      "tokens": 24126,
+      "sha256": "b9ee9ee07a7e090dadfe5b39ee9301d574cb9dc26ea27527f0ee2c412a3e006c",
+      "how": "Metal batched encode (full attention)"
+    },
+    {
+      "file": "l1-bjj3.13k",
+      "model": 1,
+      "level": 1,
+      "input": "bjj.html three times, concatenated (167,562 bytes)",
+      "bytes": 23827,
+      "tokens": 72378,
+      "sha256": "687680dbad357be339c5b083f63c0075954daa60b28619b65c53859ff7b39249",
+      "how": "Metal batched encode, three segments (long-input rule)"
+    },
+    {
+      "file": "l4-bjj.13k",
       "model": 2,
       "level": 4,
       "input": "bjj.html",
-      "bytes": 5856,
+      "bytes": 6736,
       "tokens": 24126,
-      "sha256": "4ae59b9a06802ab90aab43503504fe16a3924c21163cca01bff1c988bb49cd12",
-      "how": "H100 batched and step by step agree; round-trips"
+      "sha256": "7f2048ca4049052312ba5dacad3247740a4b18f04435e89bf82ca903f644f6fb",
+      "how": "Metal batched encode"
     },
     {
-      "file": "m3-tiny.13k",
+      "file": "l6-bjj.13k",
+      "model": 2,
+      "level": 6,
+      "input": "bjj.html",
+      "bytes": 5855,
+      "tokens": 24126,
+      "sha256": "6ab3f877232bb91662a6ba53665f0eedcca4af45a0a6d8895fbfae3850ac896a",
+      "how": "Metal batched encode (full attention)"
+    },
+    {
+      "file": "l7-tiny.13k",
       "model": 3,
       "level": 7,
       "input": "tiny.html",
       "bytes": 35,
       "tokens": 124,
-      "sha256": "0be0291bffdacbc577c9b2a987bdd1db6faac573841bc588cc1e34fb1825aaad",
-      "how": "encoded on an H100; the pure-Go nollama implementation on a Mac produces the same bytes"
+      "sha256": "e4e867a24b5997776d67b02f6cc7f40e5976f4171857fe912d0c08329f0cf2dc",
+      "how": "Metal batched encode; decoded step by step on Metal and on the CPU"
     },
     {
-      "file": "m3-bjj.13k",
+      "file": "l9-bjj.13k",
       "model": 3,
-      "level": 7,
+      "level": 9,
       "input": "bjj.html",
-      "bytes": 4970,
+      "bytes": 4944,
       "tokens": 24126,
-      "sha256": "0da318cff02634ac9814ff1de7615d93ebde0af75b2974864a226565d888fb2d",
-      "how": "H100 batched encode, step-by-step decode round-trips; bundle built from the official Qwen weights"
-    },
-    {
-      "file": "m1-bjj3.13k",
-      "model": 1,
-      "level": 1,
-      "input": "bjj.html three times, concatenated (167,562 bytes)",
-      "bytes": 16945,
-      "tokens": 72378,
-      "sha256": "5450e2861b9a944965a6be633c1e5646cfd629bd46165e538d93efa197c67bb5",
-      "how": "H100 batched encode, step-by-step decode round-trips; 3 segments (long-input rule)"
+      "sha256": "febecf79de6e331fbf3a11dc3e0902098ff7ed3bede992fe75294808df3fb17e",
+      "how": "Metal batched encode (7B, full attention)"
     }
   ],
   "tables": [
@@ -98,14 +118,14 @@
       "model": 1,
       "input": "slice.html",
       "tokens": 300,
-      "how": "numpy spec; the H100 step-by-step path gives the same 300 lines"
+      "how": "intref.py idhashes (numpy, the spec); Go on the CPU and Metal give the same lines"
     },
     {
       "file": "m2-tiny-tables.txt",
       "model": 2,
       "input": "tiny.html",
       "tokens": 30,
-      "how": "numpy spec; the H100 step-by-step path gives the same 30 lines"
+      "how": "intref.py idhashes (numpy, the spec); Go on the CPU and Metal give the same lines"
     }
   ],
   "table_hash": "line \"k h\": h = first 16 hex digits of sha256 of the int64 little-endian cumulative frequency table produced after feeding the token at position k (position 0 = the start token)"

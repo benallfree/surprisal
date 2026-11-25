@@ -15,9 +15,10 @@ import (
 // Codec compresses and decompresses at one compression level: 0 stores the bytes, 1-9 code them with the level's
 // model.
 type Codec struct {
-	Level int
-	Info  ModelInfo        // levels 1-9
-	Model *engine.IntModel // levels 1-9
+	Level        int
+	Info         ModelInfo        // levels 1-9
+	Model        *engine.IntModel // levels 1-9
+	Window, Sink int              // the level's attention window (0: full attention)
 }
 
 // Open makes a codec for a compression level (0-9). For levels 1-9 it loads the level's model, which must be
@@ -39,7 +40,8 @@ func Open(level, threads int, gpu string) (*Codec, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Codec{Level: level, Info: info, Model: m}, nil
+	w, sk := LevelWindow(level)
+	return &Codec{Level: level, Info: info, Model: m, Window: w, Sink: sk}, nil
 }
 
 // Close releases the model.
@@ -115,7 +117,7 @@ func (c *Codec) Compress(kind int, data []byte, progress Progress) ([]byte, erro
 	ids := c.tokenize(data)
 	n := len(ids)
 	enc := newEncoder()
-	ses, err := c.Model.NewSession(min(max(n, 1), Seg))
+	ses, err := c.Model.NewWindowSession(min(max(n, 1), Seg), c.Window, c.Sink)
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +167,8 @@ func (c *Codec) Decompress(a []byte, progress Progress) (Header, []byte, error) 
 	}
 	dec := newDecoder(body)
 	ids := make([]int, 0, h.Tokens)
-	ses, err := c.Model.NewSession(min(max(h.Tokens, 1), Seg))
+	w, sk := LevelWindow(h.Level) // the archive's level, which may differ from the codec's (same model)
+	ses, err := c.Model.NewWindowSession(min(max(h.Tokens, 1), Seg), w, sk)
 	if err != nil {
 		return h, nil, err
 	}

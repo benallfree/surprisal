@@ -51,12 +51,27 @@ go install github.com/benallfree/surprisal/cmd/surprisal@latest
 
 ## Levels
 
-| level | model | size |
-|---|---|---:|
-| `-0` | none (stored) | – |
-| `-1` (default) to `-3` | `qwen2.5-coder-0.5b-int-v1` | 0.5 GB |
-| `-4` to `-6` | `qwen2.5-coder-1.5b-int-v1` | 1.6 GB |
-| `-7` to `-9` | `qwen2.5-coder-7b-int-v1` | 7.9 GB |
+Each level is a model and an attention window: how far back the model looks within a 32,768-token segment (always
+including the segment's first 16 tokens). Within a model, a shorter window is faster and makes slightly bigger
+archives (a window also can't reach repeats further back than its length); `-9` makes the smallest archives,
+whatever the time. Sizes and speeds on BJJ (55,854 bytes minified,
+24,126 tokens) on an M1 Max:
+
+| level | model | window | BJJ archive | compress | decompress |
+|---|---|---:|---:|---:|---:|
+| `-0` | none (stored) | – | 55,856 | – | – |
+| `-1` (default) | `qwen2.5-coder-0.5b-int-v1` | 2,048 | 7,932 | 1,176 tok/s | ~107 tok/s |
+| `-2` | `qwen2.5-coder-0.5b-int-v1` | 4,096 | 7,614 | 982 tok/s | ~107 tok/s |
+| `-3` | `qwen2.5-coder-0.5b-int-v1` | full | 7,185 | 542 tok/s | ~107 tok/s |
+| `-4` | `qwen2.5-coder-1.5b-int-v1` | 2,048 | 6,736 | 415 tok/s | ~61 tok/s |
+| `-5` | `qwen2.5-coder-1.5b-int-v1` | 4,096 | 6,390 | 364 tok/s | ~61 tok/s |
+| `-6` | `qwen2.5-coder-1.5b-int-v1` | full | 5,855 | 198 tok/s | ~61 tok/s |
+| `-7` | `qwen2.5-coder-7b-int-v1` | 4,096 | 5,506 | 109 tok/s | ~20 tok/s |
+| `-8` | `qwen2.5-coder-7b-int-v1` | 8,192 | 5,209 | 88 tok/s | ~20 tok/s |
+| `-9` | `qwen2.5-coder-7b-int-v1` | full | 4,944 | 78 tok/s | ~20 tok/s |
+
+Decompression speed is at the start of a file (it slows as the context grows). Models download on first use: the
+0.5B is 0.5 GB, the 1.5B 1.6 GB, the 7B 7.9 GB.
 
 ## Supported platforms
 

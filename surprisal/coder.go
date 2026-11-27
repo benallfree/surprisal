@@ -66,6 +66,15 @@ func (e *encoder) codeToken(cum []int64, t int) {
 	e.code(uint64(cum[len(cum)-1]), uint64(cum[t]), uint64(lo))
 }
 
+// minBytes is the fewest bytes finish can return from here, whatever is coded next. Output only grows: the bits
+// written (out, then acc's nb) stay, each pending bit is written by a later emit, and finish writes at least two
+// more (pending++, then one emit: its bit and that pending one), then pads to a byte. So it is exact for an
+// immediate finish and a lower bound for any longer input.
+func (e *encoder) minBytes() int {
+	bits := 8*len(e.out) + int(e.nb) + int(e.pending) + 2
+	return (bits + 7) / 8
+}
+
 func (e *encoder) finish() []byte {
 	e.pending++
 	if e.low < qtr {

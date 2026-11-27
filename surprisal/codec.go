@@ -19,6 +19,35 @@ type Codec struct {
 	Info         ModelInfo        // levels 1-9
 	Model        *engine.IntModel // levels 1-9
 	Window, Sink int              // the level's attention window (0: full attention)
+	// Check, if set, is called during Compress after each batch of tokens with the tokens done, the total and the
+	// smallest size the archive can still end up (header included; it never goes down), and once more at the end
+	// with the archive's actual size. A non-nil error stops Compress, which returns it.
+	Check func(done, total, minSize int) error
+}
+
+// OverLimit is the error a size limit's Check returns (StopAt): the archive is certain to be bigger than Limit.
+type OverLimit struct {
+	Limit, MinSize int // MinSize: the smallest the archive could have ended up (its size, when Done == Total)
+	Done, Total    int // tokens coded when it stopped
+}
+
+func (e *OverLimit) Error() string {
+	if e.Done == e.Total {
+		return fmt.Sprintf("surprisal: the archive is %d bytes, over the %d-byte limit", e.MinSize, e.Limit)
+	}
+	return fmt.Sprintf("surprisal: the archive will be at least %d bytes, over the %d-byte limit (stopped at %d/%d tokens)",
+		e.MinSize, e.Limit, e.Done, e.Total)
+}
+
+// StopAt is a Check that stops once the archive is certain to be over limit bytes. It never stops an input whose
+// archive would fit.
+func StopAt(limit int) func(done, total, minSize int) error {
+	return func(done, total, minSize int) error {
+		if minSize > limit {
+			return &OverLimit{Limit: limit, MinSize: minSize, Done: done, Total: total}
+		}
+		return nil
+	}
 }
 
 // Open makes a codec for a compression level (0-9). For levels 1-9 it loads the level's model, which must be
@@ -112,10 +141,17 @@ func (c *Codec) tokenize(b []byte) []int {
 // Compress codes data as an archive of the given kind (KindStream or KindFiles).
 func (c *Codec) Compress(kind int, data []byte, progress Progress) ([]byte, error) {
 	if c.Level == 0 {
-		return append(Header{Kind: kind, Version: Version}.bytes(), data...), nil
+		a := append(Header{Kind: kind, Version: Version}.bytes(), data...)
+		if c.Check != nil {
+			if err := c.Check(0, 0, len(a)); err != nil {
+				return nil, err
+			}
+		}
+		return a, nil
 	}
 	ids := c.tokenize(data)
 	n := len(ids)
+	head := Header{Kind: kind, Version: Version, Level: c.Level, Tokens: n}.bytes()
 	enc := newEncoder()
 	ses, err := c.Model.NewWindowSession(min(max(n, 1), Seg), c.Window, c.Sink)
 	if err != nil {
@@ -147,9 +183,20 @@ func (c *Codec) Compress(kind int, data []byte, progress Progress) ([]byte, erro
 			if progress != nil {
 				progress(k1, n)
 			}
+			if c.Check != nil {
+				if err := c.Check(k1, n, len(head)+enc.minBytes()); err != nil {
+					return nil, err
+				}
+			}
 		}
 	}
-	return append(Header{Kind: kind, Version: Version, Level: c.Level, Tokens: n}.bytes(), enc.finish()...), nil
+	a := append(head, enc.finish()...)
+	if c.Check != nil {
+		if err := c.Check(n, n, len(a)); err != nil {
+			return nil, err
+		}
+	}
+	return a, nil
 }
 
 // Decompress decodes an archive made at a level that uses this codec's model (any codec decodes level 0).

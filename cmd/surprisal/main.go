@@ -10,10 +10,12 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"math"
 	"os"
 	"path/filepath"
 	"runtime/debug"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,7 +25,7 @@ import (
 const usage = `surprisal compresses files with a language model; any machine with surprisal unpacks them exactly.
 
 Usage:
-  surprisal [-0 ... -9] [--compare] [-o out.13k] <files or directories>...   compress
+  surprisal [-0 ... -9] [--compare] [--stop-at=size] [-o out.13k] <files or directories>...   compress
   surprisal [-o dir] [-f] <archive.13k>                                      unpack
   surprisal --list
   surprisal --version
@@ -35,6 +37,8 @@ Levels: -0 stores without a model; -1 (the default) to -3 use the 0.5B model, -4
 Within a model, a lower level attends to a shorter window of the text: faster, slightly bigger archives. -9 gives
 the smallest archives, slowest. The archive records its level, so unpacking doesn't need it. A level's model is
 downloaded the first time it's needed.
+--stop-at=13312 (or 13k) gives up as soon as the archive is certain to be bigger than that many bytes: it writes
+nothing and exits with status 3, so a script can try the next level. It never stops an input that would fit.
 Models live in $SURPRISAL_HOME, else ~/.surprisal (%s).
 
 Flags:
@@ -62,6 +66,7 @@ func main() {
 	threads := flag.Int("threads", 0, "CPU threads (default: all CPUs)")
 	gpu := flag.String("gpu", "auto", "auto (a GPU when one works) or off (the CPU); both give the same archives")
 	showVersion := flag.Bool("version", false, "print the version")
+	stopAt := flag.String("stop-at", "", "when compressing, stop and exit 3 once the archive is certain to be over this many bytes (13312, 13k)")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, usage, surprisal.ModelsDir())
 		flag.PrintDefaults()
@@ -87,19 +92,51 @@ func main() {
 			err = errors.New("--compare is for compressing, not unpacking")
 			break
 		}
+		if *stopAt != "" {
+			err = errors.New("--stop-at is for compressing, not unpacking")
+			break
+		}
 		err = cmdDecompress(flag.Arg(0), *out, *force, *threads, *gpu)
 	case flag.NArg() > 0:
 		if level < 0 {
 			level = 1 // the default
 		}
-		err = cmdCompress(flag.Args(), *out, level, *threads, *gpu, *compare)
+		limit := -1
+		if *stopAt != "" {
+			if limit, err = parseSize(*stopAt); err != nil {
+				break
+			}
+		}
+		err = cmdCompress(flag.Args(), *out, level, *threads, *gpu, *compare, limit)
 	default:
 		flag.Usage()
 		os.Exit(2)
 	}
+	var over *surprisal.OverLimit
+	if errors.As(err, &over) {
+		// its own status, so a script can tell "too big" from "failed"
+		fmt.Fprintln(os.Stderr, "surprisal:", strings.TrimPrefix(err.Error(), "surprisal: ")+"; no archive written")
+		os.Exit(exitOverLimit)
+	}
 	if err != nil {
 		log.Fatal("surprisal: ", strings.TrimPrefix(err.Error(), "surprisal: "))
 	}
+}
+
+// exitOverLimit is the exit status when --stop-at's limit is exceeded (failures exit 1, usage errors 2).
+const exitOverLimit = 3
+
+// parseSize reads a size in bytes: 13312, or with k (1024 bytes, as js13k's 13k = 13312).
+func parseSize(s string) (int, error) {
+	t, mult := strings.ToLower(strings.TrimSpace(s)), 1
+	if strings.HasSuffix(t, "k") {
+		t, mult = strings.TrimSuffix(t, "k"), 1024
+	}
+	n, err := strconv.Atoi(t)
+	if err != nil || n <= 0 || n > math.MaxInt/mult {
+		return 0, fmt.Errorf("--stop-at=%s: give a size in bytes, like 13312 or 13k", s)
+	}
+	return n * mult, nil
 }
 
 // takeLevel removes the level flags (-0 ... -9, as gzip's) from args and returns the last one given, or -1 for none.
@@ -269,11 +306,20 @@ type progress struct {
 	start time.Time
 	last  time.Time
 	hist  []progressMark // recent updates, for the current rate
+	done  bool           // the line has its newline
 }
 
 type progressMark struct {
 	t    time.Time
 	done int
+}
+
+// end finishes the progress line if it was left open (a run that stopped early).
+func (p *progress) end() {
+	if !p.last.IsZero() && !p.done {
+		fmt.Fprintln(os.Stderr)
+		p.done = true
+	}
 }
 
 // progressSpan is how far back the rate looks: speed changes within a run (attention costs more later in a segment,
@@ -303,6 +349,7 @@ func (p *progress) update(done, total int) {
 	fmt.Fprintf(os.Stderr, "\r%s: %d/%d tokens, %.1f tok/s, %s left    ", p.what, done, total, rate, left.Round(time.Second))
 	if done == total {
 		fmt.Fprintln(os.Stderr)
+		p.done = true
 	}
 }
 
@@ -370,7 +417,7 @@ func gather(args []string) ([]surprisal.File, error) {
 	return files, nil
 }
 
-func cmdCompress(args []string, out string, level, threads int, gpu string, compare bool) error {
+func cmdCompress(args []string, out string, level, threads int, gpu string, compare bool, limit int) error {
 	files, err := gather(args)
 	if err != nil {
 		return err
@@ -396,8 +443,12 @@ func cmdCompress(args []string, out string, level, threads int, gpu string, comp
 		}
 	}
 	p := &progress{what: "compress", start: time.Now()}
+	if limit >= 0 {
+		c.Check = surprisal.StopAt(limit)
+	}
 	a, err := c.CompressFiles(files, p.update)
 	if err != nil {
+		p.end()
 		return err
 	}
 	if err := os.WriteFile(out, a, 0o644); err != nil {

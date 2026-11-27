@@ -14,7 +14,7 @@ surprisal src.13k
 ```
 
 ```bash
-surprisal [-0 ... -9] [--compare] [-o out.13k] <files or directories>...
+surprisal [-0 ... -9] [--compare] [--stop-at=size] [-o out.13k] <files or directories>...
 ```
 
 ```bash
@@ -31,7 +31,9 @@ compressed into one archive (`<name>.13k` for a single input, `archive.13k` for 
 archive, and won't overwrite existing files without `-f`. Compressing prints the archive's size, its ratio and change
 from the original, and how long it took; `--compare` adds the same for each zip method (Deflate, Deflate via Zopfli,
 Deflate64, BZip2, LZMA, PPMd), 7z (LZMA2 and PPMd), gzip, xz and Brotli on the same input (with the `brew install` for
-any that's missing). `--list` shows which models are installed. `--gpu off` forces the
+any that's missing). `--stop-at=13312` (or `13k`) gives up as soon as the archive is certain to be bigger than that
+many bytes, writing nothing and exiting with status 3 (failures exit 1), so a script can move on to a higher level
+without waiting out the whole run; an input whose archive would fit is never stopped. `--list` shows which models are installed. `--gpu off` forces the
 CPU (same archives, slower). Surprisal downloads the model a level needs the first time you use it and keeps it in
 `~/.surprisal`; set `SURPRISAL_HOME` to keep models somewhere else.
 

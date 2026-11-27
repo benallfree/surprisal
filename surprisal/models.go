@@ -68,6 +68,10 @@ func ModelForLevel(level int) (ModelInfo, bool) {
 	return ModelByID(l[level])
 }
 
+// MaxLevel is the highest compression level. Each level from 1 up to it is a different model or window; asking for a
+// higher one gets this one.
+func MaxLevel() int { return len(loadManifest().Levels) - 1 }
+
 // LevelWindow is a level's attention window: each position attends to the last window positions of its segment and
 // the first sink; window 0 means full attention (SPEC.md §3).
 func LevelWindow(level int) (window, sink int) {

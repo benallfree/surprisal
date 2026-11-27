@@ -35,7 +35,8 @@ input, archive.13k for several).
 
 Levels: -0 stores without a model; -1 (the default) to -3 use the 0.5B model, -4 to -6 the 1.5B, -7 to -9 the 7B.
 Within a model, a lower level attends to a shorter window of the text: faster, slightly bigger archives. -9 gives
-the smallest archives, slowest. The archive records its level, so unpacking doesn't need it. A level's model is
+the smallest archives, slowest. Each level is a step smaller and slower than the one before; asking for a level
+past -9 gets -9. The archive records its level, so unpacking doesn't need it. A level's model is
 downloaded the first time it's needed.
 --stop-at=13312 (or 13k) gives up as soon as the archive is certain to be bigger than that many bytes: it writes
 nothing and exits with status 3, so a script can try the next level. It never stops an input that would fit.
@@ -101,6 +102,7 @@ func main() {
 		if level < 0 {
 			level = 1 // the default
 		}
+		level = min(level, surprisal.MaxLevel()) // past the highest level is the highest
 		limit := -1
 		if *stopAt != "" {
 			if limit, err = parseSize(*stopAt); err != nil {
@@ -139,7 +141,8 @@ func parseSize(s string) (int, error) {
 	return n * mult, nil
 }
 
-// takeLevel removes the level flags (-0 ... -9, as gzip's) from args and returns the last one given, or -1 for none.
+// takeLevel removes the level flags (-0, -1, ... as gzip's, any number of digits) from args and returns the last one
+// given, or -1 for none. Compressing caps it at the highest level.
 func takeLevel(args []string) ([]string, int) {
 	var out []string
 	level := -1
@@ -147,8 +150,12 @@ func takeLevel(args []string) ([]string, int) {
 		if a == "--" {
 			return append(out, args[i:]...), level
 		}
-		if len(a) == 2 && a[0] == '-' && a[1] >= '0' && a[1] <= '9' {
-			level = int(a[1] - '0')
+		if len(a) > 1 && a[0] == '-' && strings.Trim(a[1:], "0123456789") == "" {
+			n, err := strconv.Atoi(a[1:])
+			if err != nil {
+				n = 99 // too many digits: past the highest level anyway
+			}
+			level = min(n, 99)
 			continue
 		}
 		out = append(out, a)
